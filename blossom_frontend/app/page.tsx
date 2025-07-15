@@ -53,7 +53,7 @@ interface Task {
 }
 
 export default function BlossomFocusPreview() {
-  const [currentPage, setCurrentPage] = useState("dashboard")
+  const [currentPage, setCurrentPage] = useState("focus")
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [authForm, setAuthForm] = useState({
@@ -92,6 +92,15 @@ export default function BlossomFocusPreview() {
   const [showPetCreator, setShowPetCreator] = useState(false)
   const [newPetName, setNewPetName] = useState("")
   const [newPetType, setNewPetType] = useState<"dog" | "cat">("dog")
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
+  // Add state for custom focus minutes
+  // Add state for recent custom times
+  // Remove the purple recent times box and add quick-pick/recent time pills below the timer
+  // const [showCustomInput, setShowCustomInput] = useState(false);
+  // const [customInputValue, setCustomInputValue] = useState(30);
+  // const quickPickTimes = [15, 25, 45];
+
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'all'|'year'|'month'|'week'|'today'>('all');
 
   // Generate floating particles
   useEffect(() => {
@@ -149,6 +158,14 @@ export default function BlossomFocusPreview() {
     return () => clearInterval(interval)
   }, [])
 
+  // Update timerSeconds when focusMinutes changes and timer is not running
+  // useEffect(() => {
+  //   if (!timerRunning) setTimerSeconds(focusMinutes * 60);
+  // }, [focusMinutes]);
+
+  // Calculate XP dynamically
+  // const sessionXP = focusMinutes * 2;
+
   // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -158,11 +175,21 @@ export default function BlossomFocusPreview() {
       }, 1000)
     } else if (timerSeconds === 0) {
       setTimerRunning(false)
-      gainXP(50)
+      if (focusedTaskId) {
+        completeTask(focusedTaskId)
+        setFocusedTaskId(null)
+      }
       setTimerSeconds(1500)
     }
     return () => clearInterval(interval)
-  }, [timerRunning, timerSeconds])
+  }, [timerRunning, timerSeconds]) // Removed focusMinutes from dependency array
+
+  // On timer completion, add to recent times
+  useEffect(() => {
+    if (timerSeconds === 0 && !timerRunning) {
+      // setRecentFocusTimes(prev => [focusMinutes, ...prev.slice(0, 4)]); // This line is removed
+    }
+  }, [timerSeconds, timerRunning]);
 
   const gainXP = (amount: number) => {
     setXpGainAmount(amount)
@@ -439,12 +466,23 @@ export default function BlossomFocusPreview() {
   }
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", color: "from-[#FF2D95] to-[#B967FF]", icon: "🏠" },
-    { id: "tasks", label: "Tasks", color: "from-[#00E0FF] to-[#B967FF]", icon: "✅" },
-    { id: "timer", label: "Focus Timer", color: "from-[#B967FF] to-[#FF2D95]", icon: "⏰" },
+    { id: "focus", label: "Task & Focus", color: "from-[#B967FF] to-[#FF2D95]", icon: "⏰" },
     { id: "pets", label: "My Pets", color: "from-[#FF2D95] to-[#00E0FF]", icon: "🐾" },
     { id: "analytics", label: "Analytics", color: "from-[#00E0FF] to-[#FF2D95]", icon: "📊" },
   ]
+
+  // const handlePickTime = (min: number) => {
+  //   setFocusMinutes(min);
+  //   setShowCustomInput(false);
+  // };
+
+  // const handleCustomInput = () => {
+  //   if (customInputValue >= 1 && customInputValue <= 180) {
+  //     setFocusMinutes(customInputValue);
+  //     setRecentFocusTimes(prev => [customInputValue, ...prev.filter(t => t !== customInputValue).slice(0, 4)]);
+  //     setShowCustomInput(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-[#18181A] text-white overflow-hidden relative">
@@ -673,12 +711,9 @@ export default function BlossomFocusPreview() {
         <div className="bg-black/90 backdrop-blur-2xl border-b border-[#FF2D95]/30 shadow-2xl shadow-[#FF2D95]/20">
           <div className="max-w-7xl mx-auto px-8 py-6">
             <div className="flex items-center justify-between">
-              <div className="relative">
-                {/* --- BLOSSOM FOCUS HEADING --- */}
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl font-black bg-gradient-to-r from-[#FF2D95] via-[#00E0FF] to-[#B967FF] bg-clip-text text-transparent drop-shadow-2xl animate-gradient-move">BLOSSOM FOCUS</span>
-                </div>
-                <div className="absolute -inset-4 bg-gradient-to-r from-[#FF2D95]/20 to-[#00E0FF]/20 blur-2xl rounded-lg -z-10"></div>
+              <div className="flex flex-col items-center justify-center relative">
+                <span className="text-4xl font-black bg-gradient-to-r from-[#FF2D95] via-[#00E0FF] to-[#B967FF] bg-clip-text text-transparent drop-shadow-2xl animate-gradient-move">BLOSSOM</span>
+                <div className="w-40 h-2 bg-gradient-to-r from-[#FF2D95] to-[#00E0FF] rounded-full mx-auto mt-2"></div>
               </div>
 
               <div className="flex items-center gap-6">
@@ -766,6 +801,183 @@ export default function BlossomFocusPreview() {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-8 py-10">
+          {currentPage === "focus" && (
+            <>
+              <div className="text-center mb-8 flex justify-center gap-2">
+                <h2 className="text-7xl font-black mb-2 bg-gradient-to-r from-orange-400 via-pink-500 to-teal-400 bg-clip-text text-white drop-shadow-2xl animate-gradient-move">
+                  ⏰ TASK & FOCUS
+                </h2>
+              </div>
+              <div className="w-full">
+                <div className="flex flex-col md:flex-row gap-8 w-full">
+                  {/* Focus Timer Section */}
+                  <div className="flex-1">
+                    <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+                      <CardContent className="p-8 text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                        <div className="relative z-10">
+                          <div className="text-7xl font-black text-transparent bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] bg-clip-text mb-8 font-mono tracking-wider drop-shadow-2xl">
+                            {formatTime(timerSeconds)}
+                          </div>
+                          {focusedTaskId ? (
+                            <>
+                              <div className="text-xl font-bold mb-2">
+                                <span className="text-cyan-400">Focusing:</span>
+                                <span className="ml-2 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent font-extrabold">{userData.tasks.find(t => t.id === focusedTaskId)?.title}</span>
+                              </div>
+                              <div className="text-2xl font-bold text-[#00E0FF] mb-6">🌟 +{userData.tasks.find(t => t.id === focusedTaskId)?.xpReward} XP ON COMPLETION</div>
+                            </>
+                          ) : (
+                            <div className="text-lg text-white/60 mt-4 mb-6">Generic Focus Session (no XP reward)</div>
+                          )}
+                          <div className="w-40 h-2 bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] rounded-full mx-auto mb-4"></div>
+                          {/* Quick-pick and recent time pills */}
+                          {/* Removed quick-pick and recent time pills */}
+                          {/* Custom input pill */}
+                          {/* Removed custom input pill */}
+                          {/* Removed custom input UI */}
+                          <div className="flex justify-center gap-8 mt-8">
+                            <Button
+                              onClick={() => setTimerRunning(!timerRunning)}
+                              className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-4 text-xl font-black rounded-2xl text-white animate-gradient-move"
+                            >
+                              {timerRunning ? "⏸️ PAUSE" : "🎯 START"}
+                            </Button>
+                            <Button
+                              onClick={resetTimer}
+                              className="bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] hover:shadow-2xl hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 px-10 py-4 text-xl font-black rounded-2xl text-white animate-gradient-move"
+                            >
+                              🔄 RESET
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  {/* Task Manager Section */}
+                  <div className="flex-1">
+                    <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+                      <CardContent className="p-8 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                        <div className="relative z-10">
+                          <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
+                            ➕ CREATE NEW TASK
+                          </h3>
+                          <div className="flex flex-wrap gap-6 items-end">
+                            <div className="flex-1 min-w-80">
+                              <Input
+                                value={newTask}
+                                onChange={(e) => setNewTask(e.target.value)}
+                                placeholder="What task awaits? ⚡"
+                                className="bg-black/70 border-2 border-[#FF2D95]/50 text-white text-lg p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50"
+                                onKeyPress={(e) => e.key === "Enter" && addTask()}
+                              />
+                            </div>
+                            <div className="flex gap-3">
+                              {(["low", "medium", "high"] as const).map(priority => (
+                                <button
+                                  key={priority}
+                                  onClick={() => setTaskPriority(priority)}
+                                  className={`px-8 py-4 rounded-xl text-sm font-black transition-all duration-300 transform hover:scale-105 border-2 ${
+                                    taskPriority === priority
+                                      ? priority === "high"
+                                        ? "bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-lg shadow-[#FF2D95]/30 border-[#FF2D95]"
+                                        : priority === "medium"
+                                          ? "bg-gradient-to-r from-[#B967FF] to-[#00E0FF] text-white shadow-lg shadow-[#B967FF]/30 border-[#B967FF]"
+                                          : "bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] text-white shadow-lg shadow-[#00E0FF]/30 border-[#00E0FF]"
+                                      : "bg-black/50 text-white hover:bg-black/70 border-white/30"
+                                  }`}
+                                >
+                                  <div className="text-white font-bold">{priority.toUpperCase()}</div>
+                                  <div className="text-xs text-white/80">
+                                    +{priority === "high" ? "25" : priority === "medium" ? "15" : "10"} XP
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                            <Button
+                              onClick={addTask}
+                              className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
+                            >
+                              CREATE TASK ⚡
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <div className="space-y-6 mt-8">
+                      <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
+                        🎮 ACTIVE TASKS
+                      </h3>
+                      {userData.tasks.length === 0 ? (
+                        <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl">
+                          <CardContent className="p-12 text-center">
+                            <div className="text-8xl mb-6">🎯</div>
+                            <div className="text-[#00E0FF] text-2xl font-black mb-4">NO ACTIVE TASKS!</div>
+                            <div className="text-white text-lg font-bold">
+                              Create your first task above to start earning XP and leveling up!
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) :
+                        userData.tasks.map((task, index) => (
+                          <Card
+                            key={task.id}
+                            className={`group bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl hover:shadow-xl hover:shadow-[#FF2D95]/20 transition-all duration-300 hover:scale-[1.02] ${focusedTaskId === task.id ? 'ring-4 ring-[#00E0FF]/60' : ''}`}
+                            onClick={() => {
+                              setFocusedTaskId(task.id);
+                              setTimerSeconds(25 * 60); // Default to 25 minutes for new task
+                            }}
+                          >
+                            <CardContent className="p-6 relative overflow-hidden cursor-pointer">
+                              <div className="absolute inset-0 bg-gradient-to-r from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                              <div className="relative z-10 flex items-center justify-between">
+                                <div className="flex-1">
+                                  <span className="text-white font-bold text-lg">{task.title}</span>
+                                  <div className="flex items-center gap-4 mt-2">
+                                    <Badge
+                                      variant="outline"
+                                      className={`$ {
+                                        task.priority === "high"
+                                          ? "border-[#FF2D95] text-[#FF2D95] bg-[#FF2D95]/10"
+                                          : task.priority === "medium"
+                                            ? "border-[#B967FF] text-[#B967FF] bg-[#B967FF]/10"
+                                            : "border-[#00E0FF] text-[#00E0FF] bg-[#00E0FF]/10"
+                                      } font-bold px-4 py-1 border-2`}
+                                    >
+                                      {task.priority.toUpperCase()}
+                                    </Badge>
+                                    <div className="text-[#00E0FF] font-bold text-sm">🌟 +{task.xpReward} XP REWARD</div>
+                                  </div>
+                                </div>
+                                <div className="flex gap-3">
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
+                                    className="bg-gradient-to-r from-[#00E0FF] to-[#B967FF] hover:shadow-lg hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
+                                  >
+                                    ✓
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
+                                    className="bg-gradient-to-r from-[#FF2D95] to-[#B967FF] hover:shadow-lg hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
+                                  >
+                                    ✗
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Removed recent focus times section */}
+            </>
+          )}
+
           {currentPage === "pets" && (
             <div className="space-y-8">
               {/* --- MY PETS PAGE HEADER --- */}
@@ -798,11 +1010,12 @@ export default function BlossomFocusPreview() {
                 <div className="rounded-2xl bg-gradient-to-br from-white/10 via-pink-200/10 to-teal-200/10 backdrop-blur-md border border-white/20 shadow-xl p-8">
                   {getActivePet() ? (() => {
                     const pet = getActivePet();
+                    if (!pet) return null;
                               return (
                       <>
                         <h2 className="text-4xl font-bold text-center mb-2">{pet.name}</h2>
-                        <div className="mb-4 text-center text-lg">Age: {pet.ageInYears.toFixed(1)} years</div>
-                        <div className="mb-4 text-center">{getPetStageInfo(pet.ageInYears).description}</div>
+                        <div className="mb-4 text-center text-lg">Age: {pet.ageInYears?.toFixed(1)}</div>
+                        <div className="mb-4 text-center">{getPetStageInfo(pet.ageInYears)?.description}</div>
                         <div className="flex-1 flex items-center justify-center">
                           <span className="text-7xl drop-shadow-lg">{getPetEmoji(pet)}</span>
                                       </div>
@@ -816,11 +1029,12 @@ export default function BlossomFocusPreview() {
                 <div className="rounded-2xl bg-gradient-to-br from-white/10 via-pink-200/10 to-teal-200/10 backdrop-blur-md border border-white/20 shadow-xl p-8">
                   {getActivePet() ? (() => {
                     const pet = getActivePet();
+                    if (!pet) return null;
                                 return (
                                   <>
                         <h2 className="text-4xl font-bold text-center mb-2">{pet.name}</h2>
-                        <div className="mb-4 text-center text-lg">Age: {pet.ageInYears.toFixed(1)} years</div>
-                        <div className="mb-4 text-center">{getPetStageInfo(pet.ageInYears).description}</div>
+                        <div className="mb-4 text-center text-lg">Age: {pet.ageInYears?.toFixed(1)}</div>
+                        <div className="mb-4 text-center">{getPetStageInfo(pet.ageInYears)?.description}</div>
                         <div className="mb-2 flex items-center justify-between">
                           <span className="font-bold text-pink-600">Hunger:</span>
                           <span className="font-bold text-pink-600">{pet.hunger}%</span>
@@ -859,481 +1073,6 @@ export default function BlossomFocusPreview() {
           )}
 
           {/* Other pages remain the same... */}
-          {currentPage === "dashboard" && (
-            <div className="space-y-8">
-              <div className="text-center mb-12">
-                <h2 className="text-7xl font-black mb-4 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-white drop-shadow-2xl animate-gradient-move">
-                  ✨ DASHBOARD
-                </h2>
-                <p className="text-white text-xl font-bold">
-                  {userData.isLoggedIn
-                    ? `Welcome back, ${userData.username}! Your productivity command center awaits.`
-                    : "Your productivity command center (Sign in to sync progress!)"}
-                </p>
-              </div>
-
-              {!userData.isLoggedIn && (
-                <Card className="bg-black/60 border-2 border-[#00E0FF]/30 backdrop-blur-xl mb-8">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">🌟</div>
-                    <h3 className="text-2xl font-bold text-[#00E0FF] mb-2">You're in Guest Mode!</h3>
-                    <p className="text-white/80 mb-4">
-                      Your progress is saved locally. Sign up to sync across devices and unlock exclusive features!
-                    </p>
-                    <Button
-                      onClick={() => setShowAuthModal(true)}
-                      className="bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] hover:shadow-lg hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-105 px-8 py-3 font-bold rounded-xl text-white animate-gradient-move"
-                    >
-                      🚀 Create Free Account
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                {[
-                  {
-                    label: "Tasks Completed",
-                    value: userData.completedTasks,
-                    color: "from-[#00E0FF] to-[#B967FF]",
-                    icon: "🎯",
-                    rank: "MASTER",
-                  },
-                  {
-                    label: "Focus Sessions",
-                    value: userData.focusSessions,
-                    color: "from-[#B967FF] to-[#FF2D95]",
-                    icon: "⚡",
-                    rank: "EXPERT",
-                  },
-                  {
-                    label: "Active Pets",
-                    value: userData.pets.filter((p) => p.isAlive).length,
-                    color: "from-[#FF2D95] to-[#00E0FF]",
-                    icon: "🐾",
-                    rank: "CARETAKER",
-                  },
-                ].map((stat, index) => (
-                  <Card
-                    key={index}
-                    className="group bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-500 hover:scale-105"
-                  >
-                    <CardContent className="p-8 text-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10 rounded-lg"></div>
-                      <div className="relative z-10">
-                        <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                          {stat.icon}
-                        </div>
-                        <div
-                          className={`text-5xl font-black mb-3 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}
-                        >
-                          {stat.value}
-                        </div>
-                        <div className="text-white font-bold tracking-wide mb-2 text-lg">{stat.label}</div>
-                        <Badge className={`bg-gradient-to-r ${stat.color} text-white border-0 font-bold`}>
-                          {stat.rank}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="mb-12">
-                <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                  ⚡ POWER ACTIONS
-                </h3>
-                <div className="flex flex-wrap gap-6">
-                  {[
-                    {
-                      text: "🎯 START FOCUS MISSION 🎯",
-                      page: "timer",
-                      gradient: "from-[#FF2D95] via-[#B967FF] to-[#00E0FF]",
-                      reward: "+50 XP",
-                    },
-                    {
-                      text: "➕ CREATE TASK ➕",
-                      page: "tasks",
-                      gradient: "from-[#00E0FF] via-[#B967FF] to-[#FF2D95]",
-                      reward: "+10-25 XP",
-                    },
-                    {
-                      text: "🐾 VISIT PETS 🐾",
-                      page: "pets",
-                      gradient: "from-[#B967FF] via-[#FF2D95] to-[#00E0FF]",
-                      reward: "Care & Feed",
-                    },
-                  ].map((action, index) => (
-                    <div key={index} className="relative group">
-                      <Button
-                        onClick={() => setCurrentPage(action.page)}
-                        className={`bg-gradient-to-r ${action.gradient} hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-6 text-xl font-black border-0 rounded-2xl text-white`}
-                      >
-                        {action.text}
-                      </Button>
-                      <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs font-bold text-[#00E0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {action.reward}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                  🎮 ACTIVE TASKS
-                </h3>
-                <div className="space-y-4">
-                  {userData.tasks.slice(0, 3).map((task, index) => (
-                    <Card
-                      key={task.id}
-                      className="group bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl hover:shadow-xl hover:shadow-[#FF2D95]/20 transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <CardContent className="p-6 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                        <div className="relative z-10 flex items-center justify-between">
-                          <div className="flex-1">
-                            <span className="text-white font-bold text-lg">{task.title}</span>
-                            <div className="flex items-center gap-4 mt-2">
-                              <Badge
-                                variant="outline"
-                                className={`${
-                                  task.priority === "high"
-                                    ? "border-[#FF2D95] text-[#FF2D95] bg-[#FF2D95]/10"
-                                    : task.priority === "medium"
-                                      ? "border-[#B967FF] text-[#B967FF] bg-[#B967FF]/10"
-                                      : "border-[#00E0FF] text-[#00E0FF] bg-[#00E0FF]/10"
-                                } font-bold px-4 py-1 border-2`}
-                              >
-                                {task.priority.toUpperCase()}
-                              </Badge>
-                              <div className="text-[#00E0FF] font-bold text-sm">🌟 +{task.xpReward} XP REWARD</div>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentPage === "tasks" && (
-            <div className="space-y-8">
-              <div className="text-center mb-12">
-                <h2 className="text-7xl font-black mb-4 bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] bg-clip-text text-white drop-shadow-2xl animate-gradient-move">
-                  ✅ TASK MANAGER ✅
-                </h2>
-                <p className="text-white text-xl font-bold">Complete tasks to earn XP and level up!</p>
-              </div>
-
-              <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
-                <CardContent className="p-8 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                      ➕ CREATE NEW TASK
-                    </h3>
-                    <div className="flex flex-wrap gap-6 items-end">
-                      <div className="flex-1 min-w-80">
-                        <Input
-                          value={newTask}
-                          onChange={(e) => setNewTask(e.target.value)}
-                          placeholder="What task awaits? ⚡"
-                          className="bg-black/70 border-2 border-[#FF2D95]/50 text-white text-lg p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50"
-                          onKeyPress={(e) => e.key === "Enter" && addTask()}
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        {(["low", "medium", "high"] as const).map((priority) => (
-                          <button
-                            key={priority}
-                            onClick={() => setTaskPriority(priority)}
-                            className={`px-8 py-4 rounded-xl text-sm font-black transition-all duration-300 transform hover:scale-105 border-2 ${
-                              taskPriority === priority
-                                ? priority === "high"
-                                  ? "bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-lg shadow-[#FF2D95]/30 border-[#FF2D95]"
-                                  : priority === "medium"
-                                    ? "bg-gradient-to-r from-[#B967FF] to-[#00E0FF] text-white shadow-lg shadow-[#B967FF]/30 border-[#B967FF]"
-                                    : "bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] text-white shadow-lg shadow-[#00E0FF]/30 border-[#00E0FF]"
-                                : "bg-black/50 text-white hover:bg-black/70 border-white/30"
-                            }`}
-                          >
-                            <div className="text-white font-bold">{priority.toUpperCase()}</div>
-                            <div className="text-xs text-white/80">
-                              +{priority === "high" ? "25" : priority === "medium" ? "15" : "10"} XP
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                      <Button
-                        onClick={addTask}
-                        className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                      >
-                        CREATE TASK ⚡
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-6">
-                <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                  🎮 ACTIVE TASKS
-                </h3>
-                {userData.tasks.length === 0 ? (
-                  <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl">
-                    <CardContent className="p-12 text-center">
-                      <div className="text-8xl mb-6">🎯</div>
-                      <div className="text-[#00E0FF] text-2xl font-black mb-4">NO ACTIVE TASKS!</div>
-                      <div className="text-white text-lg font-bold">
-                        Create your first task above to start earning XP and leveling up!
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  userData.tasks.map((task, index) => (
-                    <Card
-                      key={task.id}
-                      className="group bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl hover:shadow-xl hover:shadow-[#FF2D95]/20 transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <CardContent className="p-6 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                        <div className="relative z-10">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex-1">
-                              <span className="text-white font-bold text-xl">{task.title}</span>
-                              <div className="text-[#00E0FF] font-bold text-lg mt-1">
-                                🌟 REWARD: +{task.xpReward} XP
-                              </div>
-                            </div>
-                            <div className="flex gap-3">
-                              <Button
-                                size="sm"
-                                onClick={() => completeTask(task.id)}
-                                className="bg-gradient-to-r from-[#00E0FF] to-[#B967FF] hover:shadow-lg hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
-                              >
-                                ✓
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => deleteTask(task.id)}
-                                className="bg-gradient-to-r from-[#FF2D95] to-[#B967FF] hover:shadow-lg hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
-                              >
-                                ✗
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <Badge
-                              variant="outline"
-                              className={`${
-                                task.priority === "high"
-                                  ? "border-[#FF2D95] text-[#FF2D95] bg-[#FF2D95]/10"
-                                  : task.priority === "medium"
-                                    ? "border-[#B967FF] text-[#B967FF] bg-[#B967FF]/10"
-                                    : "border-[#00E0FF] text-[#00E0FF] bg-[#00E0FF]/10"
-                              } font-bold px-4 py-2 border-2`}
-                            >
-                              {task.priority.toUpperCase()} PRIORITY
-                            </Badge>
-                            <span className="text-white font-bold">Task Created: {task.created}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {currentPage === "timer" && (
-            <div className="space-y-8">
-              {!isFullscreen ? (
-                <>
-                  <div className="text-center mb-12">
-                    <h2 className="text-7xl font-black mb-4 bg-gradient-to-r from-[#B967FF] via-[#FF2D95] to-[#00E0FF] bg-clip-text text-white drop-shadow-2xl animate-gradient-move">
-                      ⏰ FOCUS ARENA
-                    </h2>
-                    <p className="text-white text-xl font-bold">Enter the zone and earn massive XP rewards!</p>
-                  </div>
-
-                  <div className="max-w-2xl mx-auto space-y-8">
-                    <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
-                      <CardContent className="p-16 text-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                        <div className="relative z-10">
-                          <div className="text-9xl font-black text-transparent bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] bg-clip-text mb-8 font-mono tracking-wider drop-shadow-2xl">
-                            {formatTime(timerSeconds)}
-                          </div>
-                          <div className="w-40 h-2 bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] rounded-full mx-auto mb-4"></div>
-                          <div className="text-2xl font-bold text-[#00E0FF]">🌟 +50 XP ON COMPLETION</div>
-                        </div>
-                        <div className="absolute -inset-4 bg-gradient-to-r from-[#00E0FF]/30 to-[#FF2D95]/30 blur-2xl rounded-3xl -z-10"></div>
-                      </CardContent>
-                    </Card>
-
-                    {showNoteInput && (
-                      <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
-                        <CardContent className="p-6 relative overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                          <div className="relative z-10">
-                            <h3 className="text-xl font-bold mb-4 text-transparent bg-gradient-to-r from-[#FF2D95] to-[#00E0FF] bg-clip-text">
-                              📝 Focus Notes
-                            </h3>
-                            <textarea
-                              value={focusNote}
-                              onChange={(e) => setFocusNote(e.target.value)}
-                              placeholder="Jot down thoughts, ideas, or reminders during your focus session..."
-                              className="w-full h-32 bg-black/70 border-2 border-[#FF2D95]/50 text-white text-sm p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50 resize-none"
-                            />
-                            <div className="text-xs text-white/60 mt-2">
-                              💡 Quick notes to capture ideas without breaking focus
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <div className="flex justify-center gap-8">
-                      <Button
-                        onClick={() => setTimerRunning(!timerRunning)}
-                        className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-16 py-8 text-2xl font-black rounded-2xl text-white animate-gradient-move"
-                      >
-                        {timerRunning ? "⏸️ PAUSE MISSION" : "🎯 START MISSION"}
-                      </Button>
-                      <Button
-                        onClick={resetTimer}
-                        className="bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] hover:shadow-2xl hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 px-16 py-8 text-2xl font-black rounded-2xl text-white animate-gradient-move"
-                      >
-                        🔄 RESET MISSION
-                      </Button>
-                    </div>
-
-                    <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl">
-                      <CardContent className="p-8 text-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                        <div className="relative z-10">
-                          <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                            ⚡ MISSION DURATION
-                          </h3>
-                          <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            {[
-                              { label: "QUICK BURST", time: "25 min", seconds: 1500, emoji: "🚀", xp: "+50 XP" },
-                              { label: "POWER SESSION", time: "45 min", seconds: 2700, emoji: "💪", xp: "+75 XP" },
-                              { label: "ULTRA FOCUS", time: "60 min", seconds: 3600, emoji: "🔥", xp: "+100 XP" },
-                            ].map(({ label, time, seconds, emoji, xp }) => (
-                              <div key={label} className="flex-1 max-w-xs">
-                                <Button
-                                  onClick={() => !timerRunning && setTimerSeconds(seconds)}
-                                  variant="outline"
-                                  className={`w-full h-auto ${
-                                    timerSeconds === seconds && !timerRunning
-                                      ? "bg-gradient-to-r from-[#B967FF] to-[#FF2D95] text-white border-0 shadow-lg shadow-[#B967FF]/30"
-                                      : "border-2 border-[#FF2D95]/50 text-white bg-black/50 hover:bg-black/70 hover:border-[#FF2D95]"
-                                  } px-4 py-6 text-sm font-black rounded-xl transition-all duration-300 transform hover:scale-105`}
-                                  disabled={timerRunning}
-                                >
-                                  <div className="text-center">
-                                    <div className="text-2xl mb-2">{emoji}</div>
-                                    <div className="font-black text-white text-xs">{label}</div>
-                                    <div className="text-xs text-white/80">{time}</div>
-                                  </div>
-                                </Button>
-                                <div className="text-[#00E0FF] font-bold text-xs mt-2 text-center">{xp}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </>
-              ) : (
-                /* Fullscreen Mode */
-                <div className="fixed inset-0 bg-[#18181A] z-50 flex flex-col items-center justify-center">
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-[#FF2D95]/10 to-[#B967FF]/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-[#00E0FF]/10 to-[#B967FF]/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-                  </div>
-
-                  <button
-                    onClick={() => setIsFullscreen(false)}
-                    className="absolute top-8 right-8 bg-black/60 hover:bg-black/80 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50 rounded-lg p-3 text-white transition-all duration-300 transform hover:scale-110 z-10"
-                    title="Exit Fullscreen"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-
-                  <button
-                    onClick={() => setShowNoteInput(!showNoteInput)}
-                    className={`absolute top-8 right-24 border rounded-lg p-3 text-white transition-all duration-300 transform hover:scale-110 z-10 ${
-                      showNoteInput
-                        ? "bg-gradient-to-r from-[#FF2D95] to-[#00E0FF] border-[#FF2D95]"
-                        : "bg-black/60 hover:bg-black/80 border-[#FF2D95]/30 hover:border-[#FF2D95]/50"
-                    }`}
-                    title="Toggle Notes"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                      />
-                    </svg>
-                  </button>
-
-                  <div className="text-center relative z-10">
-                    <div className="text-[12rem] md:text-[16rem] font-black text-transparent bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] bg-clip-text mb-8 font-mono tracking-wider drop-shadow-2xl">
-                      {formatTime(timerSeconds)}
-                    </div>
-                    <div className="w-80 h-3 bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] rounded-full mx-auto mb-8"></div>
-                    <div className="text-4xl font-bold text-[#00E0FF] mb-12">🌟 FOCUS MODE ACTIVE</div>
-                  </div>
-
-                  <div className="flex gap-8 relative z-10">
-                    <Button
-                      onClick={() => setTimerRunning(!timerRunning)}
-                      className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-12 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                    >
-                      {timerRunning ? "⏸️ PAUSE" : "🎯 START"}
-                    </Button>
-                    <Button
-                      onClick={resetTimer}
-                      className="bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] hover:shadow-2xl hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 px-12 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                    >
-                      🔄 RESET
-                    </Button>
-                  </div>
-
-                  {showNoteInput && (
-                    <div className="absolute bottom-8 left-8 right-8 max-w-2xl mx-auto">
-                      <div className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl rounded-2xl p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <span className="text-2xl">📝</span>
-                          <h3 className="text-lg font-bold text-transparent bg-gradient-to-r from-[#FF2D95] to-[#00E0FF] bg-clip-text">
-                            Quick Notes
-                          </h3>
-                        </div>
-                        <textarea
-                          value={focusNote}
-                          onChange={(e) => setFocusNote(e.target.value)}
-                          placeholder="Capture thoughts without breaking focus..."
-                          className="w-full h-24 bg-black/70 border-2 border-[#FF2D95]/50 text-white text-sm p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50 resize-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {currentPage === "analytics" && (
             <div className="space-y-8">
               <div className="text-center mb-12">
@@ -1341,6 +1080,60 @@ export default function BlossomFocusPreview() {
                   📊 PLAYER STATS
                 </h2>
                 <p className="text-white text-xl font-bold">Track your journey to productivity mastery!</p>
+              </div>
+
+              {/* Period Selection Tabs */}
+              <div className="flex justify-center gap-4 mb-8 w-full">
+                <Button
+                  onClick={() => setAnalyticsPeriod('all')}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                    analyticsPeriod === 'all'
+                      ? 'bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-2xl shadow-[#FF2D95]/30 border border-white/30'
+                      : 'text-white bg-black/40 hover:bg-black/60 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50'
+                  }`}
+                >
+                  All Time
+                </Button>
+                <Button
+                  onClick={() => setAnalyticsPeriod('year')}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                    analyticsPeriod === 'year'
+                      ? 'bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-2xl shadow-[#FF2D95]/30 border border-white/30'
+                      : 'text-white bg-black/40 hover:bg-black/60 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50'
+                  }`}
+                >
+                  This Year
+                </Button>
+                <Button
+                  onClick={() => setAnalyticsPeriod('month')}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                    analyticsPeriod === 'month'
+                      ? 'bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-2xl shadow-[#FF2D95]/30 border border-white/30'
+                      : 'text-white bg-black/40 hover:bg-black/60 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50'
+                  }`}
+                >
+                  Last 30 Days
+                </Button>
+                <Button
+                  onClick={() => setAnalyticsPeriod('week')}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                    analyticsPeriod === 'week'
+                      ? 'bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-2xl shadow-[#FF2D95]/30 border border-white/30'
+                      : 'text-white bg-black/40 hover:bg-black/60 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50'
+                  }`}
+                >
+                  Last 7 Days
+                </Button>
+                <Button
+                  onClick={() => setAnalyticsPeriod('today')}
+                  className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
+                    analyticsPeriod === 'today'
+                      ? 'bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-2xl shadow-[#FF2D95]/30 border border-white/30'
+                      : 'text-white bg-black/40 hover:bg-black/60 border border-[#FF2D95]/30 hover:border-[#FF2D95]/50'
+                  }`}
+                >
+                  Today
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
@@ -1387,7 +1180,7 @@ export default function BlossomFocusPreview() {
                         >
                           {stat.value}
                         </div>
-                        <div className="text-white font-bold tracking-wide text-lg">{stat.label}</div>
+                        <div className="text-white font-bold tracking-wide mb-2 text-lg">{stat.label}</div>
                       </div>
                     </CardContent>
                   </Card>
