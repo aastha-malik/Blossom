@@ -1,4 +1,4 @@
-# Blossom Focus: Tech-Girly Edition
+# 🌸 Blossom 🌸
 
 A productivity app that combines task management, focus sessions, and gamification with a tech-girly aesthetic! 🌸✨
 
