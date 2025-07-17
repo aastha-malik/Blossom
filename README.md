@@ -7,7 +7,6 @@ A productivity app that combines task management, focus sessions, and gamificati
 - **Task Management**: Add, organize, and prioritize daily tasks
 - **Focus Sessions**: Pomodoro/deep work timers with progress tracking
 - **Gamification**: Earn XP, level up, unlock achievements, and maintain streaks
-- **Virtual Garden**: Completing tasks helps your digital garden bloom
 - **Digital Pet**: Keep your cute, techy pet happy by staying productive
 - **Analytics**: Visualize productivity trends, streaks, and time spent
 - **Tech-Girly Aesthetic**: Neon colors, futuristic fonts, and holographic vibes
@@ -49,7 +48,6 @@ blossom-focus/
 1. **Dashboard**: Overview of your progress and quick actions
 2. **Tasks**: Add, manage, and complete tasks to earn XP
 3. **Focus Timer**: Use Pomodoro sessions to boost productivity
-4. **Garden**: Watch your digital garden bloom as you complete tasks
 5. **Analytics**: Track your productivity trends and achievements
 6. **Settings**: Customize your experience and manage data
 
@@ -57,7 +55,6 @@ blossom-focus/
 
 - **XP System**: Earn 10 XP per completed task, 25 XP per focus session
 - **Leveling**: Level up every 100 XP × current level
-- **Garden Progress**: Grows by 5% per task, 10% per focus session
 - **Pet Happiness**: Increases with focus sessions and regular activity
 - **Achievements**: Unlock rewards for various milestones
 
