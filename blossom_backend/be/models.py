@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 
@@ -13,8 +14,9 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True) #column names in db table
     title = Column(String(100), index=True)
     completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow())
+    updated_at = Column(DateTime, default=datetime.utcnow())
+    user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table
 
 class Pet(Base):
     __tablename__ = "pets"
@@ -30,8 +32,17 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    xp = Column(Integer, default=0)
+    tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
 
-
+class Focus_time(Base):
+    __tablename__ = "focus_times"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    start_time = Column(DateTime, default=datetime.utcnow())
+    end_time = Column(DateTime, default=datetime.utcnow())
+    duration = Column(Float)  # Duration in minutes
+    user = relationship("User", back_populates="focus_times")  # Establishing a relationship with User model
 
 
 

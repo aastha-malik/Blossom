@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import task_crud as task_crud
 import pet_crud as pet_crud
 import auth_crud as auth_crud
+import stats as stats
 import models
 from database import SessionLocal, engine, Base
 from pydantic import BaseModel
@@ -125,3 +126,19 @@ def register_user(user:Registration_user, db:Session = Depends(get_db)):
         return {"message": "User Registered Sucessfully!!"}
     else:
         return {"message": "Username is already taken"}
+
+"""
+this is Analysis Backend api routes below.
+"""
+@app.get("/stats/{user_id}")
+def get_user_stats(user_id: int, db: Session = Depends(get_db)):
+    num_task_completed = stats.count_tasks_completed(db, user_id)
+    streaks = stats.streaks(db, user_id)
+    xps = stats.total_xps(db, user_id)
+    focus_time = stats.total_focus_time(db, user_id)
+    return {
+        "num_task_completed": num_task_completed,
+        "streaks": streaks,
+        "xps": xps,
+        "focus_time": focus_time
+    }

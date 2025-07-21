@@ -818,13 +818,13 @@ export default function BlossomFocusPreview() {
                         <div className="relative z-10">
                           <div className="text-7xl font-black text-transparent bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] bg-clip-text mb-8 font-mono tracking-wider drop-shadow-2xl">
                             {formatTime(timerSeconds)}
-                          </div>
+                    </div>
                           {focusedTaskId ? (
                             <>
                               <div className="text-xl font-bold mb-2">
                                 <span className="text-cyan-400">Focusing:</span>
                                 <span className="ml-2 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent font-extrabold">{userData.tasks.find(t => t.id === focusedTaskId)?.title}</span>
-                              </div>
+                                      </div>
                               <div className="text-2xl font-bold text-[#00E0FF] mb-6">🌟 +{userData.tasks.find(t => t.id === focusedTaskId)?.xpReward} XP ON COMPLETION</div>
                             </>
                           ) : (
@@ -837,92 +837,92 @@ export default function BlossomFocusPreview() {
                           {/* Removed custom input pill */}
                           {/* Removed custom input UI */}
                           <div className="flex justify-center gap-8 mt-8">
-                            <Button
+                                          <Button
                               onClick={() => setTimerRunning(!timerRunning)}
                               className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-4 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                            >
+                                          >
                               {timerRunning ? "⏸️ PAUSE" : "🎯 START"}
-                            </Button>
-                            <Button
+                                          </Button>
+                    <Button
                               onClick={resetTimer}
                               className="bg-gradient-to-r from-[#00E0FF] via-[#B967FF] to-[#FF2D95] hover:shadow-2xl hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 px-10 py-4 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                            >
+                    >
                               🔄 RESET
-                            </Button>
-                          </div>
+                    </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+              </div>
                   {/* Task Manager Section */}
-                  <div className="flex-1">
-                    <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
-                      <CardContent className="p-8 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                        <div className="relative z-10">
-                          <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                            ➕ CREATE NEW TASK
-                          </h3>
-                          <div className="flex flex-wrap gap-6 items-end">
-                            <div className="flex-1 min-w-80">
-                              <Input
-                                value={newTask}
-                                onChange={(e) => setNewTask(e.target.value)}
-                                placeholder="What task awaits? ⚡"
-                                className="bg-black/70 border-2 border-[#FF2D95]/50 text-white text-lg p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50"
-                                onKeyPress={(e) => e.key === "Enter" && addTask()}
-                              />
-                            </div>
-                            <div className="flex gap-3">
+                          <div className="flex-1">
+              <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+                <CardContent className="p-8 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                  <div className="relative z-10">
+                    <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
+                      ➕ CREATE NEW TASK
+                    </h3>
+                    <div className="flex flex-wrap gap-6 items-end">
+                      <div className="flex-1 min-w-80">
+                        <Input
+                          value={newTask}
+                          onChange={(e) => setNewTask(e.target.value)}
+                          placeholder="What task awaits? ⚡"
+                          className="bg-black/70 border-2 border-[#FF2D95]/50 text-white text-lg p-4 rounded-xl backdrop-blur-sm focus:border-[#00E0FF] focus:ring-[#00E0FF]/20 transition-all duration-300 placeholder:text-white/50"
+                          onKeyPress={(e) => e.key === "Enter" && addTask()}
+                        />
+                      </div>
+                      <div className="flex gap-3">
                               {(["low", "medium", "high"] as const).map(priority => (
-                                <button
-                                  key={priority}
-                                  onClick={() => setTaskPriority(priority)}
-                                  className={`px-8 py-4 rounded-xl text-sm font-black transition-all duration-300 transform hover:scale-105 border-2 ${
-                                    taskPriority === priority
-                                      ? priority === "high"
-                                        ? "bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-lg shadow-[#FF2D95]/30 border-[#FF2D95]"
-                                        : priority === "medium"
-                                          ? "bg-gradient-to-r from-[#B967FF] to-[#00E0FF] text-white shadow-lg shadow-[#B967FF]/30 border-[#B967FF]"
-                                          : "bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] text-white shadow-lg shadow-[#00E0FF]/30 border-[#00E0FF]"
-                                      : "bg-black/50 text-white hover:bg-black/70 border-white/30"
-                                  }`}
-                                >
-                                  <div className="text-white font-bold">{priority.toUpperCase()}</div>
-                                  <div className="text-xs text-white/80">
-                                    +{priority === "high" ? "25" : priority === "medium" ? "15" : "10"} XP
-                                  </div>
-                                </button>
-                              ))}
+                          <button
+                            key={priority}
+                            onClick={() => setTaskPriority(priority)}
+                            className={`px-8 py-4 rounded-xl text-sm font-black transition-all duration-300 transform hover:scale-105 border-2 ${
+                              taskPriority === priority
+                                ? priority === "high"
+                                  ? "bg-gradient-to-r from-[#FF2D95] to-[#B967FF] text-white shadow-lg shadow-[#FF2D95]/30 border-[#FF2D95]"
+                                  : priority === "medium"
+                                    ? "bg-gradient-to-r from-[#B967FF] to-[#00E0FF] text-white shadow-lg shadow-[#B967FF]/30 border-[#B967FF]"
+                                    : "bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] text-white shadow-lg shadow-[#00E0FF]/30 border-[#00E0FF]"
+                                : "bg-black/50 text-white hover:bg-black/70 border-white/30"
+                            }`}
+                          >
+                            <div className="text-white font-bold">{priority.toUpperCase()}</div>
+                            <div className="text-xs text-white/80">
+                              +{priority === "high" ? "25" : priority === "medium" ? "15" : "10"} XP
                             </div>
-                            <Button
-                              onClick={addTask}
-                              className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
-                            >
-                              CREATE TASK ⚡
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={addTask}
+                        className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 px-10 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
+                      >
+                        CREATE TASK ⚡
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
                     <div className="space-y-6 mt-8">
-                      <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
-                        🎮 ACTIVE TASKS
-                      </h3>
-                      {userData.tasks.length === 0 ? (
-                        <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl">
-                          <CardContent className="p-12 text-center">
-                            <div className="text-8xl mb-6">🎯</div>
-                            <div className="text-[#00E0FF] text-2xl font-black mb-4">NO ACTIVE TASKS!</div>
-                            <div className="text-white text-lg font-bold">
-                              Create your first task above to start earning XP and leveling up!
-                            </div>
-                          </CardContent>
-                        </Card>
+                <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] bg-clip-text text-transparent animate-gradient-move">
+                  🎮 ACTIVE TASKS
+                </h3>
+                {userData.tasks.length === 0 ? (
+                  <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl">
+                    <CardContent className="p-12 text-center">
+                      <div className="text-8xl mb-6">🎯</div>
+                      <div className="text-[#00E0FF] text-2xl font-black mb-4">NO ACTIVE TASKS!</div>
+                      <div className="text-white text-lg font-bold">
+                        Create your first task above to start earning XP and leveling up!
+                      </div>
+                    </CardContent>
+                  </Card>
                       ) :
-                        userData.tasks.map((task, index) => (
-                          <Card
-                            key={task.id}
+                  userData.tasks.map((task, index) => (
+                    <Card
+                      key={task.id}
                             className={`group bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl hover:shadow-xl hover:shadow-[#FF2D95]/20 transition-all duration-300 hover:scale-[1.02] ${focusedTaskId === task.id ? 'ring-4 ring-[#00E0FF]/60' : ''}`}
                             onClick={() => {
                               setFocusedTaskId(task.id);
@@ -930,9 +930,9 @@ export default function BlossomFocusPreview() {
                             }}
                           >
                             <CardContent className="p-6 relative overflow-hidden cursor-pointer">
-                              <div className="absolute inset-0 bg-gradient-to-r from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
                               <div className="relative z-10 flex items-center justify-between">
-                                <div className="flex-1">
+                            <div className="flex-1">
                                   <span className="text-white font-bold text-lg">{task.title}</span>
                                   <div className="flex items-center gap-4 mt-2">
                                     <Badge
@@ -948,30 +948,30 @@ export default function BlossomFocusPreview() {
                                       {task.priority.toUpperCase()}
                                     </Badge>
                                     <div className="text-[#00E0FF] font-bold text-sm">🌟 +{task.xpReward} XP REWARD</div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-3">
-                                  <Button
-                                    size="sm"
-                                    onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
-                                    className="bg-gradient-to-r from-[#00E0FF] to-[#B967FF] hover:shadow-lg hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
-                                  >
-                                    ✓
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
-                                    className="bg-gradient-to-r from-[#FF2D95] to-[#B967FF] hover:shadow-lg hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
-                                  >
-                                    ✗
-                                  </Button>
-                                </div>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                            <div className="flex gap-3">
+                              <Button
+                                size="sm"
+                                    onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
+                                className="bg-gradient-to-r from-[#00E0FF] to-[#B967FF] hover:shadow-lg hover:shadow-[#00E0FF]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
+                              >
+                                ✓
+                              </Button>
+                              <Button
+                                size="sm"
+                                    onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
+                                className="bg-gradient-to-r from-[#FF2D95] to-[#B967FF] hover:shadow-lg hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-110 w-12 h-12 rounded-full text-xl text-white animate-gradient-move"
+                              >
+                                ✗
+                              </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                         ))}
-                    </div>
-                  </div>
+              </div>
+            </div>
                 </div>
               </div>
               {/* Removed recent focus times section */}
@@ -984,8 +984,8 @@ export default function BlossomFocusPreview() {
               <div className="text-center mb-8 flex justify-center gap-2">
                 <h2 className="text-7xl font-black mb-2 bg-gradient-to-r from-orange-400 via-pink-500 to-teal-400 bg-clip-text text-white drop-shadow-2xl">
                   🐾 MY PETS 🐾
-                </h2>
-              </div>
+                    </h2>
+                  </div>
 
               {/* --- PET MANAGEMENT CARD --- */}
               <div className="flex justify-center mb-8">
@@ -993,15 +993,15 @@ export default function BlossomFocusPreview() {
                   <div>
                     <h3 className="text-xl font-bold text-[#7F5FFF] flex items-center gap-2 mb-2"><span className="text-lg">🐾</span> Pet Management</h3>
                     <div className="text-white/80 text-base">Number of Pets: <span className="text-[#00E0FF] font-bold">{userData.pets.length}</span></div>
-                    </div>
+                          </div>
                   <div className="flex-1"></div>
-                    <Button
+                      <Button
                       onClick={() => setShowPetCreator(true)}
                     className="bg-gradient-to-r from-orange-400 via-pink-500 to-teal-400 text-white font-bold rounded-full px-8 py-3 text-lg mx-auto block shadow-lg hover:from-pink-500 hover:to-orange-400 transition-colors"
                   >
                     Adopt pet
-                        </Button>
-                      </div>
+                      </Button>
+                    </div>
                       </div>
 
               {/* --- MAIN PET SECTION --- */}
@@ -1018,13 +1018,13 @@ export default function BlossomFocusPreview() {
                         <div className="mb-4 text-center">{getPetStageInfo(pet.ageInYears)?.description}</div>
                         <div className="flex-1 flex items-center justify-center">
                           <span className="text-7xl drop-shadow-lg">{getPetEmoji(pet)}</span>
-                                      </div>
-                      </>
+                  </div>
+                </>
                     );
                   })() : (
                     <span className="text-2xl text-gray-900 font-bold">PET PICTURE</span>
                                     )}
-                                  </div>
+                  </div>
                 {/* PET STATS CARD */}
                 <div className="rounded-2xl bg-gradient-to-br from-white/10 via-pink-200/10 to-teal-200/10 backdrop-blur-md border border-white/20 shadow-xl p-8">
                   {getActivePet() ? (() => {
@@ -1038,24 +1038,24 @@ export default function BlossomFocusPreview() {
                         <div className="mb-2 flex items-center justify-between">
                           <span className="font-bold text-pink-600">Hunger:</span>
                           <span className="font-bold text-pink-600">{pet.hunger}%</span>
-                                      </div>
+                    </div>
                         <Progress
                           value={pet.hunger}
                           className="h-3 bg-white rounded-full border border-white-200"
                         />
-                                          <Button
+                    <Button
                                             onClick={() => feedPet(pet.id, false)}
                           className="mt-6 bg-gradient-to-r from-orange-400 via-pink-500 to-teal-400 text-white font-bold rounded-full px-8 py-3 text-lg mx-auto block shadow-lg hover:from-pink-500 hover:to-orange-400 transition-colors"
-                                          >
+                    >
                           Feed {pet.name} 
-                                          </Button>
+                    </Button>
                       </>
                     );
                   })() : (
                     <span className="text-2xl text-gray-900 font-bold">PET STATS</span>
                   )}
                             </div>
-                            </div>
+                  </div>
 
               {/* --- MORE PETS SECTION (GALLERY) --- */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -1066,9 +1066,9 @@ export default function BlossomFocusPreview() {
                     <div className="text-4xl mb-2">{getPetEmoji(pet)}</div>
                     <div className="font-bold text-white mb-1">{pet.name}</div>
                     <div className="text-xs text-[#7F5FFF]">{pet.type} • Lv{pet.level}</div>
-                    </div>
+                        </div>
                 ))}
-                  </div>
+                      </div>
             </div>
           )}
 

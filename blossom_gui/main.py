@@ -230,7 +230,7 @@ class BlossomFocusApp:
                         fg=self.colors['neon_purple'], 
                         bg=self.colors['black'])
         title.pack(pady=(0, 30))
-
+        
         # Main container: horizontal split (timer | task manager)
         main_frame = tk.Frame(self.content_frame, bg=self.colors['black'])
         main_frame.pack(fill='both', expand=True)
@@ -241,8 +241,8 @@ class BlossomFocusApp:
 
         self.timer_display = tk.Label(timer_frame, text="25:00", 
                                      font=('Orbitron', 48, 'bold'),
-                                     fg=self.colors['electric_blue'], 
-                                     bg=self.colors['dark_gray'])
+                               fg=self.colors['electric_blue'], 
+                               bg=self.colors['dark_gray'])
         self.timer_display.pack(padx=50, pady=30)
 
         controls_frame = tk.Frame(timer_frame, bg=self.colors['dark_gray'])
@@ -262,11 +262,11 @@ class BlossomFocusApp:
         for text, minutes in lengths:
             btn = tk.Button(length_frame, text=text, font=('Montserrat', 10), fg=self.colors['white'], bg=self.colors['light_gray'], command=lambda m=minutes: self.set_timer_length(m))
             btn.pack(side='left', padx=5)
-
+        
         # Task manager section (right)
         task_frame = tk.Frame(main_frame, bg=self.colors['dark_gray'])
         task_frame.pack(side='left', fill='both', expand=True, padx=20, pady=20)
-
+        
         add_title = tk.Label(task_frame, text="Add New Task", font=('Montserrat', 14, 'bold'), fg=self.colors['white'], bg=self.colors['dark_gray'])
         add_title.pack(pady=15)
         input_frame = tk.Frame(task_frame, bg=self.colors['dark_gray'])
@@ -280,7 +280,7 @@ class BlossomFocusApp:
             rb = tk.Radiobutton(priority_frame, text=priority.capitalize(), variable=self.priority_var, value=priority, font=('Montserrat', 9), fg=self.colors['white'], bg=self.colors['dark_gray'], selectcolor=self.colors['light_gray'])
             rb.pack(side='left', padx=5)
         ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
-
+        
         # Tasks list
         tasks_container = tk.Frame(task_frame, bg=self.colors['black'])
         tasks_container.pack(fill='both', expand=True, padx=10, pady=10)
@@ -300,7 +300,7 @@ class BlossomFocusApp:
         else:
             for i, task in enumerate(self.user_data['tasks']):
                 self.create_task_widget(scrollable_frame, task, i)
-
+    
     def set_timer_length(self, minutes):
         """Set focus session length"""
         self.focus_session_length = minutes * 60
