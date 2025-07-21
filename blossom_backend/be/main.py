@@ -40,22 +40,34 @@ This is Task Manager api routes below.
 @app.post("/tasks")
 def create_task_endpoint(task: TaskCreate, db: Session = Depends(get_db)):
     task = task_crud.create_task(db, task.title)
-    return task
+    if task:
+        return task
+    else:
+        raise HTTPException(status_code=400, detail="Task creation failed")
 
 @app.get("/tasks")
 def get_all_tasks_endpoint(db:Session = Depends(get_db)):
     task = task_crud.get_all_tasks(db)
-    return task
+    if task:
+        return task
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
 
 @app.put("/tasks/{title}")
 def update_task_endpoint(title: str, db : Session = Depends(get_db)):
     task = task_crud.update_task(db, title)
-    return task
+    if task:
+        return task
+    else:
+        raise HTTPException(status_code=400, detail="Updating Task Failed")
 
 @app.delete("/tasks/{title}")
 def delete_task_endpoint(title: str, db: Session = Depends(get_db)):
-    task_crud.delete_task(db, title)
-    return {"message": "Task Deleted Succesfully!!"}
+    task = task_crud.delete_task(db, title)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    else:
+        return {"message": "Task Deleted Succesfully!!"}
 
 """
 this is Pet Backend api routes below.
@@ -69,26 +81,42 @@ class PetCreate(BaseModel):
 @app.post("/pet")
 def create_pet_endpoint(pet: PetCreate, db:Session = Depends(get_db)):
     pet = pet_crud.create_pet(db, pet.name, pet.age, pet.hunger)
-    return pet
+    if pet:
+        return pet
+    else:
+        raise HTTPException(status_code=400, detail="Pet creation Failed")
+
 
 @app.get("/pet")
 def get_all_pets_endpoint(db:Session = Depends(get_db)):
     pets = pet_crud.get_all_pets(db)
-    return pets
+    if pets:
+        return pets
+    else:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+
 class PetUpdate(BaseModel):
     hunger:int
     last_fed: datetime
     age: float
+
 @app.put("/pet/{id}")
 def update_pet_endpoint(pet_update:PetUpdate, id:int, db:Session = Depends(get_db)):
     pet = pet_crud.update_pet(db, id, pet_update.hunger, pet_update.age, pet_update.last_fed)
-    return pet
+    if pet:
+        return pet
+    else:
+        raise HTTPException(status_code=400, detail="Pet Updating Failed")
+
 
 @app.delete("/pet/{id}")
 def delete_pet_endpoint(id:int, db:Session = Depends(get_db)):
     pet = pet_crud.delete_pet(db, id)
-    return {"message": "Pet has been deleted sucessfully"}
-
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    else:
+        return {"message": "Pet Deleted Succesfully!!"}
 """
 this is Auth Backend api routes below.  => basicaally the LOGIN part
 """
@@ -97,7 +125,11 @@ def get_current_user(token:str = Depends(oauth2_scheme), db:Session = Depends(ge
     decode_jwt = jwt.decode(token, SECRET_KEY, algorithm=ALGORITHM)
     username = decode_jwt.get("sub")
     user = db.query(User).filter(User.username == username).first()
-    return user
+    if user:
+        return user
+    else:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+
 
 @app.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(get_db)):
@@ -106,7 +138,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends
     user = auth_crud.authenticate_user(db, username, password)
     data = {"sub": username}
     if not user:
-        return None
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     else:
         token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
         return {"access_token": token, "token_type": "bearer"}
@@ -136,9 +168,14 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     streaks = stats.streaks(db, user_id)
     xps = stats.total_xps(db, user_id)
     focus_time = stats.total_focus_time(db, user_id)
-    return {
-        "num_task_completed": num_task_completed,
-        "streaks": streaks,
-        "xps": xps,
-        "focus_time": focus_time
-    }
+    if num_task_completed is None or streaks is None or xps is None or focus_time is None:
+        raise HTTPException(status_code=404, detail="User stats not found")
+    if num_task_completed < 0 or streaks < 0 or xps < 0 or focus_time < 0:
+        raise HTTPException(status_code=400, detail="Invalid stats values")
+    else:
+        return {
+            "num_task_completed": num_task_completed,
+            "streaks": streaks,
+            "xps": xps,
+            "focus_time": focus_time
+        }

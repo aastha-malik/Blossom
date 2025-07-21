@@ -13,12 +13,18 @@ def create_pet(db: Session, name:str, age:float, hunger:int, last_fed:datetime):
 #getting pet by id
 def get_pet_by_id(db:Session, id:int):
     pet = db.query(Pet).filter(Pet.id == id).first()
-    return pet
+    if not pet:
+        return None
+    else:
+        return pet
 
 #getting all pets
 def get_all_pets(db:Session):
     pets = db.query(Pet).all()
-    return pets
+    if not pets:
+        return None
+    else:
+        return pets
 
 #updating our pet
 def update_pet(db:Session, id:int, hunger:int, last_fed:datetime, age:float):
@@ -30,7 +36,10 @@ def update_pet(db:Session, id:int, hunger:int, last_fed:datetime, age:float):
     pet.age=age
     db.commit()
     db.refresh(pet)
-    return pet
+    if not pet:
+        return None
+    else:
+        return pet
 
 #checking that when did the user fed its pet!
 def check_last_fed(last_fed:datetime):
@@ -49,7 +58,10 @@ def updating_is_alive(db:Session, last_fed:datetime, id:int):
         pet.is_alive = True
     db.commit()
     db.refresh(pet)
-    return pet.is_alive
+    if not pet:
+        return None
+    else:
+        return pet.is_alive
 
 #checking that whether the pet is dead or not! 
 def check_dead_pet(db: Session):
@@ -59,7 +71,10 @@ def check_dead_pet(db: Session):
     """
 
     pets = db.query(Pet).filter(Pet.is_alive==False).all()
-    return pets
+    if not pets:
+        return None
+    else:
+        return pets
 
 #deleteing pet from  db
 def delete_pet(db:Session, id:int):
@@ -72,7 +87,15 @@ def delete_pet(db:Session, id:int):
         return False
     db.delete(pet)
     db.commit()
-    return True
+    if pet:
+        return True  # Return True to indicate successful deletion
+    else:
+        return False
+    # Note: Returning True or False is a common practice to indicate success or failure of an operation.
+    # In this case, we return True if the task was successfully deleted, otherwise False
+    # This can be useful for the caller to know whether the deletion was successful or not.
+    # If you want to raise an exception instead, you can do so, but returning True
+
 
 
 
