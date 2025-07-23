@@ -162,20 +162,42 @@ def register_user(user:Registration_user, db:Session = Depends(get_db)):
 """
 this is Analysis Backend api routes below.
 """
-@app.get("/stats/{user_id}")
-def get_user_stats(user_id: int, db: Session = Depends(get_db)):
-    num_task_completed = stats.count_tasks_completed(db, user_id)
-    streaks = stats.streaks(db, user_id)
-    xps = stats.total_xps(db, user_id)
-    focus_time = stats.total_focus_time(db, user_id)
-    if num_task_completed is None or streaks is None or xps is None or focus_time is None:
+@app.get("/stats/{user_id}/all_time")
+def get_user_stats_all_time(user_id: int, db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time)
+    if user_stats is None:
         raise HTTPException(status_code=404, detail="User stats not found")
-    if num_task_completed < 0 or streaks < 0 or xps < 0 or focus_time < 0:
-        raise HTTPException(status_code=400, detail="Invalid stats values")
     else:
-        return {
-            "num_task_completed": num_task_completed,
-            "streaks": streaks,
-            "xps": xps,
-            "focus_time": focus_time
-        }
+        return user_stats
+    
+@app.get("/stats/{user_id}/today")
+def get_user_stats_today(user_id: int, db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today)
+    if user_stats is None:
+        raise HTTPException(status_code=404, detail="User stats not found")
+    else:
+        return user_stats
+    
+@app.get("/stats/{user_id}/week")
+def get_user_stats_week(user_id: int, db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week)
+    if user_stats is None:
+        raise HTTPException(status_code=404, detail="User stats not found")
+    else:
+        return user_stats
+    
+@app.get("/stats/{user_id}/month")
+def get_user_stats_month(user_id: int, db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month)
+    if user_stats is None:
+        raise HTTPException(status_code=404, detail="User stats not found")
+    else:
+        return user_stats
+    
+@app.get("/stats/{user_id}/year")
+def get_user_stats_year(user_id: int, db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year)
+    if user_stats is None:
+        raise HTTPException(status_code=404, detail="User stats not found")
+    else:
+        return user_stats
