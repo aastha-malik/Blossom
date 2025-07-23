@@ -724,14 +724,7 @@ export default function BlossomFocusPreview() {
                   </div>
                 )}
 
-                <div className="text-center">
-                  <div className="text-2xl font-black text-transparent bg-gradient-to-r from-[#00E0FF] to-[#B967FF] bg-clip-text">
-                    LEVEL {userData.level}
-                  </div>
-                  <div className="text-sm text-white font-bold">
-                    {userData.xp} / {userData.xpToNext} XP
-                  </div>
-                </div>
+                
 
                 <div className="flex items-center gap-2 bg-black/40 rounded-lg px-4 py-2 border border-[#00E0FF]/30">
                   <span className="text-xl">⭐</span>
@@ -1136,21 +1129,18 @@ export default function BlossomFocusPreview() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-12">
                 {[
-                  { label: "Total XP", value: userData.xp, color: "from-[#FF2D95] to-[#B967FF]", icon: "⭐" },
-                  { label: "Current Level", value: userData.level, color: "from-[#00E0FF] to-[#B967FF]", icon: "🏆" },
+                  { label: "Total XP",
+                    value: userData.xp, 
+                    color: "from-[#FF2D95] to-[#B967FF]",
+                    icon: "⭐" },
+                  
                   {
                     label: "Tasks Completed",
                     value: userData.completedTasks,
                     color: "from-[#B967FF] to-[#FF2D95]",
                     icon: "✅",
-                  },
-                  {
-                    label: "Focus Missions",
-                    value: userData.focusSessions,
-                    color: "from-[#FF2D95] to-[#00E0FF]",
-                    icon: "⚡",
                   },
                   {
                     label: "Focus Time (min)",
@@ -1186,100 +1176,6 @@ export default function BlossomFocusPreview() {
                   </Card>
                 ))}
               </div>
-
-              <Card className="bg-black/80 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
-                <CardContent className="p-8 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-4xl font-black mb-8 text-center text-transparent bg-gradient-to-r from-[#00E0FF] to-[#FF2D95] bg-clip-text animate-gradient-move">
-                      🏆 ACHIEVEMENT VAULT
-                    </h3>
-                    <div className="space-y-6">
-                      {[
-                        {
-                          icon: "🎯",
-                          name: "FIRST TASK",
-                          desc: "Complete your first task",
-                          unlocked: userData.completedTasks > 0,
-                          gradient: "from-[#00E0FF] to-[#B967FF]",
-                          reward: "+10 XP",
-                        },
-                        {
-                          icon: "⏰",
-                          name: "FOCUS MASTER",
-                          desc: "Complete 10 focus missions",
-                          unlocked: userData.focusSessions >= 10,
-                          gradient: "from-[#B967FF] to-[#FF2D95]",
-                          reward: "+50 XP",
-                        },
-                        {
-                          icon: "🐾",
-                          name: "PET PARENT",
-                          desc: "Adopt your first pet",
-                          unlocked: userData.pets.length > 0,
-                          gradient: "from-[#FF2D95] to-[#00E0FF]",
-                          reward: "+25 XP",
-                        },
-                        {
-                          icon: "🔥",
-                          name: "STREAK LEGEND",
-                          desc: "Maintain a 7-day streak",
-                          unlocked: userData.streak >= 7,
-                          gradient: "from-[#00E0FF] to-[#FF2D95]",
-                          reward: "+75 XP",
-                        },
-                        {
-                          icon: "⭐",
-                          name: "LEVEL CHAMPION",
-                          desc: "Reach Level 5",
-                          unlocked: userData.level >= 5,
-                          gradient: "from-[#B967FF] to-[#00E0FF]",
-                          reward: "+100 XP",
-                        },
-                      ].map((achievement, index) => (
-                        <div
-                          key={index}
-                          className={`group flex items-center p-6 rounded-2xl transition-all duration-300 hover:scale-[1.02] border-2 ${
-                            achievement.unlocked
-                              ? `bg-black/60 shadow-lg border-[#FF2D95]/50`
-                              : "bg-black/30 border-white/20"
-                          }`}
-                        >
-                          <div className="text-5xl mr-6 group-hover:scale-110 transition-transform duration-300">
-                            {achievement.unlocked ? achievement.icon : "🔒"}
-                          </div>
-                          <div className="flex-1">
-                            <div
-                              className={`text-2xl font-black mb-1 ${
-                                achievement.unlocked
-                                  ? `text-transparent bg-gradient-to-r ${achievement.gradient} bg-clip-text`
-                                  : "text-white/40"
-                              }`}
-                            >
-                              {achievement.name}
-                            </div>
-                            <div className={`text-sm ${achievement.unlocked ? "text-white" : "text-white/40"}`}>
-                              {achievement.desc}
-                            </div>
-                            {achievement.unlocked && (
-                              <div className="text-[#00E0FF] font-bold text-sm mt-1">{achievement.reward}</div>
-                            )}
-                          </div>
-                          <div
-                            className={`text-lg font-black px-6 py-3 rounded-full border-2 ${
-                              achievement.unlocked
-                                ? `text-white bg-gradient-to-r ${achievement.gradient} border-white/30`
-                                : "text-white/40 border-white/20 bg-black/30"
-                            }`}
-                          >
-                            {achievement.unlocked ? "✓ UNLOCKED" : "LOCKED"}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
         </div>
