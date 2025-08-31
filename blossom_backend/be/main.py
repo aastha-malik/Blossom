@@ -1,23 +1,35 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-import task_crud as task_crud
-import pet_crud as pet_crud
-import auth_crud as auth_crud
-import stats as stats
-import models
-from database import SessionLocal, engine, Base
+from be import task_crud
+from be import pet_crud
+from be import auth_crud
+from be import stats
+from be import models
+from be.database import SessionLocal, engine, Base
 from pydantic import BaseModel
 from datetime import datetime
-from auth_crud import SECRET_KEY, ALGORITHM
+from be.auth_crud import SECRET_KEY, ALGORITHM
 from jose import jwt
 from datetime import timedelta
-from models import User
-from auth import pwd_context
+from be.models import User
+from be.auth import pwd_context
+from fastapi.middleware.cors import CORSMiddleware
+
 
 models.Base.metadata.create_all(bind=engine)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allows all origins, you can specify a list of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
 class TaskCreate(BaseModel):
     title: str
 
@@ -31,7 +43,7 @@ def get_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "This is Task Manager side of our app Blossom Focus!!"}
+    return {"message": "This is Task Manager side of our app Blossom!!"}
 
 """
 This is Task Manager api routes below.
@@ -61,13 +73,24 @@ def update_task_endpoint(title: str, db : Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=400, detail="Updating Task Failed")
 
-@app.delete("/tasks/{title}")
-def delete_task_endpoint(title: str, db: Session = Depends(get_db)):
-    task = task_crud.delete_task(db, title)
-    if not task:
+class TaskCompletionUpdate(BaseModel):
+    completed: bool
+
+@app.patch("/tasks/{task_id}")
+def update_task_completion_endpoint(task_id: int, task_update: TaskCompletionUpdate, db: Session = Depends(get_db)):
+    task = task_crud.update_task_completion(db, task_id, task_update.completed)
+    if task:
+        return task
+    else:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+@app.delete("/tasks/{task_id}")
+def delete_task_by_id_endpoint(task_id: int, db: Session = Depends(get_db)):
+    result = task_crud.delete_task_by_id(db, task_id)
+    if result is None:
         raise HTTPException(status_code=404, detail="Task not found")
     else:
-        return {"message": "Task Deleted Succesfully!!"}
+        return result
 
 """
 this is Pet Backend api routes below.
@@ -80,7 +103,7 @@ class PetCreate(BaseModel):
 
 @app.post("/pet")
 def create_pet_endpoint(pet: PetCreate, db:Session = Depends(get_db)):
-    pet = pet_crud.create_pet(db, pet.name, pet.age, pet.hunger)
+    pet = pet_crud.create_pet(db, pet.name, pet.age, pet.hunger, last_fed=datetime.utcnow())
     if pet:
         return pet
     else:

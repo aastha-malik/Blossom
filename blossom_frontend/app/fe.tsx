@@ -498,14 +498,13 @@ export default function BlossomFocusPreview() {
       {/* Auth Modal */}
       {showAuthModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl bg-black/90 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+          <Card className="w-full max-w-md bg-black/90 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
             <CardContent className="p-8 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
               <div className="relative z-10">
                 <button
                   onClick={() => setShowAuthModal(false)}
-                  className="absolute top-4 right-4 text-white hover:text-[#FF2D95] text-4xl font-extrabold transition-colors duration-300"
-                  aria-label="Close"
+                  className="absolute top-0 right-0 text-white hover:text-[#FF2D95] text-2xl font-bold transition-colors duration-300"
                 >
                   ✕
                 </button>
@@ -612,7 +611,7 @@ export default function BlossomFocusPreview() {
       {/* Pet Creator Modal */}
       {showPetCreator && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-xl bg-black/90 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+          <Card className="w-full max-w-md bg-black/90 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
             <CardContent className="p-8 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
               <div className="relative z-10">

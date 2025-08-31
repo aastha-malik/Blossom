@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models import Task, User, Focus_time
+from be.models import Task, User, Focus_time
 from datetime import datetime
 from datetime import timedelta
+
 
 def get_user_tasks(db: Session, user_id: int, start_date: datetime):
     """

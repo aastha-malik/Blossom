@@ -247,6 +247,7 @@ class BlossomFocusApp:
 
         controls_frame = tk.Frame(timer_frame, bg=self.colors['dark_gray'])
         controls_frame.pack(pady=20)
+        
         self.start_btn = ttk.Button(controls_frame, text="🎯 Start Focus", style='Neon.TButton', command=self.start_timer)
         self.start_btn.pack(side='left', padx=10)
         self.pause_btn = ttk.Button(controls_frame, text="⏸️ Pause", style='Electric.TButton', command=self.pause_timer)
@@ -279,7 +280,7 @@ class BlossomFocusApp:
         for priority in ['low', 'medium', 'high']:
             rb = tk.Radiobutton(priority_frame, text=priority.capitalize(), variable=self.priority_var, value=priority, font=('Montserrat', 9), fg=self.colors['white'], bg=self.colors['dark_gray'], selectcolor=self.colors['light_gray'])
             rb.pack(side='left', padx=5)
-        ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
+        #ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
         
         # Tasks list
         tasks_container = tk.Frame(task_frame, bg=self.colors['black'])

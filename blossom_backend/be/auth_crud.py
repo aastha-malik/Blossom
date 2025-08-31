@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models import User
-from auth import pwd_context
+from be.models import User
+from be.auth import pwd_context
 from jose import jwt
 from datetime import timedelta, datetime
 

@@ -29,7 +29,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+      <div className="w-full max-w-xl bg-white rounded-2xl shadow-lg p-8">
         <h1 className="text-3xl font-bold text-pink-600 mb-2 text-center">Blossom Focus</h1>
         <h2 className="text-xl font-semibold text-gray-700 mb-6 text-center">Sign Up</h2>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from be.database import Base
 from datetime import datetime
 
 """"
@@ -28,17 +28,18 @@ class Pet(Base):
     is_alive = Column(Boolean, default=True)
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "user"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     xp = Column(Integer, default=0)
     tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
+    focus_times = relationship("Focus_time", back_populates="user")  # Establishing a relationship with Focus_time model
 
 class Focus_time(Base):
     __tablename__ = "focus_times"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("user.id"))
     start_time = Column(DateTime, default=datetime.utcnow())
     end_time = Column(DateTime, default=datetime.utcnow())
     duration = Column(Float)  # Duration in minutes

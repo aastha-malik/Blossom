@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import Task
+from be.models import Task
 
 #adding task to db
 def create_task(db: Session, title: str):
@@ -26,6 +26,14 @@ def get_task_by_title(db: Session, task_title:str):
     else:
         return None
 
+#getting the task by id
+def get_task_by_id(db: Session, task_id: int):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if task:
+        return task
+    else:
+        return None
+
 #updating task
 def update_task(db:Session, task_title : str):
     task = get_task_by_title(db, task_title)
@@ -37,7 +45,17 @@ def update_task(db:Session, task_title : str):
         return task
     else:
         return None 
-    
+
+#updating task completion by id
+def update_task_completion(db: Session, task_id: int, completed: bool):
+    task = get_task_by_id(db, task_id)
+    if task is None:
+        return None
+    task.completed = completed
+    db.commit()
+    db.refresh(task)
+    return task
+
 #delete task
 def delete_task(db: Session, task_title : str):
     task = get_task_by_title(db, task_title)
@@ -49,6 +67,15 @@ def delete_task(db: Session, task_title : str):
         return True  # Return True to indicate successful deletion
     else:
         return False
+
+#delete task by id
+def delete_task_by_id(db: Session, task_id: int):
+    task = get_task_by_id(db, task_id)
+    if task is None:
+        return None
+    db.delete(task)
+    db.commit()
+    return {"message": "Task deleted successfully"}
     # Note: Returning True or False is a common practice to indicate success or failure of an operation.
     # In this case, we return True if the task was successfully deleted, otherwise False
     # This can be useful for the caller to know whether the deletion was successful or not.
