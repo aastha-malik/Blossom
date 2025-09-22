@@ -32,6 +32,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    email = Column(String, unique=True, index=True)
     xp = Column(Integer, default=0)
     tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
     focus_times = relationship("Focus_time", back_populates="user")  # Establishing a relationship with Focus_time model
