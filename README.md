@@ -6,9 +6,9 @@ A productivity app that combines task management, focus sessions, and gamificati
 
 - **Task Management**: Add, organize, and prioritize daily tasks
 - **Focus Sessions**: Pomodoro/deep work timers with progress tracking
-- **Gamification**: Earn XP, level up, unlock achievements, and maintain streaks
-- **Digital Pet**: Keep your cute, techy pet happy by staying productive
-- **Analytics**: Visualize productivity trends, streaks, and time spent
+- **Gamification**: Earn XP and maintain your streaks
+- **Digital Pet**: Keep your cute, techy pet happy by staying productive (DOG / CAT)
+- **Analytics**: Visualize Your productivity trends, streaks, time spent and task done per week, month, year, today, and of all time as well
 - **Tech-Girly Aesthetic**: Neon colors, futuristic fonts, and holographic vibes
 
 ## Installation
@@ -25,42 +25,34 @@ A productivity app that combines task management, focus sessions, and gamificati
 
 \`\`\`
 blossom-focus/
-├── fe/           # Frontend (Python Tkinter GUI)
-│   ├── main.py   # Main application
-│   └── user_data.json  # User data storage
-├── be/           # Backend (Your implementation)
-│   ├── __init__.py
-│   └── api.py    # Sample API structure
-└── db/           # Database
-    └── schema.sql # Database schema
+├── blossom_fe/           # Frontend (Python Web App)
+│   ├── main.py           # Main application (Web App)
+│   └── user_data.json    # User data storage
+├── blossom_be/           # Backend (Your implementation)
+│   ├── be/
+|     ├──__init__.py
+|     ├──main.py          # my main backend & all other files are connected here
+│     └── api.py          # Sample API structure
+|   ├──db/
+|      ├──schema.sql
+└── blossom_gui/           # Frontend (Python Gui)
+    └── main.py            # Main Apllication (GUI app)
 \`\`\`
-
-## Color Palette
-
-- Hot Pink: #FF2D95
-- Electric Blue: #00E0FF  
-- Neon Purple: #B967FF
-- Black: #18181A
-- White: #FFFFFF
 
 ## Usage
 
-1. **Dashboard**: Overview of your progress and quick actions
-2. **Tasks**: Add, manage, and complete tasks to earn XP
-3. **Focus Timer**: Use Pomodoro sessions to boost productivity
-5. **Analytics**: Track your productivity trends and achievements
-6. **Settings**: Customize your experience and manage data
+1. **Tasks & Focus Timer**: Add, manage, and complete tasks to earn XP and also have your focus timer of 25 min along side so no change in tabs again and again all needed stuff at one place
+2. **Analytics**: Track your productivity trends and achievements
+3. **Settings**: Customize your experience and manage data  # for Logged in Users only
 
 ## Gamification System
 
 - **XP System**: Earn 10 XP per completed task, 25 XP per focus session
-- **Leveling**: Level up every 100 XP × current level
-- **Pet Happiness**: Increases with focus sessions and regular activity
-- **Achievements**: Unlock rewards for various milestones
+- **Pet Hunger**: so yeah your pet need to be  feed to which you can buy your food using the XPs 
 
 ## Development
 
-The frontend is complete and ready to use! The backend (`be/`) and database (`db/`) folders are set up for your implementation.
+The frontend is complete and ready to use! The backend (`blossom_be/`) folders (it has my db as well) are set up for your implementation.
 
 Feel free to extend the app with:
 - User authentication
