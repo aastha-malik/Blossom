@@ -1,10 +1,14 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from be.models import User
-from be.auth import pwd_context
-from jose import jwt
+from models import User
+from auth import pwd_context
+from jose import jwt, JWTError
 from datetime import timedelta, datetime
+import random
+from email_verify import send_email
+# JWT has  => header | payload | SIGNATURE
 
+# below part is SIGNATURE
 SECRET_KEY = "blossom_app"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
@@ -12,11 +16,32 @@ ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 # creating user => registration part
 def create_user(db:Session, username:str, hashed_password:str, email:str):
-    new_user = User( username=username, hashed_password=hashed_password, email=email )
+    email_token = random.randint(99999, 1000000)
+    new_user = User( username=username, hashed_password=hashed_password, email=email, user_verification_token=str(email_token) )
+
     db.add(new_user)
     db.commit()
-    db.refresh()
+    db.refresh(new_user)
+
+    new_user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
+    db.commit()
+    email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
+    send_email(email, "Verify your Blossom Account", email_body)
+
     return new_user
+
+#to verify the email
+def verify_email(db:Session, email:str, verification_token:str):
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        if user.user_verification_token == verification_token and user.user_verification_token_expires_at > datetime.utcnow():
+            user.user_verified = True
+            user.user_verification_token = None
+            user.user_verification_token_expires_at = None
+            db.commit()
+            return True
+        else:
+            return False
 
 #authenticate user => Login part
 def authenticate_user(db:Session, username:str, email:str, password:str):
@@ -39,3 +64,4 @@ def create_access_token(data:dict, expires_delta:timedelta):
     to_encode.update({"exp":expire})
     encode_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encode_jwt
+

@@ -1,19 +1,19 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from be import task_crud
-from be import pet_crud
-from be import auth_crud
-from be import stats
-from be import models
-from be.database import SessionLocal, engine, Base
+import task_crud
+import pet_crud
+import auth_crud
+import stats
+import models
+from database import SessionLocal, engine, Base
 from pydantic import BaseModel
 from datetime import datetime
-from be.auth_crud import SECRET_KEY, ALGORITHM
+from auth_crud import SECRET_KEY, ALGORITHM
 from jose import jwt
 from datetime import timedelta
-from be.models import User
-from be.auth import pwd_context
+from models import User
+from auth import pwd_context
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -153,6 +153,13 @@ def get_current_user(token:str = Depends(oauth2_scheme), db:Session = Depends(ge
     else:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
+@app.post("/verify_email")
+def verify_email_endpoint(email:str, verification_token:str, db:Session = Depends(get_db)):
+    result = auth_crud.verify_email(db, email, verification_token)
+    if result:
+        return {"message": "Email verified successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Email verification failed")
 
 @app.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(get_db)):
@@ -161,7 +168,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends
     user = auth_crud.authenticate_user(db, username, password)
     data = {"sub": username}
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        raise HTTPException(status_code=401, detail="Invalid or expired verification token")
     else:
         token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
         return {"access_token": token, "token_type": "bearer"}
@@ -172,15 +179,17 @@ this is Registration Backend api routes below.
 class Registration_user(BaseModel):
     username: str
     password: str
+    email: str
 @app.post("/register")
 def register_user(user:Registration_user, db:Session = Depends(get_db)):
     hashed_password = pwd_context.hash(user.password)
     user_name = db.query(User).filter(User.username == user.username).first() 
+    email = db.query(User).filter(User.email == user.email).first()
     if not user_name:
-        user = auth_crud.create_user(db, user.username, hashed_password)
+        user = auth_crud.create_user(db, user.username, hashed_password, email.email)
         return {"message": "User Registered Sucessfully!!"}
     else:
-        return {"message": "Username is already taken"}
+        return {"message": "Username or Email is already taken"}
 
 """
 this is Analysis Backend api routes below.

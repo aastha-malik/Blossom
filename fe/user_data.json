@@ -8,9 +8,9 @@
       "level": 1,
       "xp": 0,
       "happiness": 100,
-      "hunger": 100,
+      "hunger": 0,
       "last_fed": "2025-08-13",
-      "is_alive": true
+      "is_alive": false
     },
     {
       "id": 1,
@@ -20,17 +20,66 @@
       "level": 1,
       "xp": 10,
       "happiness": 100,
-      "hunger": 100,
+      "hunger": 0,
       "last_fed": "2025-08-13",
+      "is_alive": false
+    },
+    {
+      "id": 2,
+      "name": "tango",
+      "type": "dog",
+      "age": 0,
+      "level": 2,
+      "xp": 0,
+      "happiness": 100,
+      "hunger": 100,
+      "last_fed": "2025-10-12",
       "is_alive": true
     }
   ],
-  "current_pet_id": 1,
-  "level": 1,
-  "xp": 0,
+  "current_pet_id": 2,
+  "level": 2,
+  "xp": 110,
   "streak": 0,
-  "tasks": [],
-  "completed_tasks": 0,
+  "tasks": [
+    {
+      "id": 1,
+      "text": "email verificaation feature",
+      "priority": "high",
+      "completed": false
+    },
+    {
+      "id": 2,
+      "text": "read (1/4) of official security docs in fastapi",
+      "priority": "high",
+      "completed": false
+    },
+    {
+      "id": 4,
+      "text": "password reset feature",
+      "priority": "high",
+      "completed": false
+    },
+    {
+      "id": 7,
+      "text": "token generation",
+      "priority": "low",
+      "completed": false
+    },
+    {
+      "id": 8,
+      "text": "email service setup",
+      "priority": "low",
+      "completed": false
+    },
+    {
+      "id": 9,
+      "text": "Backend API",
+      "priority": "low",
+      "completed": false
+    }
+  ],
+  "completed_tasks": 8,
   "focus_sessions": 0,
   "total_focus_time": 0,
   "achievements": [],

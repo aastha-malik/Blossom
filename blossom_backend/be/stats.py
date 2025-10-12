@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from be.models import Task, User, Focus_time
+from models import Task, User, Focus_time
 from datetime import datetime
 from datetime import timedelta
 

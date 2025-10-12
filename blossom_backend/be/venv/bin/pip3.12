@@ -1,4 +1,4 @@
-#!/home/aashi/Desktop/Code/blossom_focus/be/venv/bin/python3.12
+#!/home/aashi/Desktop/Code/blossom_app/blossom_backend/be/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -5,12 +5,14 @@ import os
 from datetime import datetime, timedelta
 import threading
 import time
+import requests
+import hashlib
 
 class BlossomFocusApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Blossom Focus: Tech-Girly Edition")
-        self.root.geometry("1200x800")
+        self.root.geometry("1500x800")
         self.root.configure(bg='#18181A')
         
         # App state
@@ -19,6 +21,12 @@ class BlossomFocusApp:
         self.timer_running = False
         self.timer_seconds = 0
         self.focus_session_length = 25 * 60  # 25 minutes default
+        
+        # Authentication state
+        self.is_logged_in = False
+        self.current_user = None
+        self.auth_token = None
+        self.backend_url = "http://localhost:8000"  # Backend API URL
         
         # Colors
         self.colors = {
@@ -166,23 +174,23 @@ class BlossomFocusApp:
         stats_frame = tk.Frame(sidebar, bg=self.colors['dark_gray'])
         stats_frame.pack(fill='x', padx=20, pady=(0, 30))
         
-        level_label = tk.Label(stats_frame, text=f"Level {self.user_data['level']}", 
+        self.level_label = tk.Label(stats_frame, text=f"Level {self.user_data['level']}", 
                               font=('Montserrat', 12, 'bold'),
                               fg=self.colors['electric_blue'], 
                               bg=self.colors['dark_gray'])
-        level_label.pack()
+        self.level_label.pack()
         
-        xp_label = tk.Label(stats_frame, text=f"XP: {self.user_data['xp']}", 
+        self.xp_label = tk.Label(stats_frame, text=f"XP: {self.user_data['xp']}", 
                            font=('Montserrat', 10),
                            fg=self.colors['white'], 
                            bg=self.colors['dark_gray'])
-        xp_label.pack()
+        self.xp_label.pack()
         
-        streak_label = tk.Label(stats_frame, text=f"🔥 Streak: {self.user_data['streak']} days", 
+        self.streak_label = tk.Label(stats_frame, text=f"🔥 Streak: {self.user_data['streak']} days", 
                                font=('Montserrat', 10),
                                fg=self.colors['neon_purple'], 
                                bg=self.colors['dark_gray'])
-        streak_label.pack()
+        self.streak_label.pack()
         
         # Navigation buttons
         nav_buttons = [
@@ -203,6 +211,15 @@ class BlossomFocusApp:
                            pady=15,
                            command=lambda p=page: self.switch_page(p))
             btn.pack(fill='x', padx=20, pady=5)
+    
+    def update_sidebar_stats(self):
+        """Update the sidebar statistics display"""
+        if hasattr(self, 'level_label'):
+            self.level_label.config(text=f"Level {self.user_data['level']}")
+        if hasattr(self, 'xp_label'):
+            self.xp_label.config(text=f"XP: {self.user_data['xp']}")
+        if hasattr(self, 'streak_label'):
+            self.streak_label.config(text=f"🔥 Streak: {self.user_data['streak']} days")
     
     def switch_page(self, page):
         """Switch between different pages"""
@@ -280,7 +297,7 @@ class BlossomFocusApp:
         for priority in ['low', 'medium', 'high']:
             rb = tk.Radiobutton(priority_frame, text=priority.capitalize(), variable=self.priority_var, value=priority, font=('Montserrat', 9), fg=self.colors['white'], bg=self.colors['dark_gray'], selectcolor=self.colors['light_gray'])
             rb.pack(side='left', padx=5)
-        #ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
+        ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
         
         # Tasks list
         tasks_container = tk.Frame(task_frame, bg=self.colors['black'])
@@ -299,7 +316,9 @@ class BlossomFocusApp:
             no_tasks = tk.Label(scrollable_frame, text="No tasks yet! Add your first task above 🎯", font=('Montserrat', 12), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
             no_tasks.pack(expand=True, pady=50)
         else:
-            for i, task in enumerate(self.user_data['tasks']):
+            # Sort tasks: incomplete first, then completed (at bottom)
+            sorted_tasks = sorted(self.user_data['tasks'], key=lambda t: t['completed'])
+            for i, task in enumerate(sorted_tasks):
                 self.create_task_widget(scrollable_frame, task, i)
     
     def set_timer_length(self, minutes):
@@ -351,7 +370,12 @@ class BlossomFocusApp:
         self.user_data['focus_sessions'] += 1
         self.user_data['total_focus_time'] += self.focus_session_length // 60
         self.user_data['xp'] += 25
-        self.user_data['pet_happiness'] = min(100, self.user_data['pet_happiness'] + 10)
+        
+        # Increase pet happiness
+        pet = self.get_current_pet()
+        if pet:
+            pet['happiness'] = min(100, pet['happiness'] + 10)
+            self.save_current_pet(pet)
         
         # Level up check
         if self.user_data['xp'] >= self.user_data['level'] * 100:
@@ -359,12 +383,154 @@ class BlossomFocusApp:
             messagebox.showinfo("Level Up!", f"🎉 Congratulations! You reached Level {self.user_data['level']}!")
         
         self.save_user_data()
+        self.update_sidebar_stats()  # Update sidebar stats
         messagebox.showinfo("Focus Session Complete!", 
                            "🎉 Great focus session! +25 XP earned!\n🐾 Your pet is happy!")
         
         # Reset timer
         self.timer_seconds = self.focus_session_length
         self.update_timer_display()
+    
+    def add_task(self):
+        """Add a new task to the task list"""
+        task_text = self.task_entry.get().strip()
+        
+        if not task_text:
+            messagebox.showwarning("Empty Task", "Please enter a task description!")
+            return
+        
+        # Generate unique task ID
+        task_id = max([task.get('id', 0) for task in self.user_data['tasks']] + [0]) + 1
+        
+        # Create task object
+        new_task = {
+            'id': task_id,
+            'text': task_text,
+            'priority': self.priority_var.get(),
+            'completed': False
+        }
+        
+        # Add to tasks list
+        self.user_data['tasks'].append(new_task)
+        
+        # Save and refresh
+        self.save_user_data()
+        self.task_entry.delete(0, tk.END)
+        self.switch_page('focus')
+    
+    def create_task_widget(self, parent, task, index):
+        """Create a widget for displaying a single task"""
+        # Determine priority color
+        priority_colors = {
+            'low': self.colors['electric_blue'],
+            'medium': self.colors['neon_purple'],
+            'high': self.colors['hot_pink']
+        }
+        priority_color = priority_colors.get(task['priority'], self.colors['white'])
+        
+        # Task frame
+        task_frame = tk.Frame(parent, bg=self.colors['light_gray'], relief='raised', bd=1)
+        task_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Checkbox
+        var = tk.BooleanVar(value=task['completed'])
+        checkbox = tk.Checkbutton(task_frame, variable=var, 
+                                  bg=self.colors['light_gray'],
+                                  activebackground=self.colors['light_gray'],
+                                  command=lambda task_id=task['id']: self.complete_task(task_id))
+        checkbox.pack(side='left', padx=10, pady=8)
+        
+        # Task text
+        text_color = '#808080' if task['completed'] else self.colors['white']
+        font_style = ('Montserrat', 11, 'overstrike') if task['completed'] else ('Montserrat', 11)
+        
+        task_label = tk.Label(task_frame, text=task['text'], 
+                             font=font_style,
+                             fg=text_color,
+                             bg=self.colors['light_gray'],
+                             anchor='w')
+        task_label.pack(side='left', fill='x', expand=True, padx=10, pady=8)
+        
+        # Priority badge
+        priority_badge = tk.Label(task_frame, 
+                                 text=task['priority'].upper(),
+                                 font=('Montserrat', 8, 'bold'),
+                                 fg=self.colors['white'],
+                                 bg=priority_color,
+                                 padx=8, pady=4)
+        priority_badge.pack(side='left', padx=5)
+        
+        # Delete button
+        delete_btn = tk.Button(task_frame, text="❌", 
+                              font=('Montserrat', 10),
+                              fg=self.colors['hot_pink'],
+                              bg=self.colors['light_gray'],
+                              border=0,
+                              command=lambda task_id=task['id']: self.delete_task(task_id))
+        delete_btn.pack(side='left', padx=10, pady=8)
+    
+    def complete_task(self, task_id):
+        """Toggle task completion status and award XP/happiness"""
+        # Find the task
+        task = None
+        for t in self.user_data['tasks']:
+            if t['id'] == task_id:
+                task = t
+                break
+        
+        if not task:
+            return
+        
+        # Toggle completion status
+        was_completed = task['completed']
+        task['completed'] = not was_completed
+        
+        # If marking as complete (not uncompleting), give rewards
+        if task['completed'] and not was_completed:
+            # Award XP based on priority
+            xp_rewards = {
+                'low': 10,
+                'medium': 15,
+                'high': 25
+            }
+            xp_gained = xp_rewards.get(task['priority'], 10)
+            self.user_data['xp'] += xp_gained
+            
+            # Increase pet happiness
+            pet = self.get_current_pet()
+            if pet:
+                happiness_increase = {
+                    'low': 5,
+                    'medium': 7,
+                    'high': 10
+                }.get(task['priority'], 5)
+                pet['happiness'] = min(100, pet['happiness'] + happiness_increase)
+                self.save_current_pet(pet)
+            
+            # Increment completed tasks counter
+            self.user_data['completed_tasks'] += 1
+            
+            # Check for level up
+            if self.user_data['xp'] >= self.user_data['level'] * 100:
+                self.user_data['level'] += 1
+                messagebox.showinfo("Level Up!", f"🎉 Congratulations! You reached Level {self.user_data['level']}!")
+            
+            messagebox.showinfo("Task Completed!", 
+                              f"✅ Great job! +{xp_gained} XP earned!\n🐾 Your pet is happier!")
+        
+        # Save and refresh
+        self.save_user_data()
+        self.update_sidebar_stats()  # Update sidebar stats
+        self.switch_page('focus')
+    
+    def delete_task(self, task_id):
+        """Delete a task from the list"""
+        # Remove task from list
+        self.user_data['tasks'] = [t for t in self.user_data['tasks'] if t['id'] != task_id]
+        
+        # Save and refresh
+        self.save_user_data()
+        self.switch_page('focus')
     
     def get_pet_emoji(self):
         pet_type = self.user_data.get('pet_type', 'cat')  # default to cat
@@ -705,6 +871,50 @@ class BlossomFocusApp:
         settings_frame = tk.Frame(self.content_frame, bg=self.colors['dark_gray'])
         settings_frame.pack(fill='both', expand=True, padx=20, pady=20)
         
+        # Authentication section
+        auth_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
+        auth_frame.pack(fill='x', padx=20, pady=20)
+        
+        auth_title = tk.Label(auth_frame, text="🔐 Authentication", 
+                             font=('Montserrat', 16, 'bold'),
+                             fg=self.colors['white'], 
+                             bg=self.colors['dark_gray'])
+        auth_title.pack(pady=(0, 15))
+        
+        # Auth status
+        if self.is_logged_in:
+            auth_status = tk.Label(auth_frame, text=f"✅ Logged in as: {self.current_user}", 
+                                  font=('Montserrat', 12),
+                                  fg=self.colors['electric_blue'], 
+                                  bg=self.colors['dark_gray'])
+            auth_status.pack(pady=(0, 10))
+            
+            # Logout button
+            logout_btn = ttk.Button(auth_frame, text="🚪 Logout", 
+                                   style='Neon.TButton',
+                                   command=self.logout)
+            logout_btn.pack(pady=5)
+        else:
+            auth_status = tk.Label(auth_frame, text="❌ Not logged in", 
+                                  font=('Montserrat', 12),
+                                  fg=self.colors['hot_pink'], 
+                                  bg=self.colors['dark_gray'])
+            auth_status.pack(pady=(0, 35))
+            
+            # Auth buttons
+            auth_buttons_frame = tk.Frame(auth_frame, bg=self.colors['dark_gray'])
+            auth_buttons_frame.pack(pady=10)
+            
+            login_btn = ttk.Button(auth_buttons_frame, text="🔑 Login", 
+                                  style='Electric.TButton',
+                                  command=self.show_login_form)
+            login_btn.pack(side='left', padx=10)
+            
+            signup_btn = ttk.Button(auth_buttons_frame, text="📝 Sign Up", 
+                                   style='Purple.TButton',
+                                   command=self.show_signup_form)
+            signup_btn.pack(side='left', padx=10)
+        
         # Theme section
         theme_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
         theme_frame.pack(fill='x', padx=20, pady=20)
@@ -800,8 +1010,434 @@ class BlossomFocusApp:
                 'theme': 'neon_garden'
             }
             self.save_user_data()
+            self.update_sidebar_stats()  # Update sidebar stats
             messagebox.showinfo("Reset Complete", "All progress has been reset! 🔄")
             self.switch_page("focus") # Changed to "focus"
+    
+    def show_login_form(self):
+        """Show login form dialog"""
+        login_window = tk.Toplevel(self.root)
+        login_window.title("🔑 Login")
+        login_window.geometry("450x500")
+        login_window.configure(bg=self.colors['black'])
+        login_window.resizable(False, False)
+        
+        # Center the window
+        login_window.transient(self.root)
+        login_window.grab_set()
+        
+        # Login form
+        login_frame = tk.Frame(login_window, bg=self.colors['dark_gray'])
+        login_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(login_frame, text="🔑 Login to Blossom", 
+                              font=('Orbitron', 18, 'bold'),
+                              fg=self.colors['electric_blue'], 
+                              bg=self.colors['dark_gray'])
+        title_label.pack(pady=(0, 20))
+        
+        # Username/Email field
+        tk.Label(login_frame, text="Username or Email:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        username_entry = tk.Entry(login_frame, font=('Montserrat', 11), 
+                                 bg=self.colors['light_gray'], 
+                                 fg=self.colors['white'], 
+                                 insertbackground=self.colors['white'])
+        username_entry.pack(pady=(0, 15), ipadx=10, ipady=5)
+        
+        # Password field
+        tk.Label(login_frame, text="Password:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        password_entry = tk.Entry(login_frame, font=('Montserrat', 11), 
+                                 bg=self.colors['light_gray'], 
+                                 fg=self.colors['white'], 
+                                 insertbackground=self.colors['white'],
+                                 show="*")
+        password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
+        
+        # Buttons
+        button_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
+        button_frame.pack(pady=10)
+        
+        login_btn = tk.Button(button_frame, text="🔑 Login", 
+                             font=('Montserrat', 12, 'bold'),
+                             fg=self.colors['white'],
+                             bg=self.colors['hot_pink'],
+                             activebackground=self.colors['electric_blue'],
+                             command=lambda: self.login_user(username_entry.get(), password_entry.get(), login_window))
+        login_btn.pack(side='left', padx=10)
+        
+        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['light_gray'],
+                              activebackground=self.colors['dark_gray'],
+                              command=login_window.destroy)
+        cancel_btn.pack(side='left', padx=10)
+        
+        # Forgot password link
+        forgot_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
+        forgot_frame.pack(pady=10)
+        
+        forgot_btn = tk.Button(forgot_frame, text="🔓 Forgot Password?", 
+                              font=('Montserrat', 10),
+                              fg=self.colors['electric_blue'],
+                              bg=self.colors['dark_gray'],
+                              border=0,
+                              command=self.show_password_reset_form)
+        forgot_btn.pack()
+        
+        # Focus on username field
+        username_entry.focus()
+        
+        # Bind Enter key to login
+        login_window.bind('<Return>', lambda e: self.login_user(username_entry.get(), password_entry.get(), login_window))
+    
+    def show_signup_form(self):
+        """Show signup form dialog"""
+        signup_window = tk.Toplevel(self.root)
+        signup_window.title("📝 Sign Up")
+        signup_window.geometry("450x500")
+        signup_window.configure(bg=self.colors['black'])
+        signup_window.resizable(False, False)
+        
+        # Center the window
+        signup_window.transient(self.root)
+        signup_window.grab_set()
+        
+        # Signup form
+        signup_frame = tk.Frame(signup_window, bg=self.colors['dark_gray'])
+        signup_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(signup_frame, text="📝 Join Blossom", 
+                              font=('Orbitron', 18, 'bold'),
+                              fg=self.colors['neon_purple'], 
+                              bg=self.colors['dark_gray'])
+        title_label.pack(pady=(0, 20))
+        
+        # Username field
+        tk.Label(signup_frame, text="Username:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        username_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
+                                 bg=self.colors['light_gray'], 
+                                 fg=self.colors['white'], 
+                                 insertbackground=self.colors['white'])
+        username_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
+        
+        # Email field
+        tk.Label(signup_frame, text="Email:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        email_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
+                              bg=self.colors['light_gray'], 
+                              fg=self.colors['white'], 
+                              insertbackground=self.colors['white'])
+        email_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
+        
+        # Password field
+        tk.Label(signup_frame, text="Password:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        password_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
+                                 bg=self.colors['light_gray'], 
+                                 fg=self.colors['white'], 
+                                 insertbackground=self.colors['white'],
+                                 show="*")
+        password_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
+        
+        # Confirm Password field
+        tk.Label(signup_frame, text="Confirm Password:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        confirm_password_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
+                                         bg=self.colors['light_gray'], 
+                                         fg=self.colors['white'], 
+                                         insertbackground=self.colors['white'],
+                                         show="*")
+        confirm_password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
+        
+        # Buttons
+        button_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
+        button_frame.pack(pady=10)
+        
+        signup_btn = tk.Button(button_frame, text="📝 Sign Up", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['neon_purple'],
+                              activebackground=self.colors['hot_pink'],
+                              command=lambda: self.register_user(username_entry.get(), email_entry.get(), password_entry.get(), confirm_password_entry.get(), signup_window))
+        signup_btn.pack(side='left', padx=10)
+        
+        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['light_gray'],
+                              activebackground=self.colors['dark_gray'],
+                              command=signup_window.destroy)
+        cancel_btn.pack(side='left', padx=10)
+        
+        # Focus on username field
+        username_entry.focus()
+        
+        # Bind Enter key to signup
+        signup_window.bind('<Return>', lambda e: self.register_user(username_entry.get(), email_entry.get(), password_entry.get(), confirm_password_entry.get(), signup_window))
+    
+    def login_user(self, username, password, window):
+        """Handle user login"""
+        if not username or not password:
+            messagebox.showerror("Error", "Please fill in all fields!")
+            return
+        
+        try:
+            # Prepare login data
+            login_data = {
+                "username": username,
+                "password": password
+            }
+            
+            # Send login request to backend
+            response = requests.post(f"{self.backend_url}/token", 
+                                   data=login_data,  # Using form data for OAuth2PasswordRequestForm
+                                   timeout=10)
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                self.auth_token = token_data.get("access_token")
+                self.current_user = username
+                self.is_logged_in = True
+                
+                messagebox.showinfo("Success", f"🎉 Welcome back, {username}!")
+                window.destroy()
+                self.switch_page("settings")  # Refresh settings page
+            else:
+                messagebox.showerror("Login Failed", "Invalid username or password!")
+                
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Login failed: {str(e)}")
+    
+    def register_user(self, username, email, password, confirm_password, window):
+        """Handle user registration"""
+        if not all([username, email, password, confirm_password]):
+            messagebox.showerror("Error", "Please fill in all fields!")
+            return
+        
+        if password != confirm_password:
+            messagebox.showerror("Error", "Passwords do not match!")
+            return
+        
+        if len(password) < 6:
+            messagebox.showerror("Error", "Password must be at least 6 characters long!")
+            return
+        
+        try:
+            # Prepare registration data
+            register_data = {
+                "username": username,
+                "password": password,
+                "email": email
+            }
+            
+            # Send registration request to backend
+            response = requests.post(f"{self.backend_url}/register", 
+                                   json=register_data,
+                                   timeout=10)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if "successfully" in result.get("message", "").lower():
+                    messagebox.showinfo("Success", "🎉 Account created successfully! Please verify your email.")
+                    window.destroy()
+                    self.show_email_verification_form(username, email)
+                else:
+                    messagebox.showerror("Registration Failed", result.get("message", "Registration failed!"))
+            else:
+                result = response.json()
+                messagebox.showerror("Registration Failed", result.get("detail", "Registration failed!"))
+                
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Registration failed: {str(e)}")
+    
+    def show_email_verification_form(self, username, email):
+        """Show email verification form"""
+        verify_window = tk.Toplevel(self.root)
+        verify_window.title("📧 Email Verification")
+        verify_window.geometry("400x250")
+        verify_window.configure(bg=self.colors['black'])
+        verify_window.resizable(False, False)
+        
+        # Center the window
+        verify_window.transient(self.root)
+        verify_window.grab_set()
+        
+        # Verification form
+        verify_frame = tk.Frame(verify_window, bg=self.colors['dark_gray'])
+        verify_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(verify_frame, text="📧 Email Verification", 
+                              font=('Orbitron', 16, 'bold'),
+                              fg=self.colors['electric_blue'], 
+                              bg=self.colors['dark_gray'])
+        title_label.pack(pady=(0, 15))
+        
+        # Info text
+        info_text = tk.Label(verify_frame, 
+                            text=f"We've sent a verification code to:\n{email}\n\nPlease check your email and enter the code below:",
+                            font=('Montserrat', 11),
+                            fg=self.colors['white'], 
+                            bg=self.colors['dark_gray'],
+                            justify='center')
+        info_text.pack(pady=(0, 15))
+        
+        # Verification code field
+        code_entry = tk.Entry(verify_frame, font=('Montserrat', 12, 'bold'), 
+                             bg=self.colors['light_gray'], 
+                             fg=self.colors['white'], 
+                             insertbackground=self.colors['white'],
+                             justify='center')
+        code_entry.pack(pady=(0, 15), ipadx=20, ipady=8)
+        
+        # Buttons
+        button_frame = tk.Frame(verify_frame, bg=self.colors['dark_gray'])
+        button_frame.pack(pady=10)
+        
+        verify_btn = tk.Button(button_frame, text="✅ Verify", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['electric_blue'],
+                              activebackground=self.colors['hot_pink'],
+                              command=lambda: self.verify_email(code_entry.get(), verify_window))
+        verify_btn.pack(side='left', padx=10)
+        
+        resend_btn = tk.Button(button_frame, text="🔄 Resend", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['neon_purple'],
+                              activebackground=self.colors['electric_blue'],
+                              command=lambda: self.resend_verification_code(email))
+        resend_btn.pack(side='left', padx=10)
+        
+        # Focus on code field
+        code_entry.focus()
+        
+        # Bind Enter key to verify
+        verify_window.bind('<Return>', lambda e: self.verify_email(code_entry.get(), verify_window))
+    
+    def verify_email(self, code, window):
+        """Handle email verification"""
+        if not code:
+            messagebox.showerror("Error", "Please enter the verification code!")
+            return
+        
+        # For demo purposes, accept any 6-digit code
+        if len(code) == 6 and code.isdigit():
+            messagebox.showinfo("Success", "🎉 Email verified successfully! You can now log in.")
+            window.destroy()
+            self.switch_page("settings")
+        else:
+            messagebox.showerror("Error", "Invalid verification code!")
+    
+    def resend_verification_code(self, email):
+        """Resend verification code"""
+        messagebox.showinfo("Code Sent", f"📧 Verification code resent to {email}")
+    
+    def show_password_reset_form(self):
+        """Show password reset form"""
+        reset_window = tk.Toplevel(self.root)
+        reset_window.title("🔓 Password Reset")
+        reset_window.geometry("400x250")
+        reset_window.configure(bg=self.colors['black'])
+        reset_window.resizable(False, False)
+        
+        # Center the window
+        reset_window.transient(self.root)
+        reset_window.grab_set()
+        
+        # Reset form
+        reset_frame = tk.Frame(reset_window, bg=self.colors['dark_gray'])
+        reset_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(reset_frame, text="🔓 Password Reset", 
+                              font=('Orbitron', 16, 'bold'),
+                              fg=self.colors['hot_pink'], 
+                              bg=self.colors['dark_gray'])
+        title_label.pack(pady=(0, 15))
+        
+        # Info text
+        info_text = tk.Label(reset_frame, 
+                            text="Enter your email address and we'll send you\na link to reset your password:",
+                            font=('Montserrat', 11),
+                            fg=self.colors['white'], 
+                            bg=self.colors['dark_gray'],
+                            justify='center')
+        info_text.pack(pady=(0, 15))
+        
+        # Email field
+        email_entry = tk.Entry(reset_frame, font=('Montserrat', 11), 
+                              bg=self.colors['light_gray'], 
+                              fg=self.colors['white'], 
+                              insertbackground=self.colors['white'])
+        email_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
+        
+        # Buttons
+        button_frame = tk.Frame(reset_frame, bg=self.colors['dark_gray'])
+        button_frame.pack(pady=10)
+        
+        send_btn = tk.Button(button_frame, text="📧 Send Reset Link", 
+                            font=('Montserrat', 12, 'bold'),
+                            fg=self.colors['white'],
+                            bg=self.colors['hot_pink'],
+                            activebackground=self.colors['electric_blue'],
+                            command=lambda: self.send_password_reset(email_entry.get(), reset_window))
+        send_btn.pack(side='left', padx=10)
+        
+        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['light_gray'],
+                              activebackground=self.colors['dark_gray'],
+                              command=reset_window.destroy)
+        cancel_btn.pack(side='left', padx=10)
+        
+        # Focus on email field
+        email_entry.focus()
+        
+        # Bind Enter key to send
+        reset_window.bind('<Return>', lambda e: self.send_password_reset(email_entry.get(), reset_window))
+    
+    def send_password_reset(self, email, window):
+        """Send password reset email"""
+        if not email:
+            messagebox.showerror("Error", "Please enter your email address!")
+            return
+        
+        # For demo purposes, just show success message
+        messagebox.showinfo("Reset Link Sent", f"📧 Password reset link sent to {email}\nPlease check your email.")
+        window.destroy()
+    
+    def logout(self):
+        """Handle user logout"""
+        self.is_logged_in = False
+        self.current_user = None
+        self.auth_token = None
+        messagebox.showinfo("Logged Out", "👋 You have been logged out successfully!")
+        self.switch_page("settings")  # Refresh settings page
     
     def run(self):
         """Start the application"""

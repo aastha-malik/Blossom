@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/aashi/Desktop/Code/blossom_focus/be/venv
+set -gx VIRTUAL_ENV /home/aashi/Desktop/Code/blossom_app/blossom_backend/be/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
-from be.database import Base
+from database import Base
 from datetime import datetime
 
 """"
@@ -36,6 +36,9 @@ class User(Base):
     xp = Column(Integer, default=0)
     tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
     focus_times = relationship("Focus_time", back_populates="user")  # Establishing a relationship with Focus_time model
+    user_verified = Column(Boolean, default=False) #whether email of user is verified or not
+    user_verification_token = Column(String, default=False)  #verification token for user
+    user_verification_token_expires_at = Column(DateTime, default=datetime.utcnow()) #when verification token expires
 
 class Focus_time(Base):
     __tablename__ = "focus_times"

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from be.models import Pet
+from models import Pet
 
 #created a new pet
 def create_pet(db: Session, name:str, age:float, hunger:int, last_fed:datetime):
