@@ -1356,10 +1356,10 @@ class BlossomFocusApp:
         """Resend verification code"""
         messagebox.showinfo("Code Sent", f"📧 Verification code resent to {email}")
     
-    def show_password_reset_form(self):
-        """Show password reset form"""
+    def show_password_forgot_form(self):
+        """Show forgot password form"""
         reset_window = tk.Toplevel(self.root)
-        reset_window.title("🔓 Password Reset")
+        reset_window.title("🔓 Forgot Password?")
         reset_window.geometry("400x250")
         reset_window.configure(bg=self.colors['black'])
         reset_window.resizable(False, False)
@@ -1373,7 +1373,7 @@ class BlossomFocusApp:
         reset_frame.pack(fill='both', expand=True, padx=20, pady=20)
         
         # Title
-        title_label = tk.Label(reset_frame, text="🔓 Password Reset", 
+        title_label = tk.Label(reset_frame, text="🔓 Forgot Password?", 
                               font=('Orbitron', 16, 'bold'),
                               fg=self.colors['hot_pink'], 
                               bg=self.colors['dark_gray'])
@@ -1421,14 +1421,14 @@ class BlossomFocusApp:
         # Bind Enter key to send
         reset_window.bind('<Return>', lambda e: self.send_password_reset(email_entry.get(), reset_window))
     
-    def send_password_reset(self, email, window):
-        """Send password reset email"""
+    def send_forgot_password_reset(self, email, window):
+        """Send password reset email(in case of forgot password)"""
         if not email:
             messagebox.showerror("Error", "Please enter your email address!")
             return
         
         # For demo purposes, just show success message
-        messagebox.showinfo("Reset Link Sent", f"📧 Password reset link sent to {email}\nPlease check your email.")
+        messagebox.showinfo("Reset Link Sent", f"📧 Password reset (In case you forgot your password) link sent to {email}\nPlease check your email.")
         window.destroy()
     
     def logout(self):

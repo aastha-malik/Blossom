@@ -39,14 +39,14 @@
   ],
   "current_pet_id": 2,
   "level": 2,
-  "xp": 110,
+  "xp": 190,
   "streak": 0,
   "tasks": [
     {
       "id": 1,
       "text": "email verificaation feature",
       "priority": "high",
-      "completed": false
+      "completed": true
     },
     {
       "id": 2,
@@ -58,28 +58,28 @@
       "id": 4,
       "text": "password reset feature",
       "priority": "high",
-      "completed": false
+      "completed": true
     },
     {
       "id": 7,
       "text": "token generation",
       "priority": "low",
-      "completed": false
+      "completed": true
     },
     {
       "id": 8,
       "text": "email service setup",
       "priority": "low",
-      "completed": false
+      "completed": true
     },
     {
       "id": 9,
       "text": "Backend API",
       "priority": "low",
-      "completed": false
+      "completed": true
     }
   ],
-  "completed_tasks": 8,
+  "completed_tasks": 13,
   "focus_sessions": 0,
   "total_focus_time": 0,
   "achievements": [],

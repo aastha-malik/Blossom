@@ -172,6 +172,14 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends
     else:
         token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
         return {"access_token": token, "token_type": "bearer"}
+
+@app.patch("/reset_password")
+def password_reset_endpoint( new_password:str, new_password_confirm: str, old_password:str, username:str ):
+    reset = auth_crud.password_reset(new_password, new_password_confirm, old_password, username)
+    if reset:
+        return {"message": "Password Reset Done!"}
+    else:
+        raise HTTPException(status_code=400, detail="Password Reset failed")
         
 """
 this is Registration Backend api routes below.
@@ -186,7 +194,7 @@ def register_user(user:Registration_user, db:Session = Depends(get_db)):
     user_name = db.query(User).filter(User.username == user.username).first() 
     email = db.query(User).filter(User.email == user.email).first()
     if not user_name:
-        user = auth_crud.create_user(db, user.username, hashed_password, email.email)
+        user = auth_crud.create_user(db, user.username, hashed_password, user.email)
         return {"message": "User Registered Sucessfully!!"}
     else:
         return {"message": "Username or Email is already taken"}

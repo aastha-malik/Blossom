@@ -6,6 +6,7 @@ from jose import jwt, JWTError
 from datetime import timedelta, datetime
 import random
 from email_verify import send_email
+from password_reset import password_reset
 # JWT has  => header | payload | SIGNATURE
 
 # below part is SIGNATURE
@@ -65,3 +66,6 @@ def create_access_token(data:dict, expires_delta:timedelta):
     encode_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encode_jwt
 
+#to reset password
+def reset_password(db:Session, new_password:str, new_password_confirm: str, old_password:str, username:str):
+    return password_reset(new_password, new_password_confirm, old_password, username)
