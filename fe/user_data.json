@@ -33,21 +33,15 @@
       "xp": 0,
       "happiness": 100,
       "hunger": 100,
-      "last_fed": "2025-10-12",
+      "last_fed": "2025-10-14",
       "is_alive": true
     }
   ],
   "current_pet_id": 2,
-  "level": 2,
-  "xp": 190,
+  "level": 3,
+  "xp": 230,
   "streak": 0,
   "tasks": [
-    {
-      "id": 1,
-      "text": "email verificaation feature",
-      "priority": "high",
-      "completed": true
-    },
     {
       "id": 2,
       "text": "read (1/4) of official security docs in fastapi",
@@ -55,33 +49,15 @@
       "completed": false
     },
     {
-      "id": 4,
-      "text": "password reset feature",
-      "priority": "high",
-      "completed": true
-    },
-    {
-      "id": 7,
-      "text": "token generation",
-      "priority": "low",
-      "completed": true
-    },
-    {
-      "id": 8,
-      "text": "email service setup",
-      "priority": "low",
-      "completed": true
-    },
-    {
-      "id": 9,
-      "text": "Backend API",
-      "priority": "low",
+      "id": 3,
+      "text": "add forgot password feature in blossom",
+      "priority": "medium",
       "completed": true
     }
   ],
-  "completed_tasks": 13,
-  "focus_sessions": 0,
-  "total_focus_time": 0,
+  "completed_tasks": 14,
+  "focus_sessions": 1,
+  "total_focus_time": 45,
   "achievements": [],
   "theme": "neon_garden"
 }

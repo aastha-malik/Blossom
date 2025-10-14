@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import task_crud
 import pet_crud
 import auth_crud
+from forget_password import to_confirm_email
 import stats
 import models
 from database import SessionLocal, engine, Base
@@ -153,13 +154,6 @@ def get_current_user(token:str = Depends(oauth2_scheme), db:Session = Depends(ge
     else:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-@app.post("/verify_email")
-def verify_email_endpoint(email:str, verification_token:str, db:Session = Depends(get_db)):
-    result = auth_crud.verify_email(db, email, verification_token)
-    if result:
-        return {"message": "Email verified successfully"}
-    else:
-        raise HTTPException(status_code=400, detail="Email verification failed")
 
 @app.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(get_db)):
@@ -174,12 +168,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends
         return {"access_token": token, "token_type": "bearer"}
 
 @app.patch("/reset_password")
-def password_reset_endpoint( new_password:str, new_password_confirm: str, old_password:str, username:str ):
-    reset = auth_crud.password_reset(new_password, new_password_confirm, old_password, username)
+def password_reset_endpoint( new_password:str, new_password_confirm: str, old_password:str, username:str, db:Session = Depends(get_db) ):
+    reset = auth_crud.password_reset(db, new_password, new_password_confirm, old_password, username)
     if reset:
         return {"message": "Password Reset Done!"}
     else:
         raise HTTPException(status_code=400, detail="Password Reset failed")
+
+@app.post("/send_forgot_password_otp")
+def send_forgot_password_otp(email: str, db: Session = Depends(get_db)):
+    result = to_confirm_email(db, email)
+    if result:
+        return {"message": "OTP sent to your email"}
+    else:
+        raise HTTPException(status_code=404, detail="Email not found")
+
+@app.patch("/forgot_password")
+def forgot_password_endpoint(entered_verify_code:str, new_password:str, new_password_confirm:str, email:str, db:Session = Depends(get_db)):
+    forget = auth_crud.forget_password(db, entered_verify_code, new_password, new_password_confirm, email)
+    if forget:
+        return {"message" : "Forget Password Reset Done!"}
+    else:
+        raise HTTPException(status_code=400, detail="Forget Password Reset Failed")
         
 """
 this is Registration Backend api routes below.
@@ -192,12 +202,20 @@ class Registration_user(BaseModel):
 def register_user(user:Registration_user, db:Session = Depends(get_db)):
     hashed_password = pwd_context.hash(user.password)
     user_name = db.query(User).filter(User.username == user.username).first() 
-    email = db.query(User).filter(User.email == user.email).first()
     if not user_name:
         user = auth_crud.create_user(db, user.username, hashed_password, user.email)
         return {"message": "User Registered Sucessfully!!"}
     else:
-        return {"message": "Username or Email is already taken"}
+        raise HTTPException(status_code=400, detail="Username or Email is already taken")
+
+@app.post("/verify_email")
+def verify_email_endpoint(email:str, verification_token:str, db:Session = Depends(get_db)):
+    result = auth_crud.verify_email(db, email, verification_token)
+    if result:
+        return {"message": "Email verified successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Email verification failed")
+
 
 """
 this is Analysis Backend api routes below.

@@ -7,6 +7,7 @@ from datetime import timedelta, datetime
 import random
 from email_verify import send_email
 from password_reset import password_reset
+from forget_password import forget_password
 # JWT has  => header | payload | SIGNATURE
 
 # below part is SIGNATURE
@@ -23,7 +24,7 @@ def create_user(db:Session, username:str, hashed_password:str, email:str):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-
+    new_user.user_verification_token = str(email_token)
     new_user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
     db.commit()
     email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
@@ -68,4 +69,8 @@ def create_access_token(data:dict, expires_delta:timedelta):
 
 #to reset password
 def reset_password(db:Session, new_password:str, new_password_confirm: str, old_password:str, username:str):
-    return password_reset(new_password, new_password_confirm, old_password, username)
+    return password_reset(db, new_password, new_password_confirm, old_password, username)
+
+#when user forgot password while login
+def forgot_password(db:Session, entered_verify_code:str, new_password:str, new_password_confirm:str, email:str):
+    return forget_password(db,entered_verify_code, new_password, new_password_confirm, email)
