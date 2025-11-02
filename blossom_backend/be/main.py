@@ -1,40 +1,55 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, timedelta
+from jose import jwt
+
+import models
+from models import User, Task
+from database import SessionLocal, engine, Base
 import task_crud
 import pet_crud
 import auth_crud
 from forget_password import to_confirm_email
 import stats
-import models
-from database import SessionLocal, engine, Base
-from pydantic import BaseModel
-from datetime import datetime
-from auth_crud import SECRET_KEY, ALGORITHM
-from jose import jwt
-from datetime import timedelta
-from models import User
 from auth import pwd_context
-from fastapi.middleware.cors import CORSMiddleware
+from auth_crud import SECRET_KEY, ALGORITHM
+from auth_dependencies import get_current_user
+from schemas import (
+    TaskCreate, TaskResponse, TaskCompletionUpdate,
+    PetCreate, PetUpdate, PetResponse,
+    RegistrationUser, TokenResponse
+)
+print("TaskResponse imported from:", TaskResponse)
 
+
+# ---------------------------------------------------
+# DATABASE & APP SETUP
+# ---------------------------------------------------
 
 models.Base.metadata.create_all(bind=engine)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Allows all origins, you can specify a list of allowed origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-class TaskCreate(BaseModel):
-    title: str
 
-#this is for testing my code (good while using fastapi)
+# ---------------------------------------------------
+# DEPENDENCY
+# ---------------------------------------------------
+
 def get_db():
     db = SessionLocal()
     try:
@@ -42,220 +57,265 @@ def get_db():
     finally:
         db.close()
 
+
 @app.get("/")
 def read_root():
     return {"message": "This is Task Manager side of our app Blossom!!"}
 
-"""
-This is Task Manager api routes below.
-"""
 
-@app.post("/tasks")
-def create_task_endpoint(task: TaskCreate, db: Session = Depends(get_db)):
-    task = task_crud.create_task(db, task.title)
-    if task:
-        return task
-    else:
+# ---------------------------------------------------
+# TASK ROUTES
+# ---------------------------------------------------
+
+@app.post("/tasks", response_model=None)
+def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user),db: Session = Depends(get_db)):
+    task = task_crud.create_task(db, task.title, task.priority, current_user)
+    if not task:
         raise HTTPException(status_code=400, detail="Task creation failed")
+    return TaskResponse.model_validate(task)
 
-@app.get("/tasks")
-def get_all_tasks_endpoint(db:Session = Depends(get_db)):
-    task = task_crud.get_all_tasks(db)
-    if task:
-        return task
-    else:
-        raise HTTPException(status_code=404, detail="Task not found")
 
-@app.put("/tasks/{title}")
-def update_task_endpoint(title: str, db : Session = Depends(get_db)):
-    task = task_crud.update_task(db, title)
-    if task:
-        return task
-    else:
+
+@app.get("/tasks", response_model=list[TaskResponse])
+def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session = Depends(get_db)):
+    tasks = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == False).all()
+    if not tasks:
+        raise HTTPException(status_code=404, detail="No tasks found")
+        print("No task found")
+    return [TaskResponse.model_validate(t) for t in tasks]
+
+
+
+
+@app.put("/tasks/{title}", response_model=TaskResponse)
+def update_task_endpoint(
+    title: str,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    task = task_crud.update_task(db, title, current_user)
+    if not task:
         raise HTTPException(status_code=400, detail="Updating Task Failed")
+    return TaskResponse.model_validate(task)
 
-class TaskCompletionUpdate(BaseModel):
-    completed: bool
 
-@app.patch("/tasks/{task_id}")
-def update_task_completion_endpoint(task_id: int, task_update: TaskCompletionUpdate, db: Session = Depends(get_db)):
-    task = task_crud.update_task_completion(db, task_id, task_update.completed)
-    if task:
-        return task
-    else:
+
+@app.patch("/tasks/{task_id}", response_model=TaskResponse)
+def update_task_completion_endpoint(
+    task_id: int,
+    task_update: TaskCompletionUpdate,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    task_data = task_crud.update_task_completion(db, task_id, task_update.completed, current_user)
+    if not task_data:
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    print("Task completion data:", task_data)
+    
+    return task_data
+
+
 
 @app.delete("/tasks/{task_id}")
-def delete_task_by_id_endpoint(task_id: int, db: Session = Depends(get_db)):
-    result = task_crud.delete_task_by_id(db, task_id)
+def delete_task_by_id_endpoint(
+    task_id: int,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    result = task_crud.delete_task_by_id(db, task_id, current_user)
     if result is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    else:
-        return result
+    return {"message": "Task deleted successfully"}
 
-"""
-this is Pet Backend api routes below.
-"""
 
-class PetCreate(BaseModel):
-    name: str
-    age: int
-    hunger: int
+# ---------------------------------------------------
+# PET ROUTES
+# ---------------------------------------------------
 
-@app.post("/pet")
-def create_pet_endpoint(pet: PetCreate, db:Session = Depends(get_db)):
-    pet = pet_crud.create_pet(db, pet.name, pet.age, pet.hunger, last_fed=datetime.utcnow())
-    if pet:
-        return pet
-    else:
+@app.post("/pet", response_model=PetResponse)
+def create_pet_endpoint(
+    pet: PetCreate,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pet = pet_crud.create_pet(
+        db, pet.name, pet.age, pet.hunger,
+        last_fed=datetime.utcnow(), current_user=current_user
+    )
+    if not pet:
         raise HTTPException(status_code=400, detail="Pet creation Failed")
+    return PetResponse.model_validate(pet)
 
 
-@app.get("/pet")
-def get_all_pets_endpoint(db:Session = Depends(get_db)):
-    pets = pet_crud.get_all_pets(db)
-    if pets:
-        return pets
-    else:
-        raise HTTPException(status_code=404, detail="Pet not found")
+
+@app.get("/pet", response_model=list[PetResponse])
+def get_all_pets_endpoint(
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pets = pet_crud.get_all_pets(db, current_user)
+    if not pets:
+        raise HTTPException(status_code=404, detail="No pets found")
+    return [PetResponse.model_validate(p) for p in pets]
 
 
-class PetUpdate(BaseModel):
-    hunger:int
-    last_fed: datetime
-    age: float
 
-@app.put("/pet/{id}")
-def update_pet_endpoint(pet_update:PetUpdate, id:int, db:Session = Depends(get_db)):
-    pet = pet_crud.update_pet(db, id, pet_update.hunger, pet_update.age, pet_update.last_fed)
-    if pet:
-        return pet
-    else:
+
+@app.put("/pet/{id}", response_model=PetResponse)
+def update_pet_endpoint(
+    pet_update: PetUpdate,
+    id: int,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pet = pet_crud.update_pet(
+        db, id, pet_update.hunger, pet_update.age,
+        pet_update.last_fed, current_user
+    )
+    if not pet:
         raise HTTPException(status_code=400, detail="Pet Updating Failed")
+    return PetResponse.model_validate(pet)
+
 
 
 @app.delete("/pet/{id}")
-def delete_pet_endpoint(id:int, db:Session = Depends(get_db)):
-    pet = pet_crud.delete_pet(db, id)
-    if not pet:
+def delete_pet_endpoint(
+    id: int,
+    current_user= Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    result = pet_crud.delete_pet(db, id, current_user)
+    if result is None:
         raise HTTPException(status_code=404, detail="Pet not found")
-    else:
-        return {"message": "Pet Deleted Succesfully!!"}
-"""
-this is Auth Backend api routes below.  => basicaally the LOGIN part
-"""
-
-def get_current_user(token:str = Depends(oauth2_scheme), db:Session = Depends(get_db)):
-    decode_jwt = jwt.decode(token, SECRET_KEY, algorithm=ALGORITHM)
-    username = decode_jwt.get("sub")
-    user = db.query(User).filter(User.username == username).first()
-    if user:
-        return user
-    else:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    return {"message": "Pet deleted successfully"}
 
 
-@app.post("/token")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(get_db)):
+# ---------------------------------------------------
+# AUTH ROUTES (LOGIN / PASSWORD / OTP)
+# ---------------------------------------------------
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+@app.post("/token", response_model=TokenResponse)
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     username = form_data.username
     password = form_data.password
-    user = auth_crud.authenticate_user(db, username, password)
-    data = {"sub": username}
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired verification token")
+
+    if '@' in username:
+        user = auth_crud.authenticate_user(db, '', username, password)
     else:
-        token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
-        return {"access_token": token, "token_type": "bearer"}
+        user = auth_crud.authenticate_user(db, username, '', password)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    data = {"sub": username}
+    token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
+    return {"access_token": token, "token_type": "bearer"}
+
 
 @app.patch("/reset_password")
-def password_reset_endpoint( new_password:str, new_password_confirm: str, old_password:str, username:str, db:Session = Depends(get_db) ):
+def password_reset_endpoint(
+    new_password: str,
+    new_password_confirm: str,
+    old_password: str,
+    username: str,
+    db: Session = Depends(get_db)
+):
     reset = auth_crud.password_reset(db, new_password, new_password_confirm, old_password, username)
-    if reset:
-        return {"message": "Password Reset Done!"}
-    else:
-        raise HTTPException(status_code=400, detail="Password Reset failed")
+    if not reset:
+        raise HTTPException(status_code=400, detail="Password reset failed")
+    return {"message": "Password reset successful!"}
+
 
 @app.post("/send_forgot_password_otp")
 def send_forgot_password_otp(email: str, db: Session = Depends(get_db)):
     result = to_confirm_email(db, email)
-    if result:
-        return {"message": "OTP sent to your email"}
-    else:
+    if not result:
         raise HTTPException(status_code=404, detail="Email not found")
+    return {"message": "OTP sent to your email"}
+
 
 @app.patch("/forgot_password")
-def forgot_password_endpoint(entered_verify_code:str, new_password:str, new_password_confirm:str, email:str, db:Session = Depends(get_db)):
+def forgot_password_endpoint(
+    entered_verify_code: str,
+    new_password: str,
+    new_password_confirm: str,
+    email: str,
+    db: Session = Depends(get_db)
+):
     forget = auth_crud.forget_password(db, entered_verify_code, new_password, new_password_confirm, email)
-    if forget:
-        return {"message" : "Forget Password Reset Done!"}
-    else:
-        raise HTTPException(status_code=400, detail="Forget Password Reset Failed")
-        
-"""
-this is Registration Backend api routes below.
-"""
-class Registration_user(BaseModel):
-    username: str
-    password: str
-    email: str
+    if not forget:
+        raise HTTPException(status_code=400, detail="Forget password reset failed")
+    return {"message": "Forget password reset done!"}
+
+
+# ---------------------------------------------------
+# REGISTRATION & EMAIL VERIFICATION
+# ---------------------------------------------------
+
 @app.post("/register")
-def register_user(user:Registration_user, db:Session = Depends(get_db)):
-    hashed_password = pwd_context.hash(user.password)
-    user_name = db.query(User).filter(User.username == user.username).first() 
-    if not user_name:
-        user = auth_crud.create_user(db, user.username, hashed_password, user.email)
-        return {"message": "User Registered Sucessfully!!"}
-    else:
-        raise HTTPException(status_code=400, detail="Username or Email is already taken")
+def register_user(user: RegistrationUser, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.username == user.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username or Email already taken")
+
+    auth_crud.create_user(db, user.username, user.password, user.email)
+    return {"message": "User registered successfully!"}
+
 
 @app.post("/verify_email")
-def verify_email_endpoint(email:str, verification_token:str, db:Session = Depends(get_db)):
+def verify_email_endpoint(email: str, verification_token: str, db: Session = Depends(get_db)):
     result = auth_crud.verify_email(db, email, verification_token)
-    if result:
-        return {"message": "Email verified successfully"}
-    else:
+    if not result:
         raise HTTPException(status_code=400, detail="Email verification failed")
+    return {"message": "Email verified successfully"}
 
 
-"""
-this is Analysis Backend api routes below.
-"""
+# ---------------------------------------------------
+# STATS ROUTES
+# ---------------------------------------------------
+
 @app.get("/stats/{user_id}/all_time")
-def get_user_stats_all_time(user_id: int, db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time)
-    if user_stats is None:
+def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time, current_user)
+    if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
-    else:
-        return user_stats
-    
+    return user_stats
+
+
 @app.get("/stats/{user_id}/today")
-def get_user_stats_today(user_id: int, db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today)
-    if user_stats is None:
+def get_user_stats_today(user_id: int, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today, current_user)
+    if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
-    else:
-        return user_stats
-    
+    return user_stats
+
+
 @app.get("/stats/{user_id}/week")
-def get_user_stats_week(user_id: int, db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week)
-    if user_stats is None:
+def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week, current_user)
+    if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
-    else:
-        return user_stats
-    
+    return user_stats
+
+
 @app.get("/stats/{user_id}/month")
-def get_user_stats_month(user_id: int, db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month)
-    if user_stats is None:
+def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month, current_user)
+    if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
-    else:
-        return user_stats
-    
+    return user_stats
+
+
 @app.get("/stats/{user_id}/year")
-def get_user_stats_year(user_id: int, db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year)
-    if user_stats is None:
+def get_user_stats_year(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year, current_user)
+    if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
-    else:
-        return user_stats
+    return user_stats

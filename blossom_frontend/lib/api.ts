@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000";
+export const API_URL = "http://localhost:8000";
 
 // TASKS
 export async function fetchTasks(token?: string) {
@@ -10,14 +10,14 @@ export async function fetchTasks(token?: string) {
 }
 
 // CREATE a new task
-export async function createTask(title: string, token?: string) {
+export async function createTask(title: string, priority: string, token?: string) {
   const res = await fetch(`${API_URL}/tasks`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, priority }),
   });
   if (!res.ok) {
     throw new Error("Failed to create task");
@@ -26,7 +26,7 @@ export async function createTask(title: string, token?: string) {
 
 }
 
-// ✅ UPDATE task's completed status
+//  UPDATE task's completed status
 export async function updateTaskCompleted(id: number, completed: boolean, token?: string|null) {
   const res = await fetch(`${API_URL}/tasks/${id}`, {
     method: "PATCH",
@@ -43,7 +43,7 @@ export async function updateTaskCompleted(id: number, completed: boolean, token?
 
 }
 
-// ❌ DELETE a task
+//  DELETE a task
 export async function deleteTask(id: number, token?: string) {
   const res = await fetch(`${API_URL}/tasks/${id}`, {
     method: "DELETE",
@@ -92,11 +92,11 @@ export async function login(username: string, password: string) {
   return res.json();
 }
 
-export async function register(username: string, password: string) {
+export async function register(username: string, password: string, email: string) {
   const res = await fetch(`${API_URL}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, email }),
   });
   if (!res.ok) throw new Error("Registration failed");
   return res.json();

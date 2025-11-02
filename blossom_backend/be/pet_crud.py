@@ -1,34 +1,36 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from models import Pet
+from models import Pet, User
+from auth_dependencies import get_current_user
+from fastapi import Depends
 
 #created a new pet
-def create_pet(db: Session, name:str, age:float, hunger:int, last_fed:datetime):
-    new_pet = Pet(name=name, age=age, hunger=hunger, last_fed=last_fed)
+def create_pet(db: Session, name:str, age:float, hunger:int, last_fed:datetime, current_user):
+    new_pet = Pet(name=name, age=age, hunger=hunger, last_fed=last_fed, user_id=current_user.id, is_alive=True)
     db.add(new_pet) #adding new_pet in db
     db.commit() #saving all the data and pet in db
     db.refresh(new_pet) #basically refresh all the data of new pet in db
     return new_pet
 
 #getting pet by id
-def get_pet_by_id(db:Session, id:int):
-    pet = db.query(Pet).filter(Pet.id == id).first()
+def get_pet_by_id(db:Session, id:int, current_user):
+    pet = db.query(Pet).filter(Pet.id == id, Pet.user_id == current_user.id).first()
     if not pet:
         return None
     else:
         return pet
 
 #getting all pets
-def get_all_pets(db:Session):
-    pets = db.query(Pet).all()
+def get_all_pets(db:Session, current_user):
+    pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
     if not pets:
         return None
     else:
         return pets
 
 #updating our pet
-def update_pet(db:Session, id:int, hunger:int, last_fed:datetime, age:float):
-    pet = get_pet_by_id(db, id)
+def update_pet(db:Session, id:int, hunger:int, last_fed:datetime, age:float, current_user):
+    pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return None
     pet.hunger = hunger
@@ -48,8 +50,8 @@ def check_last_fed(last_fed:datetime):
     return fed_time_diff.days
 
 #checking and updating(if needed) is_alive property of pet
-def updating_is_alive(db:Session, last_fed:datetime, id:int):
-    pet = get_pet_by_id(db, id)
+def updating_is_alive(db:Session, last_fed:datetime, id:int, current_user):
+    pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return None
     if check_last_fed(last_fed) > 7:
@@ -64,25 +66,25 @@ def updating_is_alive(db:Session, last_fed:datetime, id:int):
         return pet.is_alive
 
 #checking that whether the pet is dead or not! 
-def check_dead_pet(db: Session):
+def check_dead_pet(db: Session, current_user):
     """
     even after death of pet it stays in db.
     so that we can show to user that how many its pet died!
     """
 
-    pets = db.query(Pet).filter(Pet.is_alive==False).all()
+    pets = db.query(Pet).filter(Pet.is_alive==False, Pet.user_id == current_user.id).all()
     if not pets:
         return None
     else:
         return pets
 
 #deleteing pet from  db
-def delete_pet(db:Session, id:int):
+def delete_pet(db:Session, id:int, current_user):
     """
     Deletes a pet from the database by its ID.
     Returns True if deleted, False if not found.
     """
-    pet =  get_pet_by_id(db, id)
+    pet =  get_pet_by_id(db, id, current_user)
     if pet is None:
         return False
     db.delete(pet)

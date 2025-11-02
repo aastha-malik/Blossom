@@ -1080,6 +1080,36 @@ class BlossomFocusApp:
                               command=login_window.destroy)
         cancel_btn.pack(side='left', padx=10)
         
+        # Divider line
+        divider_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
+        divider_frame.pack(pady=20)
+        
+        # Divider line
+        divider = tk.Frame(divider_frame, height=1, bg=self.colors['light_gray'])
+        divider.pack(fill='x')
+        
+        # OR text
+        or_label = tk.Label(divider_frame, text="OR", 
+                           font=('Montserrat', 10, 'bold'),
+                           fg=self.colors['white'], 
+                           bg=self.colors['dark_gray'])
+        or_label.pack(pady=5)
+        
+        # Google login button
+        google_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
+        google_frame.pack(pady=10)
+        
+        google_btn = tk.Button(google_frame, text="🔍 Login with Google", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg='#4285F4',  # Google blue
+                              activebackground='#3367D6',
+                              activeforeground=self.colors['white'],
+                              border=0,
+                              pady=10,
+                              command=self.google_login)
+        google_btn.pack(fill='x', ipadx=20)
+        
         # Forgot password link
         forgot_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
         forgot_frame.pack(pady=10)
@@ -1089,7 +1119,7 @@ class BlossomFocusApp:
                               fg=self.colors['electric_blue'],
                               bg=self.colors['dark_gray'],
                               border=0,
-                              command=self.show_password_reset_form)
+                              command=self.show_password_forgot_form)
         forgot_btn.pack()
         
         # Focus on username field
@@ -1187,6 +1217,36 @@ class BlossomFocusApp:
                               command=signup_window.destroy)
         cancel_btn.pack(side='left', padx=10)
         
+        # Divider line
+        divider_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
+        divider_frame.pack(pady=20)
+        
+        # Divider line
+        divider = tk.Frame(divider_frame, height=1, bg=self.colors['light_gray'])
+        divider.pack(fill='x')
+        
+        # OR text
+        or_label = tk.Label(divider_frame, text="OR", 
+                           font=('Montserrat', 10, 'bold'),
+                           fg=self.colors['white'], 
+                           bg=self.colors['dark_gray'])
+        or_label.pack(pady=5)
+        
+        # Google signup button
+        google_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
+        google_frame.pack(pady=10)
+        
+        google_btn = tk.Button(google_frame, text="🔍 Sign up with Google", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg='#4285F4',  # Google blue
+                              activebackground='#3367D6',
+                              activeforeground=self.colors['white'],
+                              border=0,
+                              pady=10,
+                              command=self.google_signup)
+        google_btn.pack(fill='x', ipadx=20)
+        
         # Focus on username field
         username_entry.focus()
         
@@ -1194,67 +1254,42 @@ class BlossomFocusApp:
         signup_window.bind('<Return>', lambda e: self.register_user(username_entry.get(), email_entry.get(), password_entry.get(), confirm_password_entry.get(), signup_window))
     
     def login_user(self, username, password, window):
-        """Handle user login"""
+        """Handle user login using backend API"""
         if not username or not password:
             messagebox.showerror("Error", "Please fill in all fields!")
             return
-        
         try:
-            # Prepare login data
-            login_data = {
-                "username": username,
-                "password": password
-            }
-            
-            # Send login request to backend
-            response = requests.post(f"{self.backend_url}/token", 
-                                   data=login_data,  # Using form data for OAuth2PasswordRequestForm
-                                   timeout=10)
-            
+            login_data = {"username": username, "password": password}
+            response = requests.post(f"{self.backend_url}/token", data=login_data, timeout=10)
             if response.status_code == 200:
                 token_data = response.json()
                 self.auth_token = token_data.get("access_token")
                 self.current_user = username
                 self.is_logged_in = True
-                
                 messagebox.showinfo("Success", f"🎉 Welcome back, {username}!")
                 window.destroy()
-                self.switch_page("settings")  # Refresh settings page
+                self.switch_page("settings")
             else:
                 messagebox.showerror("Login Failed", "Invalid username or password!")
-                
         except requests.exceptions.ConnectionError:
             messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
         except Exception as e:
             messagebox.showerror("Error", f"Login failed: {str(e)}")
-    
+
     def register_user(self, username, email, password, confirm_password, window):
-        """Handle user registration"""
+        """Handle user registration using backend API"""
         if not all([username, email, password, confirm_password]):
             messagebox.showerror("Error", "Please fill in all fields!")
             return
-        
         if password != confirm_password:
             messagebox.showerror("Error", "Passwords do not match!")
             return
-        
         if len(password) < 6:
             messagebox.showerror("Error", "Password must be at least 6 characters long!")
             return
-        
         try:
-            # Prepare registration data
-            register_data = {
-                "username": username,
-                "password": password,
-                "email": email
-            }
-            
-            # Send registration request to backend
-            response = requests.post(f"{self.backend_url}/register", 
-                                   json=register_data,
-                                   timeout=10)
-            
+            register_data = {"username": username, "password": password, "email": email}
+            response = requests.post(f"{self.backend_url}/register", json=register_data, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 if "successfully" in result.get("message", "").lower():
@@ -1266,7 +1301,6 @@ class BlossomFocusApp:
             else:
                 result = response.json()
                 messagebox.showerror("Registration Failed", result.get("detail", "Registration failed!"))
-                
         except requests.exceptions.ConnectionError:
             messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
         except Exception as e:
@@ -1404,7 +1438,7 @@ class BlossomFocusApp:
                             fg=self.colors['white'],
                             bg=self.colors['hot_pink'],
                             activebackground=self.colors['electric_blue'],
-                            command=lambda: self.send_password_reset(email_entry.get(), reset_window))
+                            command=lambda: self.send_forgot_password_reset(email_entry.get(), reset_window))
         send_btn.pack(side='left', padx=10)
         
         cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
@@ -1419,7 +1453,7 @@ class BlossomFocusApp:
         email_entry.focus()
         
         # Bind Enter key to send
-        reset_window.bind('<Return>', lambda e: self.send_password_reset(email_entry.get(), reset_window))
+        reset_window.bind('<Return>', lambda e: self.send_forgot_password_reset(email_entry.get(), reset_window))
     
     def send_forgot_password_reset(self, email, window):
         """Send password reset email(in case of forgot password)"""
@@ -1439,6 +1473,72 @@ class BlossomFocusApp:
         messagebox.showinfo("Logged Out", "👋 You have been logged out successfully!")
         self.switch_page("settings")  # Refresh settings page
     
+    def fetch_tasks_from_backend(self):
+        """Fetch tasks from backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            response = requests.get(f"{self.backend_url}/tasks", headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return []
+        except Exception as e:
+            print(f"Error fetching tasks: {e}")
+            return []
+
+    def add_task_to_backend(self, title):
+        """Add a new task to backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
+            response = requests.post(f"{self.backend_url}/tasks", json={"title": title}, headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Error adding task: {e}")
+            return False
+
+    def update_task_completed_backend(self, task_id, completed):
+        """Update task completion status in backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
+            response = requests.patch(f"{self.backend_url}/tasks/{task_id}", json={"completed": completed}, headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Error updating task: {e}")
+            return False
+
+    def delete_task_from_backend(self, task_id):
+        """Delete a task from backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            response = requests.delete(f"{self.backend_url}/tasks/{task_id}", headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Error deleting task: {e}")
+            return False
+
+    def fetch_pets_from_backend(self):
+        """Fetch pets from backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            response = requests.get(f"{self.backend_url}/pet", headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return []
+        except Exception as e:
+            print(f"Error fetching pets: {e}")
+            return []
+
+    def create_pet_in_backend(self, name, age, hunger):
+        """Create a new pet in backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
+            response = requests.post(f"{self.backend_url}/pet", json={"name": name, "age": age, "hunger": hunger}, headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Error creating pet: {e}")
+            return False
+
     def run(self):
         """Start the application"""
         self.root.mainloop()

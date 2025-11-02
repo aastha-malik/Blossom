@@ -1,6 +1,41 @@
+# Python
 __pycache__/
-*.pyc
-*.db
-.env
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+# Virtual Environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# VS Code
 .vscode/
+
+# macOS
+.DS_Store
+
+# Node / Frontend
+node_modules/
+.next/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
 *.log
+
+# Coverage / test
+.coverage
+.pytest_cache/
+htmlcov/

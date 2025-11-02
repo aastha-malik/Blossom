@@ -15,10 +15,12 @@ SECRET_KEY = "blossom_app"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
+MAX_PASSWORD_LENGTH = 72
 
 # creating user => registration part
-def create_user(db:Session, username:str, hashed_password:str, email:str):
+def create_user(db:Session, username:str, plain_password:str, email:str):
     email_token = random.randint(99999, 1000000)
+    hashed_password = pwd_context.hash(plain_password[:MAX_PASSWORD_LENGTH])
     new_user = User( username=username, hashed_password=hashed_password, email=email, user_verification_token=str(email_token) )
 
     db.add(new_user)
@@ -27,8 +29,9 @@ def create_user(db:Session, username:str, hashed_password:str, email:str):
     new_user.user_verification_token = str(email_token)
     new_user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
     db.commit()
-    email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
-    send_email(email, "Verify your Blossom Account", email_body)
+    # email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
+    # send_email(email, "Verify your Blossom Account", email_body)
+    print(f"Mock email to {email}: Hello! Please verify your Email for Blossom {email_token} Thank you!")
 
     return new_user
 
@@ -49,9 +52,11 @@ def verify_email(db:Session, email:str, verification_token:str):
 def authenticate_user(db:Session, username:str, email:str, password:str):
     user = db.query(User).filter(or_(User.username == username, User.email == email)).first()
     if user is None:
+        print("user not found")
         return None
-    password_check = pwd_context.verify(password, user.hashed_password)
+    password_check = pwd_context.verify(password[:MAX_PASSWORD_LENGTH], user.hashed_password)
     if not password_check:
+        print("password not matched")
         return None
     return user
     
