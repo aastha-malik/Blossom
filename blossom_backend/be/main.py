@@ -178,6 +178,12 @@ def update_pet_endpoint(
     return PetResponse.model_validate(pet)
 
 
+@app.patch("/pets/feed/{id}", response_model=PetResponse)
+def feed_pet_endpoint(db: Session = Depends(get_db), current_user= Depends(get_current_user)):
+    pet_data = pet_crud.feed_pet(db, is_alive=True, hunger=Pet.hunger, last_fed=Pet.last_fed, age=Pet.age, current_user=current_user)
+    if not pet:
+        raise HTTPException(status_code=400, details="Feeding pet failed")
+    return pet_data
 
 @app.delete("/pet/{id}")
 def delete_pet_endpoint(

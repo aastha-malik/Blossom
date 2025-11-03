@@ -24,8 +24,8 @@ class Pet(Base):
     __tablename__ = "pets"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True) #names for pet
-    age = Column(Float)
-    hunger = Column(Integer)
+    age = Column(Float, default=0.0)
+    hunger = Column(Integer, default=100)
     last_fed = Column(DateTime, default=datetime.utcnow())
     is_alive = Column(Boolean, default=True)
     user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table

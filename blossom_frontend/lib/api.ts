@@ -77,6 +77,18 @@ export async function createPet(name: string, age: number, hunger: number, token
   return res.json();
 }
 
+export async function feedPet(id: number, token?: string | null) {
+  const res = await fetch(`${API_URL}/pets/${id}/feed`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error("Failed to feed pet");
+  return res.json();
+}
+
 // AUTH
 export async function login(username: string, password: string) {
   const form = new URLSearchParams();

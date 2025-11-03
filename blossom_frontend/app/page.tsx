@@ -102,6 +102,8 @@ export default function BlossomFocusPreview() {
   const [resetPasswordForm, setResetPasswordForm] = useState({ oldPassword: "", newPassword: "", confirmNewPassword: "" });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  console.log("showPetCreator:", showPetCreator);
+
   // Generate floating particles
   useEffect(() => {
     const newParticles = Array.from({ length: 30 }, (_, i) => ({
@@ -344,35 +346,45 @@ export default function BlossomFocusPreview() {
     alert(`🎉 Welcome ${newPet.name}! Your new ${newPet.type} is ready to grow with you!`);
   };
 
-  const revivePet = (petId: string) => {
-    const reviveCost = 200;
 
-    if (userData.xp < reviveCost) {
-      alert("Not enough XP! You need 200 XP to revive your pet.");
+    
+  const handleFeedPet = async (petId: number, petName: string) => {
+    if (!authToken) return;
+  
+    // 🪙 Check XP before feeding
+    if (userData.xp < 35) {
+      alert("You need at least 35 XP to feed your pet!");
       return;
     }
-
-    setUserData((prev) => ({
-      ...prev,
-      xp: prev.xp - reviveCost,
-      pets: prev.pets.map((pet) => {
-        if (pet.id === petId) {
-          return {
-            ...pet,
-            isAlive: true,
-            hunger: 50,
-            happiness: 50,
-            health: 50,
-            lastFed: new Date().toISOString(),
-            daysSinceLastFed: 0,
-          };
-        }
-        return pet;
-      }),
-    }));
-
-    alert(`💖 ${getActivePet()?.name} has been revived! Take better care of them this time!`);
+  
+    try {
+      const res = await feedPet(petId, authToken);
+      console.log("Feed success:", res);
+  
+      // 🎉 Show Thank You popup
+      alert(`Thank you, ${userData.username}! You just fed ${petName}! 🐾`);
+  
+      // Update pet + deduct XP
+      setUserData((prev) => ({
+        ...prev,
+        xp: prev.xp - 35,
+        pets: prev.pets.map((p) =>
+          p.id === petId
+            ? {
+                ...p,
+                hunger: res.hunger ?? 100,
+                last_fed: res.last_fed,
+                is_alive: res.is_alive,
+              }
+            : p
+        ),
+      }));
+    } catch (err) {
+      console.error("Feed failed:", err);
+      alert("Failed to feed pet");
+    }
   };
+  
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -971,6 +983,166 @@ export default function BlossomFocusPreview() {
                 </div>
               </>
             )}
+            {currentPage === "pets" && (
+              <div className="p-8 space-y-8 text-center">
+                {/* Adopt a Pet Button */}
+                <Button
+                  onClick={() => setShowPetCreator(true)}
+                  className="bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] text-white font-bold px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  🐾 Adopt a Pet
+                </Button>
+
+                {/* Pet Creator Modal */}
+                {showPetCreator && (
+                  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-xl bg-black/90 border-2 border-[#FF2D95]/30 backdrop-blur-xl shadow-2xl">
+                      <CardContent className="p-8 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#FF2D95]/10 to-[#00E0FF]/10"></div>
+                        <div className="relative z-10">
+                          {/* Close button */}
+                          <button
+                            onClick={() => setShowPetCreator(false)}
+                            className="absolute top-0 right-0 text-white hover:text-[#FF2D95] text-2xl font-bold transition-colors duration-300"
+                          >
+                            ✕
+                          </button>
+
+                          {/* Header */}
+                          <div className="text-center mb-8">
+                            <h2 className="text-4xl font-black bg-gradient-to-r from-[#FF2D95] via-[#00E0FF] to-[#B967FF] bg-clip-text text-transparent mb-2">
+                              🐾 ADOPT A PET
+                            </h2>
+                            <p className="text-white/80 text-sm">
+                              Choose your new companion to grow with your productivity!
+                            </p>
+                          </div>
+
+                          {/* Form */}
+                          <div className="space-y-6">
+                            {/* Pet Name */}
+                            <div>
+                              <label className="block text-sm font-bold text-white mb-2">
+                                Pet Name
+                              </label>
+                              <Input
+                                type="text"
+                                value={newPetName}
+                                onChange={(e) => setNewPetName(e.target.value)}
+                                placeholder="Enter a cute name..."
+                                className="bg-black/70 border-2 border-[#FF2D95]/50 text-white placeholder:text-white/50 focus:border-[#00E0FF] focus:ring-[#00E0FF]/20"
+                              />
+                            </div>
+
+                            {/* Pet Type */}
+                            <div>
+                              <label className="block text-sm font-bold text-white mb-4">
+                                Pet Type
+                              </label>
+                              <div className="flex gap-4">
+                                <button
+                                  onClick={() => setNewPetType("dog")}
+                                  className={`flex-1 p-6 rounded-xl border-2 transition-all duration-300 ${
+                                    newPetType === "dog"
+                                      ? "bg-gradient-to-r from-[#FF2D95] to-[#B967FF] border-[#FF2D95] text-white"
+                                      : "bg-black/50 border-[#FF2D95]/30 text-white hover:border-[#FF2D95]/50"
+                                  }`}
+                                >
+                                  <div className="text-4xl mb-2">🐶</div>
+                                  <div className="font-bold">DOG</div>
+                                  <div className="text-xs text-white/80">Loyal & Energetic</div>
+                                </button>
+                                <button
+                                  onClick={() => setNewPetType("cat")}
+                                  className={`flex-1 p-6 rounded-xl border-2 transition-all duration-300 ${
+                                    newPetType === "cat"
+                                      ? "bg-gradient-to-r from-[#00E0FF] to-[#B967FF] border-[#00E0FF] text-white"
+                                      : "bg-black/50 border-[#00E0FF]/30 text-white hover:border-[#00E0FF]/50"
+                                  }`}
+                                >
+                                  <div className="text-4xl mb-2">🐱</div>
+                                  <div className="font-bold">CAT</div>
+                                  <div className="text-xs text-white/80">Independent & Wise</div>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <Button
+                              onClick={createPet}
+                              className="w-full bg-gradient-to-r from-[#FF2D95] via-[#B967FF] to-[#00E0FF] hover:shadow-2xl hover:shadow-[#FF2D95]/30 transition-all duration-300 transform hover:scale-105 py-6 text-xl font-black rounded-2xl text-white animate-gradient-move"
+                            > 
+                              🎉 ADOPT PET
+                            </Button>
+                            
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* 🐾 Adopted Pets List */}
+              <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {userData.pets && userData.pets.length > 0 ? (
+                  userData.pets.map((pet) => (
+                    <Card
+                      key={pet.id}
+                      className={`bg-black/70 border ${
+                        pet.is_alive ? "border-[#FF2D95]/30" : "border-red-600/40"
+                      } hover:border-[#00E0FF]/50 transition-all duration-300 backdrop-blur-md rounded-2xl shadow-xl`}
+                    >
+                      <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
+                        <div className="text-6xl">
+                          {pet.type === "dog"
+                            ? pet.is_alive
+                              ? "🐶"
+                              : "💀🐶"
+                            : pet.type === "cat"
+                            ? pet.is_alive
+                              ? "🐱"
+                              : "💀🐱"
+                            : "🐾"}
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-white">{pet.name}</h3>
+                        <p className="text-white/70 capitalize">{pet.type}</p>
+
+                        {/* 🧓 Age Display */}
+                        <p className="text-[#00E0FF] font-semibold">Age: {pet.age || 1} 🧁</p>
+
+                        {/* 🍗 Hunger */}
+                        {pet.is_alive ? (
+                          <>
+                            <p className="text-white/60 text-sm">
+                              Hunger: {pet.hunger}% | Last fed:{" "}
+                              {pet.last_fed
+                                ? new Date(pet.last_fed).toLocaleDateString()
+                                : "Never"}
+                            </p>
+
+                            <Button
+                              onClick={() => handleFeedPet(pet.id, pet.name)}
+                              className="mt-3 bg-gradient-to-r from-[#00E0FF] to-[#B967FF] px-6 py-2 rounded-xl text-white hover:scale-105 transition-all"
+                            >
+                              🍗 Feed (−35 XP)
+                            </Button>
+                          </>
+                        ) : (
+                          <p className="text-red-500 font-bold text-lg">
+                            💀 {pet.name} hasn’t been fed for {pet.days_since_fed || "7+"} days
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-white/60 text-lg mt-4 col-span-full">
+                    You haven't adopted any pets yet! 🥺
+                  </p>
+                )}
+              </div>
 
             {/* Other pages remain the same... */}
             {currentPage === "analytics" && (

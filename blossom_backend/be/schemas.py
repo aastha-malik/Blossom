@@ -63,7 +63,7 @@ class TaskCompletionUpdate(BaseModel):
 
 class PetBase(BaseModel):
     name: str
-    age: int
+    age: float
     hunger: int
 
 
@@ -80,7 +80,10 @@ class PetUpdate(BaseModel):
 class PetResponse(PetBase):
     id: int
     last_fed: datetime
+    hunger: int
+    age: float
     user_id: int
+    is_alive: bool
 
     class Config:
         from_attributes = True
