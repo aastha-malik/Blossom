@@ -43,22 +43,12 @@ blossom-focus/
 
 1. **Tasks & Focus Timer**: Add, manage, and complete tasks to earn XP and also have your focus timer of 25 min along side so no change in tabs again and again all needed stuff at one place
 2. **Analytics**: Track your productivity trends and achievements
-3. **Settings**: Customize your experience and manage data  # for Logged in Users only
+3. **Settings**: Customize your experience and manage data  # for Logged in Users only (not in web but present in GUI)
 
 ## Gamification System
 
 - **XP System**: Earn 10 XP per completed task, 25 XP per focus session
 - **Pet Hunger**: so yeah your pet need to be  feed to which you can buy your food using the XPs 
 
-## Development
-
-The frontend is complete and ready to use! The backend (`blossom_be/`) folders (it has my db as well) are set up for your implementation.
-
-Feel free to extend the app with:
-- User authentication
-- Cloud sync
-- Social features
-- More customization options
-- Advanced analytics
 
 Happy focusing! 🎯✨
