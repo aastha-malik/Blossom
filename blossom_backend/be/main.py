@@ -286,7 +286,7 @@ def verify_email_endpoint(email: str, verification_token: str, db: Session = Dep
 
 @app.get("/stats/{user_id}/all_time")
 def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time(current_user), current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -294,7 +294,7 @@ def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_use
 
 @app.get("/stats/{user_id}/today")
 def get_user_stats_today(user_id: int, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today(current_user), current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -302,7 +302,7 @@ def get_user_stats_today(user_id: int, current_user = Depends(get_current_user),
 
 @app.get("/stats/{user_id}/week")
 def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week(current_user), current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -310,7 +310,7 @@ def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), d
 
 @app.get("/stats/{user_id}/month")
 def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month(current_user), current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -318,7 +318,7 @@ def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), 
 
 @app.get("/stats/{user_id}/year")
 def get_user_stats_year(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year(current_user), current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats

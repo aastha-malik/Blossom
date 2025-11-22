@@ -8,53 +8,39 @@ from fastapi import Depends
 
 
 
-def start_of_today():
+def start_of_today(current_user: None):
     today = datetime.utcnow()
     start_date = datetime(today.year, today.month, today.day)
     return start_date
 
-def start_of_week():
+def start_of_week(current_user: None):
     today = datetime.utcnow()
     start_date = today - timedelta(days=today.weekday())  # Get the start of the week (Monday)
     return datetime(start_date.year, start_date.month, start_date.day)
     
-def start_of_month():
+def start_of_month(current_user: None):
     today = datetime.utcnow()
     start_date = datetime(today.year, today.month, 1)
     return start_date
 
-def start_of_year():
+def start_of_year(current_user: None):
     today = datetime.utcnow()
     start_date = datetime(today.year, 1, 1) # Get the start of the year
     return start_date
 
-def start_of_all_time(user: User):
-    return user.start_acc_time
+def start_of_all_time(current_user: User):
+    return User.start_acc_time
 
 
 def get_user_tasks(db: Session, user_id: int, start_date: datetime, current_user):
-    """
-    Fetch all tasks for a specific user.
-    
-    :param db: Database session
-    :param user_id: ID of the user whose tasks are to be fetched
-    :return: List of tasks associated with the user
-    """
-    start_date = datetime.utcnow()
     tasks = db.query(Task).filter(Task.user_id == current_user.id).filter(Task.completed==True).filter(Task.created_at >= start_date).all()
     if tasks is None:
-        raise HTTPException(status_code=404, detail="Tasks not found")
+        return []
     else:
         return tasks
 
 def count_tasks_completed(db: Session, user_id: int, start_date: datetime, current_user):
-    """
-    Count the number of tasks completed by a specific user.
-    db.query(Task).filter(Task.user_id == user_id).all()
-    :param db: Database session
-    :param user_id: ID of the user whose completed tasks are to be counted
-    :return: Count of completed tasks for the user
-    """
+
     num_completed = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == True).filter(Task.created_at >= start_date).count()
     if num_completed is None:
         raise HTTPException(status_code=404, detail="No completed tasks found for the user")    
@@ -63,14 +49,8 @@ def count_tasks_completed(db: Session, user_id: int, start_date: datetime, curre
     else:
         return num_completed
 
-def streak_calculation(db: Session, user_id: int, current_user , task: Task):
-    """
-    Calculate the streak of completed tasks for a specific user.
-    
-    :param db: Database session
-    :param user_id: ID of the user whose streak is to be calculated
-    :return: Streak count of completed tasks for the user
-    """
+def streak_calculation(db: Session, user_id: int,start_date: datetime, current_user):
+
     tasks = get_user_tasks(db, user_id, start_date, current_user)
     streaks = 0
     task_dates = set()
@@ -103,25 +83,14 @@ def total_xps(db:Session, user_id:int,current_user , xp=User.xp):
     else:
         return user.xp or 0
 
-def total_focus_time(db:Session, user_id:int, current_user, time=Focus_time.duration):
-    user = db.query(User).filter(User.id == current_user.id).first()
-    focus_time = 0
+def total_focus_time(db:Session, user_id:int, current_user):
+    focus_times = db.query(Focus_time).filter(Focus_time.user_id == current_user.id).all()
 
-    if user:
+    total_minutes = 0
+    for f in focus_times:
+        total_minutes += (f.end_time - f.start_time).total_seconds() / 60
 
-        focus_times = db.query(Focus_time).filter(Focus_time.user_id == current_user.id).all()
-        for focus in focus_times:
-            focus_time += (focus.end_time - focus.start_time).total_seconds() / 60  # Convert seconds to minutes
-        
-        if focus_time < 0:
-            raise HTTPException(status_code=400, detail="Invalid focus time value")
-        elif focus_time is None:
-            raise HTTPException(status_code=404, detail="Focus time not found for the user")
-        else:
-            return focus_time
-        
-    else:
-        return 0
+    return total_minutes
 
 
 def get_user_stats(db: Session, user_id: int, start_period_func, current_user):
