@@ -21,7 +21,7 @@ MAX_PASSWORD_LENGTH = 72
 def create_user(db:Session, username:str, plain_password:str, email:str):
     email_token = random.randint(99999, 1000000)
     hashed_password = pwd_context.hash(plain_password[:MAX_PASSWORD_LENGTH])
-    new_user = User( username=username, hashed_password=hashed_password, email=email, user_verification_token=str(email_token) )
+    new_user = User( username=username, hashed_password=hashed_password, email=email, user_verification_token=str(email_token), start_acc_time= datetime.utcnow())
 
     db.add(new_user)
     db.commit()

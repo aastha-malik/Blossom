@@ -5,12 +5,12 @@ from auth_dependencies import get_current_user
 from fastapi import Depends
 
 #created a new pet
-def create_pet(db: Session, name:str, age:float, hunger:int, last_fed:datetime, current_user):
-    new_pet = Pet(name=name, age=age, hunger=hunger, last_fed=last_fed, user_id=current_user.id, is_alive=True)
-    pet.last_fed = datetime.utcnow()
-    pet.hunger = 100
-    pet.is_alive = True
-    pet.age = 0.0
+def create_pet(db: Session, name:str, type:str , current_user):
+    new_pet = Pet(name=name, type=type, user_id=current_user.id)
+    new_pet.last_fed = datetime.utcnow()
+    new_pet.hunger = 100
+    new_pet.is_alive = True
+    new_pet.age = 0.0
 
     db.add(new_pet) #adding new_pet in db
     db.commit() #saving all the data and pet in db
@@ -27,7 +27,7 @@ def get_pet_by_id(db:Session, id:int, current_user):
 
 #getting all pets
 def get_all_pets(db:Session, current_user):
-    pets = db.query(Pet).filter(Pet.user_id == current_user.id, is_alive == True).all()
+    pets = db.query(Pet).filter(Pet.user_id == current_user.id, Pet.is_alive == True).all()
     if not pets:
         return None
     else:
@@ -71,18 +71,18 @@ def updating_is_alive(db:Session, last_fed:datetime, id:int, current_user):
     else:
         return pet.is_alive
 #feed pet  function
-def feed_pet(db:Session, is_alive:bool, hunger:int, last_fed:datetime, age:float, current_user):
-    pet = db.query(Pet).filter(Pet.user_id == current_user.id, is_alive == True).first()
+def feed_pet(db:Session ,pet_id: int, current_user):
+    pet = db.query(Pet).filter(Pet.user_id == current_user.id, Pet.is_alive == True).first()
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         return None
     if not pet:
         return None
-    if check_last_fed(last_fed) > 7:
+    if check_last_fed(pet.last_fed) > 7:
         pet.is_alive = False
         db.commit()
         return pet
-    elif days_since_last_fed >= 1 and pet.is_alive:
+    elif check_last_fed(pet.last_fed) >= 1 and pet.is_alive:
         pet.hunger = 100
 
     
@@ -98,22 +98,20 @@ def feed_pet(db:Session, is_alive:bool, hunger:int, last_fed:datetime, age:float
         db.refresh(user)
 
         print({
-        "id": pet.id,
-        "name": pet.name,
-        "age": pet.age,
-        "hunger": pet.hunger,
-        "last_fed": pet.last_fed,
-        "is_alive": pet.is_alive,
+            "id": pet.id,
+            "name": pet.name,
+            "type": pet.type,
+            "age": pet.age,
+            "hunger": pet.hunger,
+            "last_fed": pet.last_fed,
+            "is_alive": pet.is_alive,
+            "user_id": pet.user_id
         })
+        print("bla bla bla")
+        print(pet)
 
-        return {
-        "id": pet.id,
-        "name": pet.name,
-        "age": pet.age,
-        "hunger": pet.hunger,
-        "last_fed": pet.last_fed,
-        "is_alive": pet.is_alive,
-        }
+        return pet
+
     else:
         print("Not enough XP to feed pet")
         raise HTTPException(status_code=400, detail="Not enough XP to feed pet")

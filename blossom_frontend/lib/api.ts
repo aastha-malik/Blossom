@@ -56,6 +56,19 @@ export async function deleteTask(id: number, token?: string) {
 }
 
 // PETS
+
+// Define a Pet interface if not already present
+export interface Pet {
+  id: number;
+  name: string;
+  type: string;
+  hunger: number;
+  is_alive: boolean;
+  age: number;
+  last_fed: string;
+  user_id: number;
+}
+
 export async function fetchPets(token?: string) {
   const res = await fetch(`${API_URL}/pet`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -64,17 +77,22 @@ export async function fetchPets(token?: string) {
   return res.json();
 }
 
-export async function createPet(name: string, age: number, hunger: number, token?: string) {
-  const res = await fetch(`${API_URL}/pet`, {
+export async function createPet(name: string, type: string, token?: string): Promise<Pet> {
+  const res = await fetch(`${API_URL}/pets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ name, age, hunger }),
+    body: JSON.stringify({ name, type }),
   });
-  if (!res.ok) throw new Error("Failed to create pet");
-  return res.json();
+
+  if (!res.ok) {
+    throw new Error("Failed to create pet");
+  }
+
+  const data: Pet = await res.json();
+  return data;
 }
 
 export async function feedPet(id: number, token?: string | null) {

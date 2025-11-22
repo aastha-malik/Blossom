@@ -18,7 +18,7 @@ from auth_crud import SECRET_KEY, ALGORITHM
 from auth_dependencies import get_current_user
 from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
-    PetCreate, PetUpdate, PetResponse,
+    PetCreate, PetUpdate, PetResponse,PetFeed,
     RegistrationUser, TokenResponse
 )
 print("TaskResponse imported from:", TaskResponse)
@@ -133,19 +133,16 @@ def delete_task_by_id_endpoint(
 # PET ROUTES
 # ---------------------------------------------------
 
-@app.post("/pet", response_model=PetResponse)
+@app.post("/pets", response_model=PetResponse)
 def create_pet_endpoint(
     pet: PetCreate,
-    current_user= Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
-    pet = pet_crud.create_pet(
-        db, pet.name, pet.age, pet.hunger,
-        last_fed=datetime.utcnow(), current_user=current_user
-    )
-    if not pet:
-        raise HTTPException(status_code=400, detail="Pet creation Failed")
-    return PetResponse.model_validate(pet)
+    pet_data = pet_crud.create_pet(db, pet.name, pet.type, current_user)
+    if not pet_data:
+        raise HTTPException(status_code=400, detail="Pet creation failed")
+    return pet_data
 
 
 
@@ -178,10 +175,10 @@ def update_pet_endpoint(
     return PetResponse.model_validate(pet)
 
 
-@app.patch("/pets/feed/{id}", response_model=PetResponse)
-def feed_pet_endpoint(db: Session = Depends(get_db), current_user= Depends(get_current_user)):
-    pet_data = pet_crud.feed_pet(db, is_alive=True, hunger=Pet.hunger, last_fed=Pet.last_fed, age=Pet.age, current_user=current_user)
-    if not pet:
+@app.patch("/pet/feed/{id}", response_model=PetResponse)
+def feed_pet_endpoint(id: int, db: Session = Depends(get_db), current_user= Depends(get_current_user)):
+    pet_data = pet_crud.feed_pet(db, id, current_user)
+    if not pet_data:
         raise HTTPException(status_code=400, details="Feeding pet failed")
     return pet_data
 
@@ -289,7 +286,7 @@ def verify_email_endpoint(email: str, verification_token: str, db: Session = Dep
 
 @app.get("/stats/{user_id}/all_time")
 def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time, current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time(current_user), current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -297,7 +294,7 @@ def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_use
 
 @app.get("/stats/{user_id}/today")
 def get_user_stats_today(user_id: int, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today, current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today(current_user), current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -305,7 +302,7 @@ def get_user_stats_today(user_id: int, current_user = Depends(get_current_user),
 
 @app.get("/stats/{user_id}/week")
 def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week, current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week(current_user), current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -313,7 +310,7 @@ def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), d
 
 @app.get("/stats/{user_id}/month")
 def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month, current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month(current_user), current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
@@ -321,7 +318,7 @@ def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), 
 
 @app.get("/stats/{user_id}/year")
 def get_user_stats_year(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year, current_user)
+    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year(current_user), current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats

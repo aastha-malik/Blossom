@@ -56,7 +56,6 @@ class TaskResponse(BaseModel):
 class TaskCompletionUpdate(BaseModel):
     completed: bool
 
-
 # --------------------------------------
 # PET SCHEMAS
 # --------------------------------------
@@ -65,6 +64,7 @@ class PetBase(BaseModel):
     name: str
     age: float
     hunger: int
+    type: str
 
 
 class PetCreate(PetBase):
@@ -74,16 +74,21 @@ class PetCreate(PetBase):
 class PetUpdate(BaseModel):
     hunger: int
     last_fed: datetime
-    age: float
 
 
-class PetResponse(PetBase):
+class PetFeed(BaseModel):
+    pass  # feeding requires no input from the user
+
+
+class PetResponse(BaseModel):
     id: int
-    last_fed: datetime
-    hunger: int
+    name: str
+    type: str
     age: float
-    user_id: int
+    hunger: int
+    last_fed: datetime
     is_alive: bool
+    user_id: int
 
     class Config:
         from_attributes = True

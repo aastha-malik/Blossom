@@ -23,8 +23,9 @@ class Task(Base):
 class Pet(Base):
     __tablename__ = "pets"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True) #names for pet
+    name = Column(String, index=True, nullable=False) #names for pet
     age = Column(Float, default=0.0)
+    type = Column(String,nullable=False)
     hunger = Column(Integer, default=100)
     last_fed = Column(DateTime, default=datetime.utcnow())
     is_alive = Column(Boolean, default=True)
@@ -38,6 +39,7 @@ class User(Base):
     hashed_password = Column(String)
     email = Column(String, unique=True, index=True)
     xp = Column(Integer, default=100)
+    start_acc_time = Column(DateTime, default=datetime.utcnow())
     tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
     focus_times = relationship("Focus_time", back_populates="user")  # Establishing a relationship with Focus_time model
     user_verified = Column(Boolean, default=False) #whether email of user is verified or not

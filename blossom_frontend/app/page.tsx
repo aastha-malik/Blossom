@@ -219,11 +219,11 @@ export default function BlossomFocusPreview() {
     if (ageInYears < 1) {
       return { stage: "baby", foodCost: 50, size: "text-8xl", description: "Tiny & Adorable" };
     } else if (ageInYears < 5) {
-      return { stage: "young", foodCost: 100, size: "text-9xl", description: "Growing & Playful" };
+      return { stage: "young", foodCost: 50, size: "text-9xl", description: "Growing & Playful" };
     } else if (ageInYears < 10) {
-      return { stage: "adult", foodCost: 150, size: "text-[10rem]", description: "Strong & Mature" };
+      return { stage: "adult", foodCost: 50, size: "text-[10rem]", description: "Strong & Mature" };
     } else {
-      return { stage: "elder", foodCost: 200, size: "text-[12rem]", description: "Wise & Majestic" };
+      return { stage: "elder", foodCost: 50, size: "text-[12rem]", description: "Wise & Majestic" };
     }
   };
 
@@ -312,46 +312,41 @@ export default function BlossomFocusPreview() {
     alert(`🍖 Fed ${pet.name}! They're much happier now! ${useStreak ? "(Used 1 streak day)" : `(-${foodCost} XP)`}`);
   };
 
-  const createPet = () => {
+  
+  const createPet = async () => {
     if (!newPetName.trim()) {
       alert("Please enter a name for your pet!");
       return;
     }
-
-    const newPet: Pet = {
-      id: Date.now().toString(),
-      name: newPetName.trim(),
-      type: newPetType,
-      ageInYears: 0.1, // Start as baby
-      stage: "baby",
-      hunger: 100,
-      happiness: 100,
-      health: 100,
-      lastFed: new Date().toISOString(),
-      daysSinceLastFed: 0,
-      isAlive: true,
-      birthDate: new Date().toISOString(),
-      totalFoodEaten: 0,
-      level: 1,
-    };
-
-    setUserData((prev) => ({
-      ...prev,
-      pets: [...prev.pets, newPet],
-      activePetId: newPet.id,
-    }));
-
-    setNewPetName("");
-    setShowPetCreator(false);
-    alert(`🎉 Welcome ${newPet.name}! Your new ${newPet.type} is ready to grow with you!`);
+  
+    if (!authToken) {
+      alert("You must be logged in to adopt a pet!");
+      return;
+    }
+  
+    try {
+      const createdPet = await createPet(newPetName.trim(), newPetType, authToken);
+    
+      setUserData((prev) => ({
+        ...prev,
+        pets: [...prev.pets, createdPet],
+        activePetId: createdPet.id,
+      }));
+    
+      setNewPetName("");
+      setShowPetCreator(false);
+      alert(`🎉 Welcome ${createdPet.name}! Your new ${createdPet.type} is ready to grow with you!`);
+    } catch (err) {
+      alert("Failed to adopt pet");
+    }
+    
   };
-
-
+  
     
   const handleFeedPet = async (petId: number, petName: string) => {
     if (!authToken) return;
   
-    // 🪙 Check XP before feeding
+    //  Check XP before feeding
     if (userData.xp < 35) {
       alert("You need at least 35 XP to feed your pet!");
       return;

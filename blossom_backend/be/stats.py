@@ -7,6 +7,31 @@ from auth_dependencies import get_current_user
 from fastapi import Depends
 
 
+
+def start_of_today():
+    today = datetime.utcnow()
+    start_date = datetime(today.year, today.month, today.day)
+    return start_date
+
+def start_of_week():
+    today = datetime.utcnow()
+    start_date = today - timedelta(days=today.weekday())  # Get the start of the week (Monday)
+    return datetime(start_date.year, start_date.month, start_date.day)
+    
+def start_of_month():
+    today = datetime.utcnow()
+    start_date = datetime(today.year, today.month, 1)
+    return start_date
+
+def start_of_year():
+    today = datetime.utcnow()
+    start_date = datetime(today.year, 1, 1) # Get the start of the year
+    return start_date
+
+def start_of_all_time(user: User):
+    return user.start_acc_time
+
+
 def get_user_tasks(db: Session, user_id: int, start_date: datetime, current_user):
     """
     Fetch all tasks for a specific user.
@@ -15,6 +40,7 @@ def get_user_tasks(db: Session, user_id: int, start_date: datetime, current_user
     :param user_id: ID of the user whose tasks are to be fetched
     :return: List of tasks associated with the user
     """
+    start_date = datetime.utcnow()
     tasks = db.query(Task).filter(Task.user_id == current_user.id).filter(Task.completed==True).filter(Task.created_at >= start_date).all()
     if tasks is None:
         raise HTTPException(status_code=404, detail="Tasks not found")
@@ -98,33 +124,8 @@ def total_focus_time(db:Session, user_id:int, current_user, time=Focus_time.dura
         return 0
 
 
-def start_of_today():
-    today = datetime.utcnow()
-    start_date = datetime(today.year, today.month, today.day)
-    return start_date
-
-def start_of_week():
-    today = datetime.utcnow()
-    start_date = today - timedelta(days=today.weekday())  # Get the start of the week (Monday)
-    return datetime(start_date.year, start_date.month, start_date.day)
-    
-def start_of_month():
-    today = datetime.utcnow()
-    start_date = datetime(today.year, today.month, 1)
-    return start_date
-
-def start_of_year():
-    today = datetime.utcnow()
-    start_date = datetime(today.year, 1, 1) # Get the start of the year
-    return start_date
-
-def start_of_all_time():
-    return datetime.min # Return the earliest possible date
- 
-
-
 def get_user_stats(db: Session, user_id: int, start_period_func, current_user):
-    start_date = start_period_func()
+    start_date = start_period_func(current_user)
     num_task_completed = count_tasks_completed(db, user_id, start_date, current_user)
     streaks_count = streak_calculation(db, user_id, start_date, current_user)
     xps = total_xps(db, user_id, current_user)
