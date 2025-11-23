@@ -71,6 +71,17 @@ def create_access_token(data:dict, expires_delta:timedelta):
     to_encode.update({"exp":expire})
     encode_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encode_jwt
+# delete account
+def del_user(db:Session, username:str, plain_password:str, email:str):
+    hashed_password = pwd_context.hash(plain_password[:MAX_PASSWORD_LENGTH])
+    user = db.query(User).filter(or_(User.username == username, User.email == email)).first()
+    password_check = pwd_context.verify(password[:MAX_PASSWORD_LENGTH], user.hashed_password)
+    if not password_check:
+        print("password not matched")
+        return False
+    db.delete(user)
+    db.commit()
+    return None
 
 #to reset password
 def reset_password(db:Session, new_password:str, new_password_confirm: str, old_password:str, username:str):

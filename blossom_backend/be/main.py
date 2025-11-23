@@ -19,7 +19,7 @@ from auth_dependencies import get_current_user
 from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
     PetCreate, PetUpdate, PetResponse,PetFeed,
-    RegistrationUser, TokenResponse
+    RegistrationUser, TokenResponse, DeleteAccountRequest
 )
 print("TaskResponse imported from:", TaskResponse)
 
@@ -34,7 +34,9 @@ app = FastAPI()
 
 origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",  # For GUI running on same machine
+    "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(
@@ -61,6 +63,19 @@ def get_db():
 @app.get("/")
 def read_root():
     return {"message": "This is Task Manager side of our app Blossom!!"}
+
+
+@app.get("/user/xp")
+def get_user_xp(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current user's XP"""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Initialize XP to 100 if None
+    if user.xp is None:
+        user.xp = 100
+        db.commit()
+    return {"xp": user.xp}
 
 
 # ---------------------------------------------------
@@ -258,15 +273,31 @@ def forgot_password_endpoint(
     return {"message": "Forget password reset done!"}
 
 
+@app.delete("delete_user", response_model=DeleteAccountRequest)
+def delete_account(username:str, email:str, plain_password:str, db: Session = Depends(get_db)):
+    user = auth_crud.del_user(db, username, plain_password, email)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user not found")
+    return {"message": "user account deleted successfully"}
+
+
+
 # ---------------------------------------------------
 # REGISTRATION & EMAIL VERIFICATION
 # ---------------------------------------------------
 
 @app.post("/register")
 def register_user(user: RegistrationUser, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.username == user.username).first()
+    from sqlalchemy import or_
+    # Check if username or email already exists
+    existing = db.query(User).filter(
+        or_(User.username == user.username, User.email == user.email)
+    ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Username or Email already taken")
+        if existing.username == user.username:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        if existing.email == user.email:
+            raise HTTPException(status_code=400, detail="Email already exists")
 
     auth_crud.create_user(db, user.username, user.password, user.email)
     return {"message": "User registered successfully!"}

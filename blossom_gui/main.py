@@ -12,7 +12,7 @@ class BlossomFocusApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Blossom Focus: Tech-Girly Edition")
-        self.root.geometry("1500x800")
+        self.root.geometry("1500x900")
         self.root.configure(bg='#18181A')
         
         # App state
@@ -84,18 +84,15 @@ class BlossomFocusApp:
             'name': 'Blossom',
             'type': 'cat',
             'age': 0,
-            'level': 1,
             'xp': 0,
-            'happiness': 100,
             'hunger': 100,
             'last_fed': datetime.now().strftime('%Y-%m-%d'),
             'is_alive': True
         }
         return {
-            'pets': [default_pet],
+            'pets': [],
             'current_pet_id': 0,
-            'level': 1,
-            'xp': 0,
+            'xp': 0,  # Default XP is 0 when not logged in
             'streak': 0,
             'tasks': [],
             'completed_tasks': 0,
@@ -106,12 +103,37 @@ class BlossomFocusApp:
         }
 
     def get_current_pet(self):
-        pets = self.user_data.get('pets', [])
-        pet_id = self.user_data.get('current_pet_id', 0)
-        for pet in pets:
-            if pet['id'] == pet_id:
-                return pet
-        return pets[0] if pets else None
+        """Get current pet - from backend if logged in, otherwise return None"""
+        if not self.is_logged_in or not self.auth_token:
+            return None
+        
+        pets = self.fetch_pets_from_backend()
+        if pets:
+            # Convert backend format to local format
+            converted_pets = []
+            for p in pets:
+                # Handle last_fed - backend returns datetime, convert to string
+                last_fed = p.get('last_fed')
+                if isinstance(last_fed, str):
+                    last_fed_str = last_fed.split('T')[0]  # Extract date from ISO format
+                elif hasattr(last_fed, 'strftime'):
+                    last_fed_str = last_fed.strftime('%Y-%m-%d')
+                else:
+                    last_fed_str = datetime.now().strftime('%Y-%m-%d')
+                
+                converted_pets.append({
+                    'id': p.get('id'),
+                    'name': p.get('name'),
+                    'type': p.get('type'),
+                    'age': p.get('age', 0),
+                    'xp': 0,  # XP not in backend schema
+                    'hunger': p.get('hunger', 100),
+                    'last_fed': last_fed_str,
+                    'is_alive': p.get('is_alive', True)
+                })
+            # Return first pet (or could use current_pet_id if stored)
+            return converted_pets[0] if converted_pets else None
+        return None
 
     def save_current_pet(self, pet):
         pets = self.user_data.get('pets', [])
@@ -174,11 +196,12 @@ class BlossomFocusApp:
         stats_frame = tk.Frame(sidebar, bg=self.colors['dark_gray'])
         stats_frame.pack(fill='x', padx=20, pady=(0, 30))
         
-        self.level_label = tk.Label(stats_frame, text=f"Level {self.user_data['level']}", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['electric_blue'], 
-                              bg=self.colors['dark_gray'])
-        self.level_label.pack()
+        # Fetch XP from backend if logged in, otherwise show 0
+        if self.is_logged_in and self.auth_token:
+            backend_xp = self.fetch_user_xp_from_backend()
+            self.user_data['xp'] = backend_xp
+        else:
+            self.user_data['xp'] = 0
         
         self.xp_label = tk.Label(stats_frame, text=f"XP: {self.user_data['xp']}", 
                            font=('Montserrat', 10),
@@ -214,8 +237,14 @@ class BlossomFocusApp:
     
     def update_sidebar_stats(self):
         """Update the sidebar statistics display"""
-        if hasattr(self, 'level_label'):
-            self.level_label.config(text=f"Level {self.user_data['level']}")
+        # If logged in, fetch XP from backend
+        if self.is_logged_in and self.auth_token:
+            backend_xp = self.fetch_user_xp_from_backend()
+            self.user_data['xp'] = backend_xp
+        else:
+            # If not logged in, XP should be 0
+            self.user_data['xp'] = 0
+        
         if hasattr(self, 'xp_label'):
             self.xp_label.config(text=f"XP: {self.user_data['xp']}")
         if hasattr(self, 'streak_label'):
@@ -312,12 +341,27 @@ class BlossomFocusApp:
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        if not self.user_data['tasks']:
+        
+        # Load tasks - from backend if logged in, otherwise show empty
+        tasks = []
+        if self.is_logged_in and self.auth_token:
+            backend_tasks = self.fetch_tasks_from_backend()
+            # Convert backend format to local format for display
+            for bt in backend_tasks:
+                tasks.append({
+                    'id': bt.get('id'),
+                    'text': bt.get('title', ''),
+                    'priority': bt.get('priority', 'medium'),
+                    'completed': bt.get('completed', False)
+                })
+        # If not logged in, tasks list stays empty
+        
+        if not tasks:
             no_tasks = tk.Label(scrollable_frame, text="No tasks yet! Add your first task above 🎯", font=('Montserrat', 12), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
             no_tasks.pack(expand=True, pady=50)
         else:
             # Sort tasks: incomplete first, then completed (at bottom)
-            sorted_tasks = sorted(self.user_data['tasks'], key=lambda t: t['completed'])
+            sorted_tasks = sorted(tasks, key=lambda t: t.get('completed', False))
             for i, task in enumerate(sorted_tasks):
                 self.create_task_widget(scrollable_frame, task, i)
     
@@ -330,6 +374,11 @@ class BlossomFocusApp:
     
     def start_timer(self):
         """Start the focus timer"""
+        # Check if logged in
+        if not self.is_logged_in or not self.auth_token:
+            self.show_login_required_popup("use the focus timer")
+            return
+        
         if not self.timer_running:
             self.timer_running = True
             self.timer_thread = threading.Thread(target=self.run_timer)
@@ -367,25 +416,19 @@ class BlossomFocusApp:
     def timer_finished(self):
         """Handle timer completion"""
         self.timer_running = False
-        self.user_data['focus_sessions'] += 1
-        self.user_data['total_focus_time'] += self.focus_session_length // 60
-        self.user_data['xp'] += 25
         
-        # Increase pet happiness
-        pet = self.get_current_pet()
-        if pet:
-            pet['happiness'] = min(100, pet['happiness'] + 10)
-            self.save_current_pet(pet)
-        
-        # Level up check
-        if self.user_data['xp'] >= self.user_data['level'] * 100:
-            self.user_data['level'] += 1
-            messagebox.showinfo("Level Up!", f"🎉 Congratulations! You reached Level {self.user_data['level']}!")
-        
-        self.save_user_data()
-        self.update_sidebar_stats()  # Update sidebar stats
-        messagebox.showinfo("Focus Session Complete!", 
-                           "🎉 Great focus session! +25 XP earned!\n🐾 Your pet is happy!")
+        # Only update stats if logged in
+        if self.is_logged_in and self.auth_token:
+            self.user_data['focus_sessions'] += 1
+            self.user_data['total_focus_time'] += self.focus_session_length // 60
+            # XP is managed by backend, so we'll fetch it after timer completion
+            self.save_user_data()
+            self.update_sidebar_stats()  # This will fetch XP from backend
+            messagebox.showinfo("Focus Session Complete!", 
+                               "🎉 Great focus session! +25 XP earned!")
+        else:
+            # Should not reach here if login check is in start_timer, but just in case
+            messagebox.showwarning("Not Logged In", "Please log in to track your focus sessions!")
         
         # Reset timer
         self.timer_seconds = self.focus_session_length
@@ -393,30 +436,27 @@ class BlossomFocusApp:
     
     def add_task(self):
         """Add a new task to the task list"""
+        # Check if logged in
+        if not self.is_logged_in or not self.auth_token:
+            self.show_login_required_popup("add tasks")
+            return
+        
         task_text = self.task_entry.get().strip()
         
         if not task_text:
             messagebox.showwarning("Empty Task", "Please enter a task description!")
             return
         
-        # Generate unique task ID
-        task_id = max([task.get('id', 0) for task in self.user_data['tasks']] + [0]) + 1
+        priority = self.priority_var.get()
         
-        # Create task object
-        new_task = {
-            'id': task_id,
-            'text': task_text,
-            'priority': self.priority_var.get(),
-            'completed': False
-        }
-        
-        # Add to tasks list
-        self.user_data['tasks'].append(new_task)
-        
-        # Save and refresh
-        self.save_user_data()
-        self.task_entry.delete(0, tk.END)
-        self.switch_page('focus')
+        # Add task to backend
+        task_data = self.add_task_to_backend(task_text, priority)
+        if task_data:
+            messagebox.showinfo("Success", "Task added successfully!")
+            self.task_entry.delete(0, tk.END)
+            self.switch_page('focus')
+        else:
+            messagebox.showerror("Error", "Failed to add task to backend!")
     
     def create_task_widget(self, parent, task, index):
         """Create a widget for displaying a single task"""
@@ -470,67 +510,82 @@ class BlossomFocusApp:
         delete_btn.pack(side='left', padx=10, pady=8)
     
     def complete_task(self, task_id):
-        """Toggle task completion status and award XP/happiness"""
-        # Find the task
-        task = None
-        for t in self.user_data['tasks']:
-            if t['id'] == task_id:
-                task = t
-                break
-        
-        if not task:
-            return
-        
-        # Toggle completion status
-        was_completed = task['completed']
-        task['completed'] = not was_completed
-        
-        # If marking as complete (not uncompleting), give rewards
-        if task['completed'] and not was_completed:
-            # Award XP based on priority
-            xp_rewards = {
-                'low': 10,
-                'medium': 15,
-                'high': 25
-            }
-            xp_gained = xp_rewards.get(task['priority'], 10)
-            self.user_data['xp'] += xp_gained
+        """Toggle task completion status and award XP"""
+        # If logged in, use backend
+        if self.is_logged_in and self.auth_token:
+            # First get current task status
+            tasks = self.fetch_tasks_from_backend()
+            task = None
+            for t in tasks:
+                if t.get('id') == task_id:
+                    task = t
+                    break
             
-            # Increase pet happiness
-            pet = self.get_current_pet()
-            if pet:
-                happiness_increase = {
-                    'low': 5,
-                    'medium': 7,
-                    'high': 10
-                }.get(task['priority'], 5)
-                pet['happiness'] = min(100, pet['happiness'] + happiness_increase)
-                self.save_current_pet(pet)
+            if not task:
+                messagebox.showerror("Error", "Task not found!")
+                return
             
-            # Increment completed tasks counter
-            self.user_data['completed_tasks'] += 1
+            # Toggle completion status
+            new_completed = not task.get('completed', False)
+            task_data = self.update_task_completed_backend(task_id, new_completed)
             
-            # Check for level up
-            if self.user_data['xp'] >= self.user_data['level'] * 100:
-                self.user_data['level'] += 1
-                messagebox.showinfo("Level Up!", f"🎉 Congratulations! You reached Level {self.user_data['level']}!")
+            if task_data:
+                # Get XP from backend response
+                backend_xp = task_data.get('userXP')
+                if backend_xp is not None:
+                    self.user_data['xp'] = backend_xp
+                
+                # Award XP if completing
+                if new_completed:
+                    xp_gained = task_data.get('xpReward', 0)
+                    self.user_data['completed_tasks'] += 1
+                    messagebox.showinfo("Task Completed!", 
+                                      f"✅ Great job! +{xp_gained} XP earned!")
+                self.save_user_data()
+                self.update_sidebar_stats()
+                self.switch_page('focus')
+            else:
+                messagebox.showerror("Error", "Failed to update task!")
+        else:
+            # Local storage (not logged in)
+            task = None
+            for t in self.user_data['tasks']:
+                if t['id'] == task_id:
+                    task = t
+                    break
             
-            messagebox.showinfo("Task Completed!", 
-                              f"✅ Great job! +{xp_gained} XP earned!\n🐾 Your pet is happier!")
-        
-        # Save and refresh
-        self.save_user_data()
-        self.update_sidebar_stats()  # Update sidebar stats
-        self.switch_page('focus')
+            if not task:
+                return
+            
+            was_completed = task['completed']
+            task['completed'] = not was_completed
+            
+            if task['completed'] and not was_completed:
+                xp_rewards = {'low': 10, 'medium': 15, 'high': 25}
+                xp_gained = xp_rewards.get(task['priority'], 10)
+                self.user_data['xp'] += xp_gained
+                self.user_data['completed_tasks'] += 1
+                messagebox.showinfo("Task Completed!", 
+                                  f"✅ Great job! +{xp_gained} XP earned!")
+            
+            self.save_user_data()
+            self.update_sidebar_stats()
+            self.switch_page('focus')
     
     def delete_task(self, task_id):
         """Delete a task from the list"""
-        # Remove task from list
-        self.user_data['tasks'] = [t for t in self.user_data['tasks'] if t['id'] != task_id]
-        
-        # Save and refresh
-        self.save_user_data()
-        self.switch_page('focus')
+        # If logged in, use backend
+        if self.is_logged_in and self.auth_token:
+            if self.delete_task_from_backend(task_id):
+                messagebox.showinfo("Success", "Task deleted successfully!")
+                self.switch_page('focus')
+            else:
+                messagebox.showerror("Error", "Failed to delete task from backend!")
+        else:
+            # Local storage (not logged in)
+            self.user_data['tasks'] = [t for t in self.user_data['tasks'] if t['id'] != task_id]
+            self.save_user_data()
+            self.switch_page('focus')
     
     def get_pet_emoji(self):
         pet_type = self.user_data.get('pet_type', 'cat')  # default to cat
@@ -567,6 +622,12 @@ class BlossomFocusApp:
 
     def show_pet(self):
         """Show virtual pet page"""
+        # If not logged in, show no pets
+        if not self.is_logged_in or not self.auth_token:
+            label = tk.Label(self.content_frame, text="Please log in to view your pets!", font=('Montserrat', 16, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['black'])
+            label.pack(pady=50)
+            return
+        
         pet = self.get_current_pet()
         if not pet:
             label = tk.Label(self.content_frame, text="No pet found! Adopt a new pet.", font=('Montserrat', 16, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['black'])
@@ -597,15 +658,9 @@ class BlossomFocusApp:
         type_label = tk.Label(pet_frame, text=f"Type: {pet['type'].title()}  |  Age: {pet['age']} yrs", font=('Montserrat', 14), fg=self.colors['neon_purple'], bg=self.colors['dark_gray'])
         type_label.pack(pady=5)
 
-        # Pet level and XP
-        level_label = tk.Label(pet_frame, text=f"Level: {pet['level']}  |  XP: {pet['xp']}", font=('Montserrat', 14), fg=self.colors['neon_purple'], bg=self.colors['dark_gray'])
-        level_label.pack(pady=5)
-        
-        # Pet happiness bar
-        happiness_label = tk.Label(pet_frame, text=f"Happiness: {pet['happiness']}%", font=('Montserrat', 14, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['dark_gray'])
-        happiness_label.pack(pady=10)
-        happiness_bar = ttk.Progressbar(pet_frame, length=400, value=pet['happiness'], maximum=100)
-        happiness_bar.pack(pady=5)
+        # Pet XP
+        xp_label = tk.Label(pet_frame, text=f"XP: {pet['xp']}", font=('Montserrat', 14), fg=self.colors['neon_purple'], bg=self.colors['dark_gray'])
+        xp_label.pack(pady=5)
 
         # Pet hunger bar
         hunger_label = tk.Label(pet_frame, text=f"Hunger: {pet['hunger']}%", font=('Montserrat', 14, 'bold'), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
@@ -618,34 +673,35 @@ class BlossomFocusApp:
         if not pet['is_alive']:
             dead_label = tk.Label(pet_frame, text="Your pet has died from hunger...", font=('Montserrat', 14, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['dark_gray'])
             dead_label.pack(pady=10)
-        
-        # Pet mood
-        if pet['happiness'] >= 80:
-            mood = "😊 Very Happy!"
-        elif pet['happiness'] >= 60:
-            mood = "😌 Content"
-        elif pet['happiness'] >= 40:
-            mood = "😐 Neutral"
-        else:
-            mood = "😢 Needs attention"
-        mood_label = tk.Label(pet_frame, text=f"Mood: {mood}", font=('Montserrat', 12), fg=self.colors['white'], bg=self.colors['dark_gray'])
-        mood_label.pack(pady=10)
 
-        # Actions (Feed, Play, Rename, Adopt)
+        # Actions (Feed, Adopt)
         actions_frame = tk.Frame(pet_frame, bg=self.colors['dark_gray'])
         actions_frame.pack(pady=20)
         ttk.Button(actions_frame, text="🍖 Feed", style='Neon.TButton', command=lambda: self.feed_pet(pet)).pack(side='left', padx=10)
-        ttk.Button(actions_frame, text="🎲 Play", style='Electric.TButton', command=lambda: self.play_with_pet(pet)).pack(side='left', padx=10)
-        ttk.Button(actions_frame, text="✏️ Rename", style='Purple.TButton', command=lambda: self.rename_pet(pet)).pack(side='left', padx=10)
         ttk.Button(actions_frame, text="➕ Adopt New Pet", style='Neon.TButton', command=self.adopt_pet).pack(side='left', padx=10)
 
         # Switch pets if more than one
-        if len(self.user_data['pets']) > 1:
+        pets_list = []
+        if self.is_logged_in and self.auth_token:
+            backend_pets = self.fetch_pets_from_backend()
+            for p in backend_pets:
+                pets_list.append({
+                    'id': p.get('id'),
+                    'name': p.get('name')
+                })
+        else:
+            pets_list = self.user_data.get('pets', [])
+        
+        if len(pets_list) > 1:
             switch_frame = tk.Frame(pet_frame, bg=self.colors['dark_gray'])
             switch_frame.pack(pady=10)
             tk.Label(switch_frame, text="Switch Pet:", font=('Montserrat', 12), fg=self.colors['white'], bg=self.colors['dark_gray']).pack(side='left')
-            for p in self.user_data['pets']:
-                btn = tk.Button(switch_frame, text=p['name'], font=('Montserrat', 10), fg=self.colors['hot_pink'] if p['id']==self.user_data['current_pet_id'] else self.colors['white'], bg=self.colors['light_gray'], command=lambda pid=p['id']: self.switch_pet(pid))
+            current_id = pet.get('id') if pet else None
+            for p in pets_list:
+                btn = tk.Button(switch_frame, text=p['name'], font=('Montserrat', 10), 
+                              fg=self.colors['hot_pink'] if p['id']==current_id else self.colors['white'], 
+                              bg=self.colors['light_gray'], 
+                              command=lambda pid=p['id']: self.switch_pet(pid))
                 btn.pack(side='left', padx=5)
 
     def get_pet_emoji_pet(self, pet):
@@ -671,36 +727,28 @@ class BlossomFocusApp:
         if not pet['is_alive']:
             messagebox.showinfo("Pet is Dead", "You can't feed a dead pet. Adopt a new one!")
             return
-        pet['hunger'] = 100
-        pet['last_fed'] = datetime.now().strftime('%Y-%m-%d')
-        pet['happiness'] = min(100, pet['happiness'] + 10)
-        self.save_current_pet(pet)
-        self.switch_page("pet")
-
-    def play_with_pet(self, pet):
-        if not pet['is_alive']:
-            messagebox.showinfo("Pet is Dead", "You can't play with a dead pet. Adopt a new one!")
-            return
-        pet['happiness'] = min(100, pet['happiness'] + 5)
-        pet['xp'] += 10
-        if pet['xp'] >= pet['level'] * 50:
-            pet['level'] += 1
-            pet['xp'] = 0
-            messagebox.showinfo("Pet Level Up!", f"Your pet reached Level {pet['level']}! 🐾")
-        self.save_current_pet(pet)
-        self.switch_page("pet")
-
-    def rename_pet(self, pet):
-        if not pet['is_alive']:
-            messagebox.showinfo("Pet is Dead", "You can't rename a dead pet. Adopt a new one!")
-            return
-        new_name = tk.simpledialog.askstring("Rename Pet", "Enter a new name for your pet:")
-        if new_name:
-            pet['name'] = new_name
+        
+        # If logged in, use backend
+        if self.is_logged_in and self.auth_token:
+            pet_data = self.feed_pet_in_backend(pet['id'])
+            if pet_data:
+                messagebox.showinfo("Success", "Pet fed successfully!")
+                self.switch_page("pet")
+            else:
+                messagebox.showerror("Error", "Failed to feed pet via backend!")
+        else:
+            # Local storage
+            pet['hunger'] = 100
+            pet['last_fed'] = datetime.now().strftime('%Y-%m-%d')
             self.save_current_pet(pet)
             self.switch_page("pet")
 
     def adopt_pet(self):
+        # Check if logged in
+        if not self.is_logged_in or not self.auth_token:
+            self.show_login_required_popup("adopt pets")
+            return
+        
         import os
         pet_type = tk.simpledialog.askstring("Adopt Pet", "Enter pet type (cat/dog):")
         if pet_type not in ['cat', 'dog']:
@@ -709,38 +757,26 @@ class BlossomFocusApp:
         pet_name = tk.simpledialog.askstring("Adopt Pet", "Enter pet name:")
         if not pet_name:
             pet_name = 'Blossom'
-        new_id = max([p['id'] for p in self.user_data.get('pets', [])]+[0]) + 1
-        new_pet = {
-            'id': new_id,
-            'name': pet_name,
-            'type': pet_type,
-            'age': 0,
-            'level': 1,
-            'xp': 0,
-            'happiness': 100,
-            'hunger': 100,
-            'last_fed': datetime.now().strftime('%Y-%m-%d'),
-            'is_alive': True
-        }
-        if 'pets' not in self.user_data:
-            self.user_data['pets'] = []
-        self.user_data['pets'].append(new_pet)
-        self.user_data['current_pet_id'] = new_id
-        # Ensure fe/ directory exists
-        os.makedirs('fe', exist_ok=True)
-        try:
-            self.save_user_data()
-            print("Pet adopted and saved:", new_pet)
-            print("All pets:", self.user_data['pets'])
-        except Exception as e:
-            print("Error saving user data:", e)
-            messagebox.showerror("Error", f"Could not save pet: {e}")
-        self.switch_page("pet")
+        
+        # Create pet in backend
+        pet_data = self.create_pet_in_backend(pet_name, pet_type)
+        if pet_data:
+            messagebox.showinfo("Success", f"Pet {pet_name} adopted successfully!")
+            self.switch_page("pet")
+        else:
+            messagebox.showerror("Error", "Failed to create pet in backend!")
 
     def switch_pet(self, pet_id):
-        self.user_data['current_pet_id'] = pet_id
-        self.save_user_data()
-        self.switch_page("pet")
+        """Switch to a different pet"""
+        if self.is_logged_in and self.auth_token:
+            # For backend, we'll just refresh and show the first pet
+            # (could be enhanced to store current_pet_id in backend)
+            self.switch_page("pet")
+        else:
+            # Local storage
+            self.user_data['current_pet_id'] = pet_id
+            self.save_user_data()
+            self.switch_page("pet")
     
     def show_analytics(self):
         """Show analytics page"""
@@ -755,108 +791,54 @@ class BlossomFocusApp:
         stats_frame = tk.Frame(self.content_frame, bg=self.colors['black'])
         stats_frame.pack(fill='x', padx=20, pady=20)
         
+        # If not logged in, show zeros
+        if not self.is_logged_in or not self.auth_token:
+            xp_value = 0
+            tasks_completed = 0
+            focus_time = 0
+            streak = 0
+        else:
+            xp_value = self.user_data.get('xp', 0)
+            tasks_completed = self.user_data.get('completed_tasks', 0)
+            focus_time = self.user_data.get('total_focus_time', 0)
+            streak = self.user_data.get('streak', 0)
+        
         # Create analytics cards
         self.create_analytics_card(stats_frame, "Total XP", 
-                                  str(self.user_data['xp']), 
+                                  str(xp_value), 
                                   self.colors['hot_pink'], 0, 0)
         
-        self.create_analytics_card(stats_frame, "Current Level", 
-                                  str(self.user_data['level']), 
-                                  self.colors['electric_blue'], 0, 1)
-        
         self.create_analytics_card(stats_frame, "Tasks Completed", 
-                                  str(self.user_data['completed_tasks']), 
-                                  self.colors['neon_purple'], 1, 0)
-        
-        self.create_analytics_card(stats_frame, "Focus Sessions", 
-                                  str(self.user_data['focus_sessions']), 
-                                  self.colors['hot_pink'], 1, 1)
+                                  str(tasks_completed), 
+                                  self.colors['neon_purple'], 0, 1)
         
         self.create_analytics_card(stats_frame, "Focus Time (min)", 
-                                  str(self.user_data['total_focus_time']), 
-                                  self.colors['electric_blue'], 2, 0)
+                                  str(focus_time), 
+                                  self.colors['electric_blue'], 1, 0)
         
         self.create_analytics_card(stats_frame, "Current Streak", 
-                                  f"{self.user_data['streak']} days", 
-                                  self.colors['neon_purple'], 2, 1)
-        
-        # Achievements section
-        achievements_frame = tk.Frame(self.content_frame, bg=self.colors['dark_gray'])
-        achievements_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        achievements_title = tk.Label(achievements_frame, text="🏆 Achievements", 
-                                     font=('Montserrat', 16, 'bold'),
-                                     fg=self.colors['white'], 
-                                     bg=self.colors['dark_gray'])
-        achievements_title.pack(pady=15)
-        
-        # Sample achievements
-        achievements = [
-            ("🎯", "First Task", "Complete your first task", self.user_data['completed_tasks'] > 0),
-            ("⏰", "Focus Master", "Complete 10 focus sessions", self.user_data['focus_sessions'] >= 10),
-            ("🌸", "Garden Lover", "Reach 50% garden progress", self.user_data['garden_progress'] >= 50),
-            ("🔥", "Streak Keeper", "Maintain a 7-day streak", self.user_data['streak'] >= 7),
-            ("⭐", "Level Up", "Reach Level 5", self.user_data['level'] >= 5)
-        ]
-        
-        for icon, name, desc, unlocked in achievements:
-            self.create_achievement_widget(achievements_frame, icon, name, desc, unlocked)
+                                  f"{streak} days", 
+                                  self.colors['neon_purple'], 1, 1)
     
     def create_analytics_card(self, parent, title, value, color, row, col):
         """Create an analytics card"""
         card = tk.Frame(parent, bg=self.colors['dark_gray'], relief='raised', bd=2)
-        card.grid(row=row, column=col, padx=15, pady=10, sticky='ew')
+        card.grid(row=row, column=col, padx=20, pady=20, sticky='nsew')
         parent.grid_columnconfigure(col, weight=1)
+        parent.grid_rowconfigure(row, weight=1)
+        card.config(width=300, height=200)
         
         value_label = tk.Label(card, text=value, 
-                              font=('Orbitron', 18, 'bold'),
+                              font=('Orbitron', 32, 'bold'),
                               fg=color, 
                               bg=self.colors['dark_gray'])
-        value_label.pack(pady=(15, 5))
+        value_label.pack(pady=(30, 10))
         
         title_label = tk.Label(card, text=title, 
-                              font=('Montserrat', 10),
+                              font=('Montserrat', 14, 'bold'),
                               fg=self.colors['white'], 
                               bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 15))
-    
-    def create_achievement_widget(self, parent, icon, name, desc, unlocked):
-        """Create an achievement widget"""
-        achievement_frame = tk.Frame(parent, bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        achievement_frame.pack(fill='x', padx=20, pady=5)
-        
-        # Icon
-        icon_label = tk.Label(achievement_frame, text=icon if unlocked else "🔒", 
-                             font=('Montserrat', 16),
-                             fg=self.colors['white'], 
-                             bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        icon_label.pack(side='left', padx=15, pady=10)
-        
-        # Text
-        text_frame = tk.Frame(achievement_frame, bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        text_frame.pack(side='left', fill='x', expand=True, padx=10, pady=10)
-        
-        name_label = tk.Label(text_frame, text=name, 
-                             font=('Montserrat', 12, 'bold'),
-                             fg=self.colors['white'] if unlocked else self.colors['light_gray'], 
-                             bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        name_label.pack(anchor='w')
-        
-        desc_label = tk.Label(text_frame, text=desc, 
-                             font=('Montserrat', 9),
-                             fg=self.colors['white'] if unlocked else self.colors['light_gray'], 
-                             bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        desc_label.pack(anchor='w')
-        
-        # Status
-        status_text = "✓ UNLOCKED" if unlocked else "LOCKED"
-        status_color = self.colors['electric_blue'] if unlocked else self.colors['light_gray']
-        
-        status_label = tk.Label(achievement_frame, text=status_text, 
-                               font=('Montserrat', 9, 'bold'),
-                               fg=status_color, 
-                               bg=self.colors['light_gray'] if unlocked else self.colors['dark_gray'])
-        status_label.pack(side='right', padx=15, pady=10)
+        title_label.pack(pady=(0, 30))
     
     def show_settings(self):
         """Show settings page"""
@@ -889,11 +871,19 @@ class BlossomFocusApp:
                                   bg=self.colors['dark_gray'])
             auth_status.pack(pady=(0, 10))
             
-            # Logout button
-            logout_btn = ttk.Button(auth_frame, text="🚪 Logout", 
+            # Logout and Delete Account buttons
+            auth_buttons_frame = tk.Frame(auth_frame, bg=self.colors['dark_gray'])
+            auth_buttons_frame.pack(pady=5)
+            
+            logout_btn = ttk.Button(auth_buttons_frame, text="🚪 Logout", 
                                    style='Neon.TButton',
                                    command=self.logout)
-            logout_btn.pack(pady=5)
+            logout_btn.pack(side='left', padx=5)
+            
+            delete_account_btn = ttk.Button(auth_buttons_frame, text="🗑️ Delete Account", 
+                                            style='Neon.TButton',
+                                            command=self.show_delete_account_warning)
+            delete_account_btn.pack(side='left', padx=5)
         else:
             auth_status = tk.Label(auth_frame, text="❌ Not logged in", 
                                   font=('Montserrat', 12),
@@ -993,19 +983,26 @@ class BlossomFocusApp:
         """Reset all progress"""
         if messagebox.askyesno("Reset Progress", 
                               "Are you sure you want to reset ALL progress?\nThis cannot be undone!"):
-            self.user_data = {
-                'level': 1,
+            # Reset pets to default
+            default_pet = {
+                'id': 0,
+                'name': 'Blossom',
+                'type': 'cat',
+                'age': 0,
                 'xp': 0,
+                'hunger': 100,
+                'last_fed': datetime.now().strftime('%Y-%m-%d'),
+                'is_alive': True
+            }
+            self.user_data = {
+                'pets': [],
+                'current_pet_id': 0,
+                'xp': 0,  # Default XP is 0 when not logged in
                 'streak': 0,
                 'tasks': [],
                 'completed_tasks': 0,
                 'focus_sessions': 0,
                 'total_focus_time': 0,
-                'pet_level': 1,
-                'pet_xp': 0,
-                'pet_name': 'Blossom',
-                'pet_avatar': '(=^･ω･^=)',
-                'pet_happiness': 100,
                 'achievements': [],
                 'theme': 'neon_garden'
             }
@@ -1013,6 +1010,73 @@ class BlossomFocusApp:
             self.update_sidebar_stats()  # Update sidebar stats
             messagebox.showinfo("Reset Complete", "All progress has been reset! 🔄")
             self.switch_page("focus") # Changed to "focus"
+    
+    def show_login_required_popup(self, action):
+        """Show popup asking user to login or signup with custom buttons"""
+
+        popup = tk.Toplevel()
+        popup.overrideredirect(True)   # Remove OS title bar
+        popup.config(bg="#1e1e1e")     # Background theme
+        popup.geometry("360x200")
+
+        # Center popup relative to main window
+        popup.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 180
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 100
+        popup.geometry(f"+{x}+{y}")
+
+        # Outer frame
+        frame = tk.Frame(popup, bg="#2b2b2b")
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Title row with X button
+        title_frame = tk.Frame(frame, bg="#2b2b2b")
+        title_frame.pack(fill="x")
+
+        title_label = tk.Label(
+            title_frame, text="Login Required",
+            bg="#2b2b2b", fg="white", font=("Segoe UI", 12, "bold")
+        )
+        title_label.pack(side="left", padx=5, pady=5)
+
+        close_btn = tk.Button(
+            title_frame, text="✖", bg="#2b2b2b", fg="white",
+            bd=0, relief="flat", font=("Segoe UI", 10, "bold"),
+            command=popup.destroy, cursor="hand2"
+        )
+        close_btn.pack(side="right", padx=5)
+
+        # Message text
+        msg = tk.Label(
+            frame,
+            text=f"⚠️ You need to be logged in to {action}!\n\nChoose an option below:",
+            bg="#2b2b2b", fg="#d0d0d0", justify="center",
+            font=("Segoe UI", 10)
+        )
+        msg.pack(pady=10)
+
+        # Buttons frame
+        btn_frame = tk.Frame(frame, bg="#2b2b2b")
+        btn_frame.pack(pady=10)
+
+        btn_style = {"width": 14, "bg": "#3a3a3a", "fg": "white", "relief": "flat", "bd": 0}
+
+        # Login button
+        login_btn = tk.Button(
+            btn_frame, text="Login", **btn_style,
+            command=lambda: [popup.destroy(), self.show_login_form()]
+        )
+        login_btn.grid(row=0, column=0, padx=8)
+
+        # Create Account button
+        signup_btn = tk.Button(
+            btn_frame, text="Create Account", **btn_style,
+            command=lambda: [popup.destroy(), self.show_signup_form()]
+        )
+        signup_btn.grid(row=0, column=1, padx=8)
+
+
+
     
     def show_login_form(self):
         """Show login form dialog"""
@@ -1266,6 +1330,11 @@ class BlossomFocusApp:
                 self.auth_token = token_data.get("access_token")
                 self.current_user = username
                 self.is_logged_in = True
+                # Fetch XP from backend after login
+                backend_xp = self.fetch_user_xp_from_backend()
+                self.user_data['xp'] = backend_xp
+                self.save_user_data()
+                self.update_sidebar_stats()  # Update sidebar with XP from backend
                 messagebox.showinfo("Success", f"🎉 Welcome back, {username}!")
                 window.destroy()
                 self.switch_page("settings")
@@ -1300,7 +1369,15 @@ class BlossomFocusApp:
                     messagebox.showerror("Registration Failed", result.get("message", "Registration failed!"))
             else:
                 result = response.json()
-                messagebox.showerror("Registration Failed", result.get("detail", "Registration failed!"))
+                error_detail = result.get("detail", "Registration failed!")
+                
+                # Show friendly pop-up for existing username/email
+                if "already exists" in error_detail.lower() or "already taken" in error_detail.lower():
+                    messagebox.showwarning("Already Exists", 
+                                         f"⚠️ {error_detail}\n\n"
+                                         f"Please try a different {'username' if 'username' in error_detail.lower() else 'email address'}.")
+                else:
+                    messagebox.showerror("Registration Failed", error_detail)
         except requests.exceptions.ConnectionError:
             messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
         except Exception as e:
@@ -1473,6 +1550,133 @@ class BlossomFocusApp:
         messagebox.showinfo("Logged Out", "👋 You have been logged out successfully!")
         self.switch_page("settings")  # Refresh settings page
     
+    def show_delete_account_warning(self):
+        """Show initial warning before account deletion"""
+        warning_msg = (
+            "⚠️ WARNING: Account Deletion\n\n"
+            "This action is PERMANENT and cannot be undone!\n\n"
+            "Deleting your account will:\n"
+            "• Remove all your tasks\n"
+            "• Remove all your pets\n"
+            "• Delete all your progress and data\n"
+            "• Permanently delete your account\n\n"
+            "Are you absolutely sure you want to proceed?"
+        )
+        
+        if messagebox.askyesno("⚠️ Delete Account Warning", warning_msg, icon='warning'):
+            self.show_delete_account_password_form()
+    
+    def show_delete_account_password_form(self):
+        """Show password confirmation form for account deletion"""
+        password_window = tk.Toplevel(self.root)
+        password_window.title("🗑️ Delete Account - Password Confirmation")
+        password_window.geometry("450x350")
+        password_window.configure(bg=self.colors['black'])
+        password_window.resizable(False, False)
+        
+        # Center the window
+        password_window.transient(self.root)
+        password_window.grab_set()
+        
+        # Password form
+        password_frame = tk.Frame(password_window, bg=self.colors['dark_gray'])
+        password_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(password_frame, text="🗑️ Confirm Account Deletion", 
+                              font=('Orbitron', 18, 'bold'),
+                              fg=self.colors['hot_pink'], 
+                              bg=self.colors['dark_gray'])
+        title_label.pack(pady=(0, 20))
+        
+        # Warning text
+        warning_text = tk.Label(password_frame, 
+                               text="⚠️ Enter your password to confirm account deletion.\nThis action cannot be undone!",
+                               font=('Montserrat', 11),
+                               fg=self.colors['hot_pink'], 
+                               bg=self.colors['dark_gray'],
+                               justify='center')
+        warning_text.pack(pady=(0, 20))
+        
+        # Password field
+        tk.Label(password_frame, text="Password:", 
+                font=('Montserrat', 12, 'bold'),
+                fg=self.colors['white'], 
+                bg=self.colors['dark_gray']).pack(pady=(0, 5))
+        password_entry = tk.Entry(password_frame, font=('Montserrat', 11), 
+                                 bg=self.colors['light_gray'], 
+                                 fg=self.colors['white'], 
+                                 insertbackground=self.colors['white'],
+                                 show="*")
+        password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
+        
+        # Buttons
+        button_frame = tk.Frame(password_frame, bg=self.colors['dark_gray'])
+        button_frame.pack(pady=10)
+        
+        delete_btn = tk.Button(button_frame, text="🗑️ Delete Account", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['hot_pink'],
+                              activebackground=self.colors['electric_blue'],
+                              command=lambda: self.delete_account(password_entry.get(), password_window))
+        delete_btn.pack(side='left', padx=10)
+        
+        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
+                              font=('Montserrat', 12, 'bold'),
+                              fg=self.colors['white'],
+                              bg=self.colors['light_gray'],
+                              activebackground=self.colors['dark_gray'],
+                              command=password_window.destroy)
+        cancel_btn.pack(side='left', padx=10)
+        
+        # Focus on password field
+        password_entry.focus()
+        
+        # Bind Enter key to delete
+        password_window.bind('<Return>', lambda e: self.delete_account(password_entry.get(), password_window))
+    
+    def delete_account(self, password, window):
+        """Delete user account after password verification"""
+        if not password:
+            messagebox.showerror("Error", "Please enter your password!")
+            return
+        
+        if not self.is_logged_in or not self.auth_token:
+            messagebox.showerror("Error", "You must be logged in to delete your account!")
+            window.destroy()
+            return
+        
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"}
+            response = requests.delete(f"{self.backend_url}/delete_account", 
+                                     json={"password": password}, 
+                                     headers=headers,
+                                     timeout=10)
+            
+            if response.status_code == 200:
+                window.destroy()
+                messagebox.showinfo("Account Deleted", 
+                                  "🗑️ Your account has been permanently deleted.\n\n"
+                                  "All your data has been removed from our system.")
+                # Logout and reset
+                self.is_logged_in = False
+                self.current_user = None
+                self.auth_token = None
+                self.switch_page("settings")
+            elif response.status_code == 401:
+                messagebox.showerror("Incorrect Password", 
+                                   "❌ The password you entered is incorrect!\n\n"
+                                   "Please try again with the correct password.")
+            else:
+                error_msg = response.json().get("detail", "Failed to delete account")
+                messagebox.showerror("Error", f"Failed to delete account: {error_msg}")
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Connection Error", 
+                               "Could not connect to server. Please try again later.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+    
     def fetch_tasks_from_backend(self):
         """Fetch tasks from backend API"""
         try:
@@ -1485,26 +1689,43 @@ class BlossomFocusApp:
         except Exception as e:
             print(f"Error fetching tasks: {e}")
             return []
+    
+    def fetch_user_xp_from_backend(self):
+        """Fetch user XP from backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            response = requests.get(f"{self.backend_url}/user/xp", headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('xp', 100)  # Default to 100 if not found
+            return 100
+        except Exception as e:
+            print(f"Error fetching XP: {e}")
+            return 100
 
-    def add_task_to_backend(self, title):
+    def add_task_to_backend(self, title, priority):
         """Add a new task to backend API"""
         try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
-            response = requests.post(f"{self.backend_url}/tasks", json={"title": title}, headers=headers)
-            return response.status_code == 200
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
+            response = requests.post(f"{self.backend_url}/tasks", json={"title": title, "priority": priority}, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return None
         except Exception as e:
             print(f"Error adding task: {e}")
-            return False
+            return None
 
     def update_task_completed_backend(self, task_id, completed):
         """Update task completion status in backend API"""
         try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
             response = requests.patch(f"{self.backend_url}/tasks/{task_id}", json={"completed": completed}, headers=headers)
-            return response.status_code == 200
+            if response.status_code == 200:
+                return response.json()
+            return None
         except Exception as e:
             print(f"Error updating task: {e}")
-            return False
+            return None
 
     def delete_task_from_backend(self, task_id):
         """Delete a task from backend API"""
@@ -1529,15 +1750,29 @@ class BlossomFocusApp:
             print(f"Error fetching pets: {e}")
             return []
 
-    def create_pet_in_backend(self, name, age, hunger):
+    def create_pet_in_backend(self, name, pet_type, age=0, hunger=100):
         """Create a new pet in backend API"""
         try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {"Content-Type": "application/json"}
-            response = requests.post(f"{self.backend_url}/pet", json={"name": name, "age": age, "hunger": hunger}, headers=headers)
-            return response.status_code == 200
+            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
+            response = requests.post(f"{self.backend_url}/pets", json={"name": name, "type": pet_type, "age": age, "hunger": hunger}, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return None
         except Exception as e:
             print(f"Error creating pet: {e}")
-            return False
+            return None
+    
+    def feed_pet_in_backend(self, pet_id):
+        """Feed a pet via backend API"""
+        try:
+            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            response = requests.patch(f"{self.backend_url}/pet/feed/{pet_id}", headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Error feeding pet: {e}")
+            return None
 
     def run(self):
         """Start the application"""

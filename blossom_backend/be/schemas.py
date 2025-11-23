@@ -126,3 +126,7 @@ class ForgotPasswordRequest(BaseModel):
 class EmailVerificationRequest(BaseModel):
     email: EmailStr
     verification_token: str
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str

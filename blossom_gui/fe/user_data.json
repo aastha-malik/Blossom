@@ -20,14 +20,14 @@
       "level": 1,
       "xp": 0,
       "happiness": 100,
-      "hunger": 100,
+      "hunger": 0,
       "last_fed": "2025-11-19",
       "is_alive": true
     }
   ],
   "current_pet_id": 1,
   "level": 1,
-  "xp": 25,
+  "xp": 40,
   "streak": 0,
   "tasks": [
     {
@@ -37,7 +37,7 @@
       "completed": false
     }
   ],
-  "completed_tasks": 0,
+  "completed_tasks": 1,
   "focus_sessions": 1,
   "total_focus_time": 25,
   "achievements": [],

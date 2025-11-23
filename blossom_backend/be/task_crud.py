@@ -67,9 +67,9 @@ def update_task_completion(db: Session, task_id: int, completed: bool, current_u
     elif task.priority == "high":
         xp_reward = 25
 
-    # Initialize XP if null
+    # Initialize XP if null (default is 100)
     if user.xp is None:
-        user.xp = 0
+        user.xp = 100
 
     # Only add XP when marking task as complete
     if not task.completed and completed:
