@@ -232,9 +232,9 @@ def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    data = {"sub": username}
+    data = {"sub": user.username}
     token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "username":user.username, "email":user.email}
 
 
 @app.patch("/reset_password")
@@ -290,9 +290,7 @@ def delete_account(username:str, email:str, plain_password:str, db: Session = De
 def register_user(user: RegistrationUser, db: Session = Depends(get_db)):
     from sqlalchemy import or_
     # Check if username or email already exists
-    existing = db.query(User).filter(
-        or_(User.username == user.username, User.email == user.email)
-    ).first()
+    existing = db.query(User).filter(or_(User.username == user.username, User.email == user.email)).first()
     if existing:
         if existing.username == user.username:
             raise HTTPException(status_code=400, detail="Username already exists")

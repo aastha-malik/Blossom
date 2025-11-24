@@ -24,7 +24,8 @@ class BlossomFocusApp:
         
         # Authentication state
         self.is_logged_in = False
-        self.current_user = None
+        self.current_username = None
+        self.current_email = None
         self.auth_token = None
         self.backend_url = "http://localhost:8000"  # Backend API URL
         
@@ -865,7 +866,7 @@ class BlossomFocusApp:
         
         # Auth status
         if self.is_logged_in:
-            auth_status = tk.Label(auth_frame, text=f"✅ Logged in as: {self.current_user}", 
+            auth_status = tk.Label(auth_frame, text=f"✅ Logged in as:\nUsername: {self.current_username}\nEmail: {self.current_email}",
                                   font=('Montserrat', 12),
                                   fg=self.colors['electric_blue'], 
                                   bg=self.colors['dark_gray'])
@@ -1328,8 +1329,10 @@ class BlossomFocusApp:
             if response.status_code == 200:
                 token_data = response.json()
                 self.auth_token = token_data.get("access_token")
-                self.current_user = username
+                self.current_username = token_data.get("username")
+                self.current_email = token_data.get("email")
                 self.is_logged_in = True
+
                 # Fetch XP from backend after login
                 backend_xp = self.fetch_user_xp_from_backend()
                 self.user_data['xp'] = backend_xp
@@ -1359,13 +1362,15 @@ class BlossomFocusApp:
         try:
             register_data = {"username": username, "password": password, "email": email}
             response = requests.post(f"{self.backend_url}/register", json=register_data, timeout=10)
-            if response.status_code == 200:
+            if response.ok:
                 result = response.json()
-                if "successfully" in result.get("message", "").lower():
+                if result.get("message"):
                     messagebox.showinfo("Success", "🎉 Account created successfully! Please verify your email.")
                     window.destroy()
+                    self.temp_email = email
                     self.show_email_verification_form(username, email)
                 else:
+                    error_detail = response.json().get("detail", "Registration failed!")
                     messagebox.showerror("Registration Failed", result.get("message", "Registration failed!"))
             else:
                 result = response.json()
@@ -1387,9 +1392,10 @@ class BlossomFocusApp:
         """Show email verification form"""
         verify_window = tk.Toplevel(self.root)
         verify_window.title("📧 Email Verification")
-        verify_window.geometry("400x250")
+        verify_window.geometry("400x400")
         verify_window.configure(bg=self.colors['black'])
-        verify_window.resizable(False, False)
+        verify_window.resizable(True, True)
+
         
         # Center the window
         verify_window.transient(self.root)
@@ -1450,19 +1456,22 @@ class BlossomFocusApp:
         verify_window.bind('<Return>', lambda e: self.verify_email(code_entry.get(), verify_window))
     
     def verify_email(self, code, window):
-        """Handle email verification"""
         if not code:
             messagebox.showerror("Error", "Please enter the verification code!")
             return
-        
-        # For demo purposes, accept any 6-digit code
-        if len(code) == 6 and code.isdigit():
-            messagebox.showinfo("Success", "🎉 Email verified successfully! You can now log in.")
-            window.destroy()
-            self.switch_page("settings")
-        else:
-            messagebox.showerror("Error", "Invalid verification code!")
-    
+        # ♥ the simple version
+        url = f"{self.backend_url}/verify_email?email={self.temp_email}&verification_token={code}"
+        try:
+            response = requests.post(url)
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "🎉 Email verified!")
+                window.destroy()
+                self.switch_page("settings")
+            else:
+                messagebox.showerror("Verification Failed", "Invalid or expired code!")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
     def resend_verification_code(self, email):
         """Resend verification code"""
         messagebox.showinfo("Code Sent", f"📧 Verification code resent to {email}")
@@ -1473,7 +1482,7 @@ class BlossomFocusApp:
         reset_window.title("🔓 Forgot Password?")
         reset_window.geometry("400x250")
         reset_window.configure(bg=self.colors['black'])
-        reset_window.resizable(False, False)
+        reset_window.resizable(True, True)
         
         # Center the window
         reset_window.transient(self.root)

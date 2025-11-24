@@ -16,18 +16,16 @@
       "id": 1,
       "name": "yoshi",
       "type": "dog",
-      "age": 0,
-      "level": 1,
+      "age": 0.01,
       "xp": 0,
-      "happiness": 100,
-      "hunger": 0,
-      "last_fed": "2025-11-19",
+      "hunger": 50,
+      "last_fed": "2025-11-24",
       "is_alive": true
     }
   ],
   "current_pet_id": 1,
   "level": 1,
-  "xp": 40,
+  "xp": 65,
   "streak": 0,
   "tasks": [
     {

@@ -29,8 +29,8 @@ def create_user(db:Session, username:str, plain_password:str, email:str):
     new_user.user_verification_token = str(email_token)
     new_user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
     db.commit()
-    # email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
-    # send_email(email, "Verify your Blossom Account", email_body)
+    email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
+    send_email(email, "Verify your Blossom Account", email_body)
     print(f"Mock email to {email}: Hello! Please verify your Email for Blossom {email_token} Thank you!")
 
     return new_user
@@ -43,7 +43,10 @@ def verify_email(db:Session, email:str, verification_token:str):
             user.user_verified = True
             user.user_verification_token = None
             user.user_verification_token_expires_at = None
+            db.add(user)
             db.commit()
+            db.refresh(user)
+            
             return True
         else:
             return False
