@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from jose import jwt
-
 import models
 from models import User, Task
 from database import SessionLocal, engine, Base
@@ -22,7 +21,6 @@ from schemas import (
     RegistrationUser, TokenResponse, DeleteAccountRequest
 )
 print("TaskResponse imported from:", TaskResponse)
-
 
 # ---------------------------------------------------
 # DATABASE & APP SETUP
@@ -90,7 +88,6 @@ def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user
     return TaskResponse.model_validate(task)
 
 
-
 @app.get("/tasks", response_model=list[TaskResponse])
 def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session = Depends(get_db)):
     tasks = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == False).all()
@@ -98,8 +95,6 @@ def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session =
         raise HTTPException(status_code=404, detail="No tasks found")
         print("No task found")
     return [TaskResponse.model_validate(t) for t in tasks]
-
-
 
 
 @app.put("/tasks/{title}", response_model=TaskResponse)
@@ -112,7 +107,6 @@ def update_task_endpoint(
     if not task:
         raise HTTPException(status_code=400, detail="Updating Task Failed")
     return TaskResponse.model_validate(task)
-
 
 
 @app.patch("/tasks/{task_id}", response_model=TaskResponse)
@@ -215,7 +209,6 @@ def delete_pet_endpoint(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-
 @app.post("/token", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -264,10 +257,10 @@ def forgot_password_endpoint(
     entered_verify_code: str,
     new_password: str,
     new_password_confirm: str,
-    email: str,
+    username: str,
     db: Session = Depends(get_db)
 ):
-    forget = auth_crud.forget_password(db, entered_verify_code, new_password, new_password_confirm, email)
+    forget = auth_crud.forget_password(db, entered_verify_code, new_password, new_password_confirm, username)
     if not forget:
         raise HTTPException(status_code=400, detail="Forget password reset failed")
     return {"message": "Forget password reset done!"}

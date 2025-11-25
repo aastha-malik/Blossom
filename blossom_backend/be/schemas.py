@@ -107,6 +107,8 @@ class RegistrationUser(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+    username: str
+    email:str
 
 
 class PasswordResetRequest(BaseModel):

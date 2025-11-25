@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 
 
 
-def to_confirm_email(db:Session, email:str):
-    user = db.query(User).filter(User.email == email).first()
+def to_confirm_email(db:Session, username:str):
+    user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     else:
@@ -17,14 +17,15 @@ def to_confirm_email(db:Session, email:str):
         user.user_verification_token = str(email_token)
         user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=15)
         db.commit()
-        send_email(email, "OTP for Password Reset" ,f"please enter the OTP in the app : {email_token}")
+        send_email(user.email, "OTP for Password Reset" ,f"please enter the OTP in the app : {email_token}")
+        print("email send!")
         
 
         return {"message": "email send!"}
 
 
-def forget_password(db:Session, entered_verify_code:str, email:str, new_password:str, new_password_confirm:str):
-    user = db.query(User).filter(User.email == email).first()
+def forget_password(db:Session, entered_verify_code:str, username:str, new_password:str, new_password_confirm:str):
+    user = db.query(User).filter(User.username == username).first()
     if user:
         if entered_verify_code == user.user_verification_token :
             if user.user_verification_token_expires_at > datetime.utcnow():

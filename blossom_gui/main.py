@@ -880,7 +880,15 @@ class BlossomFocusApp:
                                    style='Neon.TButton',
                                    command=self.logout)
             logout_btn.pack(side='left', padx=5)
-            
+            reset_password_btn = tk.Button(
+                            auth_buttons_frame,
+                            text="Reset Password?",
+                            font=('Montserrat', 10),
+                            fg=self.colors['electric_blue'],
+                            bg=self.colors['dark_gray'],
+                            border=0,
+                            command=self.show_forgot_password_form)
+            reset_password_btn.pack(side='left', padx=5)
             delete_account_btn = ttk.Button(auth_buttons_frame, text="🗑️ Delete Account", 
                                             style='Neon.TButton',
                                             command=self.show_delete_account_warning)
@@ -1137,13 +1145,13 @@ class BlossomFocusApp:
                              command=lambda: self.login_user(username_entry.get(), password_entry.get(), login_window))
         login_btn.pack(side='left', padx=10)
         
-        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
+        forgot_btn = tk.Button(button_frame, text="Forgot Password ?", 
                               font=('Montserrat', 12, 'bold'),
                               fg=self.colors['white'],
                               bg=self.colors['light_gray'],
                               activebackground=self.colors['dark_gray'],
-                              command=login_window.destroy)
-        cancel_btn.pack(side='left', padx=10)
+                              command=self.show_forgot_password_form)
+        forgot_btn.pack(side='left', padx=10)
         
         # Divider line
         divider_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
@@ -1179,12 +1187,15 @@ class BlossomFocusApp:
         forgot_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
         forgot_frame.pack(pady=10)
         
-        forgot_btn = tk.Button(forgot_frame, text="🔓 Forgot Password?", 
-                              font=('Montserrat', 10),
-                              fg=self.colors['electric_blue'],
-                              bg=self.colors['dark_gray'],
-                              border=0,
-                              command=self.show_password_forgot_form)
+        forgot_btn = tk.Button(
+                            forgot_frame,
+                            text="🔓 Forgot Password?",
+                            font=('Montserrat', 10),
+                            fg=self.colors['electric_blue'],
+                            bg=self.colors['dark_gray'],
+                            border=0,
+                            command=self.show_password_forgot_form)
+
         forgot_btn.pack()
         
         # Focus on username field
@@ -1328,6 +1339,7 @@ class BlossomFocusApp:
             response = requests.post(f"{self.backend_url}/token", data=login_data, timeout=10)
             if response.status_code == 200:
                 token_data = response.json()
+                print("TOKEN DATA:", token_data)
                 self.auth_token = token_data.get("access_token")
                 self.current_username = token_data.get("username")
                 self.current_email = token_data.get("email")
@@ -1476,80 +1488,85 @@ class BlossomFocusApp:
         """Resend verification code"""
         messagebox.showinfo("Code Sent", f"📧 Verification code resent to {email}")
     
-    def show_password_forgot_form(self):
-        """Show forgot password form"""
-        reset_window = tk.Toplevel(self.root)
-        reset_window.title("🔓 Forgot Password?")
-        reset_window.geometry("400x250")
-        reset_window.configure(bg=self.colors['black'])
-        reset_window.resizable(True, True)
-        
-        # Center the window
-        reset_window.transient(self.root)
-        reset_window.grab_set()
-        
-        # Reset form
-        reset_frame = tk.Frame(reset_window, bg=self.colors['dark_gray'])
-        reset_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = tk.Label(reset_frame, text="🔓 Forgot Password?", 
-                              font=('Orbitron', 16, 'bold'),
-                              fg=self.colors['hot_pink'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 15))
-        
-        # Info text
-        info_text = tk.Label(reset_frame, 
-                            text="Enter your email address and we'll send you\na link to reset your password:",
-                            font=('Montserrat', 11),
-                            fg=self.colors['white'], 
-                            bg=self.colors['dark_gray'],
-                            justify='center')
-        info_text.pack(pady=(0, 15))
-        
-        # Email field
-        email_entry = tk.Entry(reset_frame, font=('Montserrat', 11), 
-                              bg=self.colors['light_gray'], 
-                              fg=self.colors['white'], 
-                              insertbackground=self.colors['white'])
-        email_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
-        
-        # Buttons
-        button_frame = tk.Frame(reset_frame, bg=self.colors['dark_gray'])
-        button_frame.pack(pady=10)
-        
-        send_btn = tk.Button(button_frame, text="📧 Send Reset Link", 
-                            font=('Montserrat', 12, 'bold'),
-                            fg=self.colors['white'],
-                            bg=self.colors['hot_pink'],
-                            activebackground=self.colors['electric_blue'],
-                            command=lambda: self.send_forgot_password_reset(email_entry.get(), reset_window))
-        send_btn.pack(side='left', padx=10)
-        
-        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['light_gray'],
-                              activebackground=self.colors['dark_gray'],
-                              command=reset_window.destroy)
-        cancel_btn.pack(side='left', padx=10)
-        
-        # Focus on email field
-        email_entry.focus()
-        
-        # Bind Enter key to send
-        reset_window.bind('<Return>', lambda e: self.send_forgot_password_reset(email_entry.get(), reset_window))
-    
-    def send_forgot_password_reset(self, email, window):
-        """Send password reset email(in case of forgot password)"""
+    def show_forgot_password_form(self):
+        window = tk.Toplevel(self.root)
+        window.title("🔑 Forgot Password")
+        window.geometry("380x220")
+        window.configure(bg=self.colors['black'])
+        window.resizable(False, False)
+        window.grab_set()
+
+        frame = tk.Frame(window, bg=self.colors['dark_gray'])
+        frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        tk.Label(frame, text="Enter your Email:",
+                font=('Montserrat', 12),
+                fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+
+        email_entry = tk.Entry(frame, font=('Montserrat', 11),
+                            bg=self.colors['light_gray'], fg=self.colors['white'])
+        email_entry.pack(pady=10)
+
+    def send_otp():
+        email = email_entry.get().strip()
         if not email:
-            messagebox.showerror("Error", "Please enter your email address!")
+            messagebox.showerror("Error", "Email is required!")
             return
-        
-        # For demo purposes, just show success message
-        messagebox.showinfo("Reset Link Sent", f"📧 Password reset (In case you forgot your password) link sent to {email}\nPlease check your email.")
-        window.destroy()
+
+        try:
+            response = requests.post(
+                f"{self.backend_url}/send_forgot_password_otp",
+                params={"email": email},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "OTP sent to your email.")
+                window.destroy()
+                self.show_reset_password_form(email)
+            else:
+                messagebox.showerror("Error", response.json().get("detail"))
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    tk.Button(frame, text="📧 Send OTP", bg=self.colors['electric_blue'],
+              fg="black", font=('Montserrat', 12, 'bold'),
+              command=send_otp).pack(pady=10)
+
+    tk.Button(frame, text="Cancel", bg=self.colors['light_gray'], fg="white",
+              command=window.destroy).pack()
+
+
+    def handle_forgot_password(self, username, otp, new_pass, confirm_pass, window):
+        if not username or not otp or not new_pass or not confirm_pass:
+            messagebox.showerror("Error", "Please fill all fields!")
+            return
+
+        try:
+            # Make request to backend
+            response = requests.patch(
+                f"{self.backend_url}/forgot_password",
+                params={
+                    "username": username,
+                    "entered_verify_code": otp,
+                    "new_password": new_pass,
+                    "new_password_confirm": confirm_pass
+                },
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Password reset successfully!")
+                window.destroy()
+
+            else:
+                error = response.json().get("detail", "Reset failed.")
+                messagebox.showerror("Error", error)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+
     
     def logout(self):
         """Handle user logout"""
@@ -1787,6 +1804,34 @@ class BlossomFocusApp:
         """Start the application"""
         self.root.mainloop()
 
+    def reset_password_backend(self, username, otp, new_pass, new_pass2, window):
+        if not otp or not new_pass or not new_pass2:
+            messagebox.showerror("Error", "Please fill all fields!")
+            return
+
+        try:
+            response = requests.patch(
+            f"{self.backend_url}/forgot_password",
+            params={
+                "username": username,
+                "entered_verify_code": otp,
+                "new_password": new_pass,
+                "new_password_confirm": new_pass2
+            },
+            timeout=10
+        )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Password reset successfully!")
+                window.destroy()
+            else:
+                error = response.json().get("detail", "Reset failed.")
+                messagebox.showerror("Error", error)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+
 if __name__ == "__main__":
     # Import required modules
     try:
@@ -1797,3 +1842,4 @@ if __name__ == "__main__":
     
     app = BlossomFocusApp()
     app.run()
+
