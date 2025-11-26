@@ -929,7 +929,6 @@ class BlossomFocusApp:
                              fg=self.colors['electric_blue'], 
                              bg=self.colors['dark_gray'])
         theme_desc.pack()
-        
         # Data section
         data_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
         data_frame.pack(fill='x', padx=20, pady=20)
@@ -1507,34 +1506,34 @@ class BlossomFocusApp:
                             bg=self.colors['light_gray'], fg=self.colors['white'])
         email_entry.pack(pady=10)
 
-    def send_otp():
-        email = email_entry.get().strip()
-        if not email:
-            messagebox.showerror("Error", "Email is required!")
-            return
+        def send_otp():
+            email = email_entry.get().strip()
+            if not email:
+                messagebox.showerror("Error", "Email is required!")
+                return
 
-        try:
-            response = requests.post(
-                f"{self.backend_url}/send_forgot_password_otp",
-                params={"email": email},
-                timeout=10
-            )
+            try:
+                response = requests.post(
+                    f"{self.backend_url}/send_forgot_password_otp",
+                    params={"email": email},
+                    timeout=10
+                )
 
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "OTP sent to your email.")
-                window.destroy()
-                self.show_reset_password_form(email)
-            else:
-                messagebox.showerror("Error", response.json().get("detail"))
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+                if response.status_code == 200:
+                    messagebox.showinfo("Success", "OTP sent to your email.")
+                    window.destroy()
+                    self.show_reset_password_form(email)
+                else:
+                    messagebox.showerror("Error", response.json().get("detail"))
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
-    tk.Button(frame, text="📧 Send OTP", bg=self.colors['electric_blue'],
-              fg="black", font=('Montserrat', 12, 'bold'),
-              command=send_otp).pack(pady=10)
+        tk.Button(frame, text="📧 Send OTP", bg=self.colors['electric_blue'],
+                    fg="black", font=('Montserrat', 12, 'bold'),
+                    command=send_otp).pack(pady=10)
 
-    tk.Button(frame, text="Cancel", bg=self.colors['light_gray'], fg="white",
-              command=window.destroy).pack()
+        tk.Button(frame, text="Cancel", bg=self.colors['light_gray'], fg="white",
+                    command=window.destroy).pack()
 
 
     def handle_forgot_password(self, username, otp, new_pass, confirm_pass, window):
@@ -1565,6 +1564,87 @@ class BlossomFocusApp:
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+
+
+    def show_reset_password_form(self, email):
+        window = tk.Toplevel(self.root)
+        window.title("🔐 Reset Password")
+        window.geometry("380x350")
+        window.configure(bg=self.colors['black'])
+        window.resizable(False, False)
+        window.grab_set()
+
+        frame = tk.Frame(window, bg=self.colors['dark_gray'])
+        frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        tk.Label(frame, text=f"OTP sent to: {email}",
+                font=('Montserrat', 11),
+                fg=self.colors['white'], bg=self.colors['dark_gray']).pack(pady=5)
+
+        tk.Label(frame, text="Enter OTP:",
+                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+        otp_entry = tk.Entry(frame, font=('Montserrat', 11),
+                            bg=self.colors['light_gray'], fg=self.colors['white'])
+        otp_entry.pack(pady=5)
+
+        tk.Label(frame, text="Enter Username (for identity):",
+                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+        username_entry = tk.Entry(frame, font=('Montserrat', 11),
+                                bg=self.colors['light_gray'], fg=self.colors['white'])
+        username_entry.pack(pady=5)
+
+        tk.Label(frame, text="New Password:",
+                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+        pass1 = tk.Entry(frame, show="*", font=('Montserrat', 11),
+                        bg=self.colors['light_gray'], fg=self.colors['white'])
+        pass1.pack(pady=5)
+
+        tk.Label(frame, text="Confirm Password:",
+                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+        pass2 = tk.Entry(frame, show="*", font=('Montserrat', 11),
+                        bg=self.colors['light_gray'], fg=self.colors['white'])
+        pass2.pack(pady=5)
+
+    def reset_password():
+        otp = otp_entry.get().strip()
+        username = username_entry.get().strip()
+        new_pass = pass1.get().strip()
+        new_pass2 = pass2.get().strip()
+
+        if not otp or not username or not new_pass or not new_pass2:
+            messagebox.showerror("Error", "Please fill all fields!")
+            return
+
+        if new_pass != new_pass2:
+            messagebox.showerror("Error", "Passwords do not match!")
+            return
+
+        try:
+            response = requests.patch(
+                f"{self.backend_url}/forgot_password",
+                params={
+                    "entered_verify_code": otp,
+                    "new_password": new_pass,
+                    "new_password_confirm": new_pass2,
+                    "username": username
+                },
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Password reset successfully!")
+                window.destroy()
+            else:
+                message = response.json().get("detail", "Reset failed")
+                messagebox.showerror("Error", message)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    tk.Button(frame, text="Reset Password",
+              bg=self.colors['electric_blue'], fg="black",
+              font=('Montserrat', 12, 'bold'),
+              command=reset_password).pack(pady=15)
 
 
     
