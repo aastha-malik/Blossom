@@ -1569,9 +1569,9 @@ class BlossomFocusApp:
     def show_reset_password_form(self, email):
         window = tk.Toplevel(self.root)
         window.title("🔐 Reset Password")
-        window.geometry("380x350")
+        window.geometry("400x400")
         window.configure(bg=self.colors['black'])
-        window.resizable(False, False)
+        window.resizable(True, True)
         window.grab_set()
 
         frame = tk.Frame(window, bg=self.colors['dark_gray'])
@@ -1605,46 +1605,46 @@ class BlossomFocusApp:
                         bg=self.colors['light_gray'], fg=self.colors['white'])
         pass2.pack(pady=5)
 
-    def reset_password():
-        otp = otp_entry.get().strip()
-        username = username_entry.get().strip()
-        new_pass = pass1.get().strip()
-        new_pass2 = pass2.get().strip()
+        def reset_password():
+            otp = otp_entry.get().strip()
+            username = username_entry.get().strip()
+            new_pass = pass1.get().strip()
+            new_pass2 = pass2.get().strip()
 
-        if not otp or not username or not new_pass or not new_pass2:
-            messagebox.showerror("Error", "Please fill all fields!")
-            return
+            if not otp or not username or not new_pass or not new_pass2:
+                messagebox.showerror("Error", "Please fill all fields!")
+                return
 
-        if new_pass != new_pass2:
-            messagebox.showerror("Error", "Passwords do not match!")
-            return
+            if new_pass != new_pass2:
+                messagebox.showerror("Error", "Passwords do not match!")
+                return
 
-        try:
-            response = requests.patch(
-                f"{self.backend_url}/forgot_password",
-                params={
-                    "entered_verify_code": otp,
-                    "new_password": new_pass,
-                    "new_password_confirm": new_pass2,
-                    "username": username
-                },
-                timeout=10
-            )
+            try:
+                response = requests.patch(
+                    f"{self.backend_url}/forgot_password",
+                    params={
+                        "entered_verify_code": otp,
+                        "new_password": new_pass,
+                        "new_password_confirm": new_pass2,
+                        "username": username
+                    },
+                    timeout=10
+                )
 
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "Password reset successfully!")
-                window.destroy()
-            else:
-                message = response.json().get("detail", "Reset failed")
-                messagebox.showerror("Error", message)
+                if response.status_code == 200:
+                    messagebox.showinfo("Success", "Password reset successfully!")
+                    window.destroy()
+                else:
+                    message = response.json().get("detail", "Reset failed")
+                    messagebox.showerror("Error", message)
 
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
-    tk.Button(frame, text="Reset Password",
-              bg=self.colors['electric_blue'], fg="black",
-              font=('Montserrat', 12, 'bold'),
-              command=reset_password).pack(pady=15)
+        tk.Button(frame, text="Reset Password",
+                bg=self.colors['electric_blue'], fg="black",
+                font=('Montserrat', 12, 'bold'),
+                command=reset_password).pack(pady=15)
 
 
     

@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 
 
 
-def to_confirm_email(db:Session, username:str):
-    user = db.query(User).filter(User.username == username).first()
+def to_confirm_email(db:Session, email:str):
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     else:

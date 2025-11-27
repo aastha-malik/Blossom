@@ -260,7 +260,7 @@ def forgot_password_endpoint(
     username: str,
     db: Session = Depends(get_db)
 ):
-    forget = auth_crud.forget_password(db, entered_verify_code, new_password, new_password_confirm, username)
+    forget = auth_crud.forget_password(db, entered_verify_code,username, new_password, new_password_confirm)
     if not forget:
         raise HTTPException(status_code=400, detail="Forget password reset failed")
     return {"message": "Forget password reset done!"}
