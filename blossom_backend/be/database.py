@@ -7,8 +7,8 @@ This file sets up the database connection and base class for SQLAlchemy models.
 
 #database url
 import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'blossom.db')}"
+
+SQLALCHEMY_DATABASE_URL = "sqlite:////home/asus/Desktop/Code/db/blossom.db"
 
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time

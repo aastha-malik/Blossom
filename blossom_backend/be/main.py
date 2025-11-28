@@ -266,10 +266,10 @@ def forgot_password_endpoint(
     return {"message": "Forget password reset done!"}
 
 
-@app.delete("delete_user", response_model=DeleteAccountRequest)
-def delete_account(username:str, email:str, plain_password:str, db: Session = Depends(get_db)):
-    user = auth_crud.del_user(db, username, plain_password, email)
-    if user is None:
+@app.delete("/delete_account")
+def delete_account(data: DeleteAccountRequest,db: Session = Depends(get_db),current_user = Depends(get_current_user)):
+    result = auth_crud.del_user(db, current_user.id, data.password)
+    if not result:
         raise HTTPException(status_code=404, detail="user not found")
     return {"message": "user account deleted successfully"}
 

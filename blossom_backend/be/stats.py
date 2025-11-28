@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models import Task, User, Focus_time
+from models import Task, User
 from datetime import datetime
 from datetime import timedelta
 from auth_dependencies import get_current_user
@@ -83,33 +83,21 @@ def total_xps(db:Session, user_id:int,current_user , xp=User.xp):
     else:
         return user.xp or 0
 
-def total_focus_time(db:Session, user_id:int, current_user):
-    focus_times = db.query(Focus_time).filter(Focus_time.user_id == current_user.id).all()
-
-    total_minutes = 0
-    for f in focus_times:
-        total_minutes += (f.end_time - f.start_time).total_seconds() / 60
-
-    return total_minutes
-
-
 def get_user_stats(db: Session, user_id: int, start_period_func, current_user):
     start_date = start_period_func(current_user)
     num_task_completed = count_tasks_completed(db, user_id, start_date, current_user)
     streaks_count = streak_calculation(db, user_id, start_date, current_user)
     xps = total_xps(db, user_id, current_user)
-    focus_time = total_focus_time(db, user_id, current_user)
     
-    if start_date is None or num_task_completed is None or streaks_count is None or xps is None or focus_time is None:
+    if start_date is None or num_task_completed is None or streaks_count is None or xps is None:
         raise HTTPException(status_code=404, detail="User stats not found")
-    if num_task_completed < 0 or streaks_count < 0 or xps < 0 or focus_time < 0:
+    if num_task_completed < 0 or streaks_count < 0 or xps < 0:
         raise HTTPException(status_code=400, detail="Invalid stats values")
     else:      
         return {
             "num_task_completed": num_task_completed,
             "streaks": streaks_count,
             "xps": xps,
-            "focus_time": focus_time
         }
 
 

@@ -794,28 +794,18 @@ class BlossomFocusApp:
         
         # If not logged in, show zeros
         if not self.is_logged_in or not self.auth_token:
-            xp_value = 0
             tasks_completed = 0
-            focus_time = 0
             streak = 0
         else:
-            xp_value = self.user_data.get('xp', 0)
+            
             tasks_completed = self.user_data.get('completed_tasks', 0)
-            focus_time = self.user_data.get('total_focus_time', 0)
             streak = self.user_data.get('streak', 0)
         
         # Create analytics cards
-        self.create_analytics_card(stats_frame, "Total XP", 
-                                  str(xp_value), 
-                                  self.colors['hot_pink'], 0, 0)
         
         self.create_analytics_card(stats_frame, "Tasks Completed", 
                                   str(tasks_completed), 
                                   self.colors['neon_purple'], 0, 1)
-        
-        self.create_analytics_card(stats_frame, "Focus Time (min)", 
-                                  str(focus_time), 
-                                  self.colors['electric_blue'], 1, 0)
         
         self.create_analytics_card(stats_frame, "Current Streak", 
                                   f"{streak} days", 
@@ -1618,35 +1608,6 @@ class BlossomFocusApp:
             if new_pass != new_pass2:
                 messagebox.showerror("Error", "Passwords do not match!")
                 return
-
-            try:
-                response = requests.patch(
-                    f"{self.backend_url}/forgot_password",
-                    params={
-                        "entered_verify_code": otp,
-                        "new_password": new_pass,
-                        "new_password_confirm": new_pass2,
-                        "username": username
-                    },
-                    timeout=10
-                )
-
-                if response.status_code == 200:
-                    messagebox.showinfo("Success", "Password reset successfully!")
-                    window.destroy()
-                else:
-                    message = response.json().get("detail", "Reset failed")
-                    messagebox.showerror("Error", message)
-
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
-
-        tk.Button(frame, text="Reset Password",
-                bg=self.colors['electric_blue'], fg="black",
-                font=('Montserrat', 12, 'bold'),
-                command=reset_password).pack(pady=15)
-
-
     
     def logout(self):
         """Handle user logout"""

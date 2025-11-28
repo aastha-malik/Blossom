@@ -25,7 +25,7 @@
   ],
   "current_pet_id": 1,
   "level": 1,
-  "xp": 65,
+  "xp": 20,
   "streak": 0,
   "tasks": [
     {
@@ -35,7 +35,7 @@
       "completed": false
     }
   ],
-  "completed_tasks": 1,
+  "completed_tasks": 3,
   "focus_sessions": 1,
   "total_focus_time": 25,
   "achievements": [],

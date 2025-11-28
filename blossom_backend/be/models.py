@@ -48,16 +48,3 @@ class User(Base):
     pets = relationship("Pet", back_populates="user", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
 
-class Focus_time(Base):
-    __tablename__ = "focus_times"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user.id"))
-    start_time = Column(DateTime, default=datetime.utcnow())
-    end_time = Column(DateTime, default=datetime.utcnow())
-    duration = Column(Float)  # Duration in minutes
-    user = relationship("User", back_populates="focus_times")  # Establishing a relationship with User model
-
-
-
-
-
