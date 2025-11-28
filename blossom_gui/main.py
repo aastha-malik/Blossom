@@ -27,7 +27,7 @@ class BlossomFocusApp:
         self.current_username = None
         self.current_email = None
         self.auth_token = None
-        self.backend_url = "http://localhost:8000"  # Backend API URL
+        self.backend_url = "https://blossombackend-ib15.onrender.com"  # Backend API URL
         
         # Colors
         self.colors = {
