@@ -47,4 +47,8 @@ class User(Base):
     user_verification_token_expires_at = Column(DateTime, default=datetime.utcnow()) #when verification token expires
     pets = relationship("Pet", back_populates="user", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
+    #for google login
+    provider = Column(String, nullable=True)
+    provider_id = Column(String, nullable=True)
+
 
