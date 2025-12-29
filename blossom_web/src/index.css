@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark mode only - no light mode */
+    --background: #0F1419;
+    --card-bg: #1A1A2E;
+    --elevated-bg: #16213E;
+    --surface-bg: #2D2D44;
+    --border-color: #3A3A5C;
+    
+    /* Soft Pink */
+    --pink-soft: #E8B4B8;
+    --pink-soft-light: #D4A5A9;
+    
+    /* Muted Blue */
+    --blue-muted: #8FA3BF;
+    --blue-muted-light: #7A8FA8;
+    
+    /* Gentle Purple */
+    --purple-gentle: #B8A9C9;
+    --purple-gentle-light: #A89BB8;
+    
+    /* Text Colors */
+    --text-primary: #FFFFFF;
+    --text-secondary: #E5E5E5;
+    --text-muted: #B0B0B0;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+  }
+  
+  .btn-primary {
+    background-color: var(--pink-soft);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--pink-soft-light);
+  }
+  
+  .btn-secondary {
+    background-color: var(--blue-muted);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--blue-muted-light);
+  }
+  
+  .input-field {
+    background-color: var(--surface-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+  }
+  
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+  
+  .input-field:focus {
+    outline: none;
+    border-color: var(--purple-gentle);
+    box-shadow: 0 0 0 2px var(--purple-gentle);
+  }
+  
+  .page-background {
+    background-color: var(--elevated-bg);
+  }
+}
