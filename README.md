@@ -1,4 +1,3 @@
------ COPY BELOW THIS LINE -----
 # Blossom — Productivity + Focus + Virtual Pet (Desktop App + FastAPI Backend)
 
 Blossom is a desktop productivity application combining a task manager, focus timer, and a virtual pet system. It includes full authentication using JWT and a deployed FastAPI backend where users can test the API.
