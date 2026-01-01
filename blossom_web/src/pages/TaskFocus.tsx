@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import FocusTimer from '../components/focus/FocusTimer';
 import TaskForm from '../components/tasks/TaskForm';
 import TaskList from '../components/tasks/TaskList';
@@ -19,6 +18,12 @@ export default function TaskFocus() {
   return (
     <div className="min-h-screen page-background p-8">
       <div className="max-w-7xl mx-auto">
+        {/* Centered Heading */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-3 h-3 rounded-full bg-pink-soft-100"></div>
+          <h2 className="text-4xl font-extrabold text-text-primary">TASK & FOCUS</h2>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Focus Timer */}
           <div>

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksAPI } from '../../api/client';
 import { TASK_PRIORITIES } from '../../utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLocalTasksContext } from '../../contexts/LocalTasksContext';
 import type { TaskCreate } from '../../api/types';
 
 interface TaskFormProps {
@@ -12,7 +14,9 @@ interface TaskFormProps {
 export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<string>(TASK_PRIORITIES.MEDIUM);
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const { addTask: addLocalTask } = useLocalTasksContext();
 
   const createTaskMutation = useMutation({
     mutationFn: (data: TaskCreate) => tasksAPI.create(data),
@@ -29,8 +33,24 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (title.trim()) {
+    if (!title.trim()) return;
+
+    if (isAuthenticated) {
+      // Use backend API when logged in
       createTaskMutation.mutate({ title: title.trim(), priority });
+    } else {
+      // Use local storage when not logged in
+      try {
+        addLocalTask({
+          title: title.trim(),
+          priority: priority || TASK_PRIORITIES.MEDIUM,
+        });
+        setTitle('');
+        setPriority(TASK_PRIORITIES.MEDIUM);
+        onSuccess?.();
+      } catch (error) {
+        onError?.(error as Error);
+      }
     }
   };
 

@@ -7,9 +7,11 @@ interface TaskItemProps {
   task: Task;
   onDelete: () => void;
   onError?: (error: Error) => void;
+  isLocal?: boolean;
+  onUpdateLocal?: (updates: Partial<Task>) => void;
 }
 
-export default function TaskItem({ task, onDelete, onError }: TaskItemProps) {
+export default function TaskItem({ task, onDelete, onError, isLocal = false, onUpdateLocal }: TaskItemProps) {
   const queryClient = useQueryClient();
 
   const toggleCompletionMutation = useMutation({
@@ -24,14 +26,20 @@ export default function TaskItem({ task, onDelete, onError }: TaskItemProps) {
   });
 
   const handleToggle = () => {
-    toggleCompletionMutation.mutate(!task.completed);
+    if (isLocal && onUpdateLocal) {
+      // Update local task immediately
+      onUpdateLocal({ completed: !task.completed });
+    } else {
+      // Use backend API
+      toggleCompletionMutation.mutate(!task.completed);
+    }
   };
 
   return (
     <div className="flex items-center gap-3 p-4 bg-dark-surface rounded-lg border border-dark-border hover:border-blue-muted-100/50 transition-colors">
       <button
         onClick={handleToggle}
-        disabled={toggleCompletionMutation.isPending}
+        disabled={!isLocal && toggleCompletionMutation.isPending}
         className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
           task.completed
             ? 'bg-blue-muted-100 border-blue-muted-100'
