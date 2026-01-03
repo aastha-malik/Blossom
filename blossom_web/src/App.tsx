@@ -13,22 +13,8 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<TaskFocus />} />
-          <Route
-            path="/pets"
-            element={
-              <ProtectedRoute>
-                <Pets />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/pets" element={<Pets />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route
             path="/settings"
             element={

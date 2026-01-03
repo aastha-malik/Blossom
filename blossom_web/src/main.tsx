@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { LocalTasksProvider } from './contexts/LocalTasksContext';
+import { LocalPetsProvider } from './contexts/LocalPetsContext';
 import './index.css';
 import App from './App.tsx';
 
@@ -20,7 +21,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LocalTasksProvider>
-          <App />
+          <LocalPetsProvider>
+            <App />
+          </LocalPetsProvider>
         </LocalTasksProvider>
       </AuthProvider>
     </QueryClientProvider>
