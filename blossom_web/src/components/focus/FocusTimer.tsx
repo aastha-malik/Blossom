@@ -64,7 +64,7 @@ export default function FocusTimer() {
   return (
     <div className="card">
       <div className="text-center mb-6">
-        <div className="text-7xl font-bold text-blue-muted-100 mb-6">
+        <div className="text-9xl font-bold text-blue-muted-100 mb-6">
           {formatTimer(timeLeft)}
         </div>
 

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+:root {
     /* Dark mode only - no light mode */
     --background: #0F1419;
     --card-bg: #1A1A2E;
@@ -27,15 +27,15 @@
     --text-primary: #FFFFFF;
     --text-secondary: #E5E5E5;
     --text-muted: #B0B0B0;
-  }
+}
 
-  body {
+body {
     background-color: var(--background);
     color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    margin: 0;
-    min-height: 100vh;
-  }
+  margin: 0;
+  min-height: 100vh;
+}
 }
 
 @layer components {
@@ -62,15 +62,15 @@
   .btn-secondary {
     background-color: var(--blue-muted);
     color: white;
-    font-weight: 500;
+  font-weight: 500;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     transition: background-color 0.2s;
-  }
+}
   
   .btn-secondary:hover {
     background-color: var(--blue-muted-light);
-  }
+}
   
   .input-field {
     background-color: var(--surface-bg);

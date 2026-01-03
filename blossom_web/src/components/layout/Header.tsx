@@ -1,7 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, username, logout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -17,43 +20,43 @@ export default function Header() {
             <p className="text-xs text-text-muted">Tech-Girly Edition</p>
           </div>
         </Link>
-        <nav className="flex gap-6">
+        <nav className="flex gap-2">
           <Link
             to="/"
-            className={`transition-colors ${
+            className={`px-4 py-2 rounded-lg transition-all ${
               isActive('/')
-                ? 'text-text-primary font-medium'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-dark-elevated text-text-primary font-bold'
+                : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
             }`}
           >
             Task & Focus
           </Link>
           <Link
             to="/pets"
-            className={`transition-colors ${
+            className={`px-4 py-2 rounded-lg transition-all ${
               isActive('/pets')
-                ? 'text-text-primary font-medium'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-dark-elevated text-text-primary font-bold'
+                : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
             }`}
           >
             My Pets
           </Link>
           <Link
             to="/analytics"
-            className={`transition-colors ${
+            className={`px-4 py-2 rounded-lg transition-all ${
               isActive('/analytics')
-                ? 'text-text-primary font-medium'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-dark-elevated text-text-primary font-bold'
+                : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
             }`}
           >
             Analytics
           </Link>
           <Link
             to="/settings"
-            className={`transition-colors ${
+            className={`px-4 py-2 rounded-lg transition-all ${
               isActive('/settings')
-                ? 'text-text-primary font-medium'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-dark-elevated text-text-primary font-bold'
+                : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
             }`}
           >
             Settings
@@ -62,7 +65,21 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <span className="text-text-secondary">XP: 0</span>
           <span className="text-text-secondary">🔥 Streak: 0 days</span>
-          <button className="btn-primary">Login / Sign Up</button>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-text-secondary">Hi, {username}!</span>
+              <button onClick={logout} className="btn-secondary">
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className="btn-primary"
+            >
+              Login / Sign Up
+            </button>
+          )}
         </div>
       </div>
     </header>

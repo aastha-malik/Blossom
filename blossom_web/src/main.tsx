@@ -22,7 +22,7 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <LocalTasksProvider>
           <LocalPetsProvider>
-            <App />
+    <App />
           </LocalPetsProvider>
         </LocalTasksProvider>
       </AuthProvider>
