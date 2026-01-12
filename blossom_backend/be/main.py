@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,9 +18,9 @@ from auth_dependencies import get_current_user
 from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
     PetCreate, PetUpdate, PetResponse,PetFeed,
-    RegistrationUser, TokenResponse, DeleteAccountRequest
+    RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest
 )
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, HTMLResponse
 from oauth import oauth
 from dotenv import load_dotenv
 import uuid
@@ -379,7 +379,27 @@ def register_user(user: RegistrationUser, db: Session = Depends(get_db)):
 
 
 @app.post("/verify_email")
-def verify_email_endpoint(email: str, verification_token: str, db: Session = Depends(get_db)):
+async def verify_email_endpoint(
+    request: Request,
+    body: EmailVerificationRequest = Body(None),
+    db: Session = Depends(get_db)
+):
+    # Support both query parameters (for GUI) and JSON body (for web frontend)
+    email = None
+    verification_token = None
+    
+    # Check if JSON body is provided
+    if body:
+        email = body.email
+        verification_token = body.verification_token
+    else:
+        # Check query parameters (for GUI compatibility)
+        email = request.query_params.get("email")
+        verification_token = request.query_params.get("verification_token")
+    
+    if not email or not verification_token:
+        raise HTTPException(status_code=400, detail="Email and verification_token are required")
+    
     result = auth_crud.verify_email(db, email, verification_token)
     if not result:
         raise HTTPException(status_code=400, detail="Email verification failed")

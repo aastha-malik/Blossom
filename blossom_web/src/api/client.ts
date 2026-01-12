@@ -91,7 +91,9 @@ export const authAPI = {
   verifyEmail: async (email: string, verificationToken: string): Promise<{ message: string }> => {
     const response = await fetch(API_ENDPOINTS.VERIFY_EMAIL, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ email, verification_token: verificationToken }),
     });
 
