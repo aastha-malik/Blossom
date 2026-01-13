@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
+import { API_URL } from '../utils/constants';
 
 export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
@@ -39,7 +40,7 @@ export default function Login() {
 
   const handleGoogleLogin = () => {
     // Redirect to backend Google OAuth endpoint
-    window.location.href = 'https://blossombackend-ib15.onrender.com/login/google';
+    window.location.href = `${API_URL}/login/google`;
   };
 
   return (

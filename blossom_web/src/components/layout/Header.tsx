@@ -1,10 +1,20 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { userAPI } from '../../api/client';
 
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, username, logout } = useAuth();
+
+  // Fetch user XP when authenticated
+  const { data: userXP } = useQuery({
+    queryKey: ['userXP'],
+    queryFn: () => userAPI.getXP(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -63,7 +73,9 @@ export default function Header() {
           </Link>
         </nav>
         <div className="flex items-center gap-4">
-          <span className="text-text-secondary">XP: 0</span>
+          <span className="text-text-secondary">
+            XP: {isAuthenticated ? (userXP?.xp ?? 0) : 0}
+          </span>
           <span className="text-text-secondary">🔥 Streak: 0 days</span>
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
