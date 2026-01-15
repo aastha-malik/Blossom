@@ -2,6 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 passlib[bcrypt]
+bcrypt<5.0.0
 python-jose
 email-validator
 python-multipart

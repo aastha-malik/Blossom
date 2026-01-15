@@ -1,6 +1,6 @@
 from email_verify import send_email
 import random
-from auth import pwd_context
+from auth import pwd_context, truncate_password
 from models import User
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -30,7 +30,9 @@ def forget_password(db:Session, entered_verify_code:str, username:str, new_passw
         if entered_verify_code == user.user_verification_token :
             if user.user_verification_token_expires_at > datetime.utcnow():
                 if new_password == new_password_confirm:
-                    hashed_password = pwd_context.hash(new_password)
+                    # Truncate password to 72 bytes (bcrypt limit)
+                    truncated_password = truncate_password(new_password)
+                    hashed_password = pwd_context.hash(truncated_password)
                     user.hashed_password = hashed_password
                     db.commit()
                     db.refresh(user)

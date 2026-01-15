@@ -41,7 +41,6 @@ class User(Base):
     xp = Column(Integer, default=100)
     start_acc_time = Column(DateTime, default=datetime.utcnow())
     tasks = relationship("Task", backref="user")  # Establishing a relationship with Task model
-    focus_times = relationship("Focus_time", back_populates="user")  # Establishing a relationship with Focus_time model
     user_verified = Column(Boolean, default=False) #whether email of user is verified or not
     user_verification_token = Column(String, default=False)  #verification token for user
     user_verification_token_expires_at = Column(DateTime, default=datetime.utcnow()) #when verification token expires

@@ -47,13 +47,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = useCallback(async (data: RegisterRequest) => {
     try {
       await authAPI.register(data);
-      // After registration, automatically log in
-      await login({ username: data.username, password: data.password });
+      // Note: User needs to verify email before logging in
+      // We don't auto-login here - user should verify email first
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
-  }, [login]);
+  }, []);
 
   const logout = useCallback(() => {
     tokenRef.current = null;

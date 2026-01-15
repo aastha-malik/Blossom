@@ -38,8 +38,9 @@ export default function Signup() {
         password,
       });
 
-      showToast('Account created successfully! 🎉', 'success');
-      navigate('/');
+      showToast('Account created! Please check your email to verify your account. 📧', 'success');
+      // Navigate to login page instead of home
+      navigate('/login');
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : 'Sign up failed. Please try again.',

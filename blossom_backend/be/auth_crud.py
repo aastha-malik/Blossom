@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from models import User
-from auth import pwd_context
+from auth import pwd_context, truncate_password
 from jose import jwt, JWTError
 from datetime import timedelta, datetime
 import random
@@ -15,12 +15,14 @@ SECRET_KEY = "blossom_app"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-MAX_PASSWORD_LENGTH = 72
+# 72 = 72 characters max password length
 
 # creating user => registration part
 def create_user(db:Session, username:str, plain_password:str, email:str):
     email_token = random.randint(99999, 1000000)
-    hashed_password = pwd_context.hash(plain_password[:MAX_PASSWORD_LENGTH])
+    # Truncate password to 72 bytes (bcrypt limit)
+    truncated_password = truncate_password(plain_password)
+    hashed_password = pwd_context.hash(truncated_password)
     new_user = User( username=username, hashed_password=hashed_password, email=email, user_verification_token=str(email_token), start_acc_time= datetime.utcnow())
 
     db.add(new_user)
@@ -57,7 +59,9 @@ def authenticate_user(db:Session, username:str, email:str, password:str):
     if user is None:
         print("user not found")
         return None
-    password_check = pwd_context.verify(password[:MAX_PASSWORD_LENGTH], user.hashed_password)
+    # Truncate password to 72 bytes (bcrypt limit)
+    truncated_password = truncate_password(password)
+    password_check = pwd_context.verify(truncated_password, user.hashed_password)
     if not password_check:
         print("password not matched")
         return None
@@ -81,7 +85,9 @@ def del_user(db:Session, user_id: int, plain_password:str):
     if user is None:
         print("user not found")
         return None
-    password_check = pwd_context.verify(plain_password, user.hashed_password)
+    # Truncate password to 72 bytes (bcrypt limit)
+    truncated_password = truncate_password(plain_password)
+    password_check = pwd_context.verify(truncated_password, user.hashed_password)
     if not password_check:
         print("password not matched")
         return False

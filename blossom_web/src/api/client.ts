@@ -81,7 +81,9 @@ export const authAPI = {
   register: async (data: RegisterRequest): Promise<{ message: string }> => {
     const response = await fetch(API_ENDPOINTS.REGISTER, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     });
 
