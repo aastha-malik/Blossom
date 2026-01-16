@@ -92,10 +92,10 @@ def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user
 
 @app.get("/tasks", response_model=list[TaskResponse])
 def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session = Depends(get_db)):
-    tasks = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == False).all()
+    tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
+    # Return empty list instead of 404 when no tasks found
     if not tasks:
-        raise HTTPException(status_code=404, detail="No tasks found")
-        print("No task found")
+        return []
     return [TaskResponse.model_validate(t) for t in tasks]
 
 

@@ -5,7 +5,9 @@ from fastapi import Depends
 
 #adding task to db
 def create_task(db: Session, title: str, priority: str, current_user):
-    new_task = Task(title=title,user_id=current_user.id, completed=False, priority=priority)
+    # Normalize priority to capitalized format for consistency
+    priority_normalized = priority.capitalize() if priority else "Medium"
+    new_task = Task(title=title,user_id=current_user.id, completed=False, priority=priority_normalized)
     db.add(new_task)
     db.commit()
     db.refresh(new_task)     # This updates the object with data from the database (like the new id)
@@ -58,13 +60,14 @@ def update_task_completion(db: Session, task_id: int, completed: bool, current_u
 
     
 
-    # Decide XP based on priority
+    # Decide XP based on priority (handle both lowercase and capitalized)
     xp_reward = 0
-    if task.priority == "low":
+    priority_lower = (task.priority or "").lower()
+    if priority_lower == "low":
         xp_reward = 10
-    elif task.priority == "medium":
+    elif priority_lower == "medium":
         xp_reward = 15
-    elif task.priority == "high":
+    elif priority_lower == "high":
         xp_reward = 25
 
     # Initialize XP if null (default is 100)
