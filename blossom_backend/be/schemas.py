@@ -67,8 +67,11 @@ class PetBase(BaseModel):
     type: str
 
 
-class PetCreate(PetBase):
-    pass
+class PetCreate(BaseModel):
+    name: str
+    type: str
+    age: Optional[float] = 0.0
+    hunger: Optional[int] = 100
 
 
 class PetUpdate(BaseModel):

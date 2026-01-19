@@ -1,11 +1,10 @@
 import { API_ENDPOINTS } from './endpoints';
-import type { 
-  LoginRequest, 
-  TokenResponse, 
+import type {
+  LoginRequest,
+  TokenResponse,
   RegisterRequest,
   Task,
   TaskCreate,
-  TaskCompletionUpdate,
   Pet,
   PetCreate,
   UserStats,
@@ -42,18 +41,18 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
         }
         throw new Error(error.detail || 'Not found');
       }
-      // For tasks endpoint, return empty array on 404
-      if (response.url.includes('/tasks')) {
+      // For tasks or pets endpoint, return empty array on 404
+      if (response.url.includes('/tasks') || response.url.includes('/pet')) {
         return [] as T;
       }
       throw new Error('Not found');
     }
-    
+
     // Handle 401 Unauthorized
     if (response.status === 401) {
       throw new Error('Unauthorized. Please log in again.');
     }
-    
+
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
     throw new Error(error.detail || `HTTP error! status: ${response.status}`);
   }
@@ -208,7 +207,7 @@ export const tasksAPI = {
 // Pets API
 export const petsAPI = {
   getAll: async (): Promise<Pet[]> => {
-    const response = await fetch(API_ENDPOINTS.PETS, {
+    const response = await fetch(API_ENDPOINTS.PETS_LIST, {
       headers: getAuthHeaders(),
     });
 
@@ -216,7 +215,7 @@ export const petsAPI = {
   },
 
   create: async (data: PetCreate): Promise<Pet> => {
-    const response = await fetch(API_ENDPOINTS.PETS.replace('/pet', '/pets'), {
+    const response = await fetch(API_ENDPOINTS.PETS_CREATE, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),

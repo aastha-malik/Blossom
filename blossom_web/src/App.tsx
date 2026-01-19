@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/layout/Header';
-import { ProtectedRoute } from './components/layout/ProtectedRoute';
+// import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import TaskFocus from './pages/TaskFocus';
 import Pets from './pages/Pets';
 import Analytics from './pages/Analytics';

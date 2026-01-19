@@ -92,6 +92,7 @@ def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user
 
 @app.get("/tasks", response_model=list[TaskResponse])
 def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session = Depends(get_db)):
+    # Update: Return all tasks so frontend can show completed ones with strikethrough
     tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     # Return empty list instead of 404 when no tasks found
     if not tasks:

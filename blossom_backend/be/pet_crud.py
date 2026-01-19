@@ -8,7 +8,7 @@ from fastapi import Depends
 def create_pet(db: Session, name:str, type:str , current_user):
     new_pet = Pet(name=name, type=type, user_id=current_user.id)
     new_pet.last_fed = datetime.utcnow()
-    new_pet.hunger = 100
+    new_pet.hunger = 80 # Start hungry
     new_pet.is_alive = True
     new_pet.age = 0.0
 
@@ -72,7 +72,7 @@ def updating_is_alive(db:Session, last_fed:datetime, id:int, current_user):
         return pet.is_alive
 #feed pet  function
 def feed_pet(db:Session ,pet_id: int, current_user):
-    pet = db.query(Pet).filter(Pet.user_id == current_user.id, Pet.is_alive == True).first()
+    pet = db.query(Pet).filter(Pet.id == pet_id, Pet.user_id == current_user.id).first()
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         return None

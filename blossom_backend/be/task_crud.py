@@ -15,7 +15,7 @@ def create_task(db: Session, title: str, priority: str, current_user):
     
 #getting all task from db
 def get_all_tasks(db:Session, current_user):
-    all_tasks = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == False).all()
+    all_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     if all_tasks:
         return all_tasks
     else:

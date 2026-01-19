@@ -55,7 +55,7 @@ def streak_calculation(db: Session, user_id: int,start_date: datetime, current_u
     streaks = 0
     task_dates = set()
     for i in tasks:
-        date = task.created_at.date()
+        date = i.created_at.date()
         task_dates.add(date)
     sorted_dates = sorted(task_dates, reverse=True)
     if not sorted_dates:

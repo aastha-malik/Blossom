@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { petsAPI } from '../../api/client';
+import { petsAPI, userAPI } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocalPetsContext } from '../../contexts/LocalPetsContext';
 import PetCard from './PetCard';
@@ -13,6 +13,13 @@ export default function PetList({ onError, onSuccess }: PetListProps) {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { pets: localPets, feedPet: feedLocalPet, deletePet: deleteLocalPet } = useLocalPetsContext();
+
+  // Fetch user XP when authenticated to control button state
+  const { data: userXPData } = useQuery({
+    queryKey: ['userXP'],
+    queryFn: () => userAPI.getXP(),
+    enabled: isAuthenticated,
+  });
 
   // Fetch from backend when authenticated
   const { data: backendPets, isLoading, error } = useQuery({
@@ -97,6 +104,7 @@ export default function PetList({ onError, onSuccess }: PetListProps) {
             }
           }}
           isLocal={!isAuthenticated}
+          userXP={userXPData?.xp}
         />
       ))}
     </div>

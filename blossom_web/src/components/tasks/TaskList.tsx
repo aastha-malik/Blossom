@@ -32,19 +32,19 @@ export default function TaskList({ onError }: TaskListProps) {
   });
 
   // Use local tasks when not authenticated, backend tasks when authenticated
-  // Note: Backend only returns incomplete tasks, but local tasks show all (including completed)
+  // Backend now returns all tasks (completed and incomplete)
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
   // Sort tasks: incomplete first, completed last
   const sortedTasks = tasks
     ? [...tasks].sort((a, b) => {
-        // Incomplete tasks come first (completed: false = 0, true = 1)
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1;
-        }
-        // If both have same completion status, sort by creation date (newest first)
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      })
+      // Incomplete tasks come first (completed: false = 0, true = 1)
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      // If both have same completion status, sort by creation date (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })
     : [];
 
   if (isAuthenticated && isLoading) {

@@ -1,12 +1,13 @@
 import { Trash2, Sparkles } from 'lucide-react';
 import type { Pet } from '../../api/types';
-import { formatTimeAgo } from '../../utils/formatters';
+// import { formatTimeAgo } from '../../utils/formatters';
 
 interface PetCardProps {
   pet: Pet;
   onFeed: () => void;
   onDelete: () => void;
   isLocal?: boolean;
+  userXP?: number;
 }
 
 const getPetEmoji = (type: string): string => {
@@ -17,22 +18,23 @@ const getPetEmoji = (type: string): string => {
 };
 
 const getMood = (happiness: number, hunger: number): { emoji: string; text: string } => {
-  if (happiness >= 80 && hunger > 50) {
+  if (happiness >= 80) {
     return { emoji: '😊', text: 'Very Happy!' };
-  } else if (happiness >= 60 && hunger > 30) {
+  } else if (happiness >= 60) {
     return { emoji: '🙂', text: 'Happy' };
-  } else if (happiness >= 40 || hunger > 20) {
-    return { emoji: '😐', text: 'Okay' };
-  } else if (hunger <= 20) {
-    return { emoji: '😟', text: 'Hungry' };
+  } else if (hunger >= 80) {
+    return { emoji: '😟', text: 'Starving!' };
+  } else if (hunger >= 60) {
+    return { emoji: '😐', text: 'Hungry' };
   } else {
     return { emoji: '😢', text: 'Sad' };
   }
 };
 
-export default function PetCard({ pet, onFeed, onDelete, isLocal = false }: PetCardProps) {
+export default function PetCard({ pet, onFeed, onDelete, isLocal = false, userXP = 0 }: PetCardProps) {
   const hungerPercentage = Math.min(100, Math.max(0, pet.hunger));
-  const happinessPercentage = Math.min(100, Math.max(0, 100 - (100 - hungerPercentage) * 0.8));
+  // High hunger = Low happiness
+  const happinessPercentage = Math.min(100, Math.max(0, 100 - hungerPercentage));
   const mood = getMood(happinessPercentage, hungerPercentage);
   const petEmoji = getPetEmoji(pet.type);
 
@@ -90,26 +92,27 @@ export default function PetCard({ pet, onFeed, onDelete, isLocal = false }: PetC
           </div>
         </div>
 
-        {/* Hunger Bar */}
+        {/* Hunger Bar (High = Hungry) */}
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-text-secondary text-sm">Hunger</span>
-            <span className="text-blue-muted-100 text-sm font-medium">{hungerPercentage}%</span>
+            <span className={`text-sm font-medium ${hungerPercentage > 70 ? 'text-red-400' : 'text-blue-muted-100'}`}>
+              {Math.round(hungerPercentage)}%
+            </span>
           </div>
           <div className="w-full bg-dark-surface rounded-full h-3">
             <div
-              className={`h-3 rounded-full transition-all ${
-                hungerPercentage > 70
-                  ? 'bg-blue-muted-100'
-                  : hungerPercentage > 40
-                  ? 'bg-purple-gentle-100'
-                  : 'bg-pink-soft-100'
-              }`}
+              className={`h-3 rounded-full transition-all ${hungerPercentage > 70
+                ? 'bg-red-400'
+                : hungerPercentage > 40
+                  ? 'bg-orange-400'
+                  : 'bg-green-400'
+                }`}
               style={{ width: `${hungerPercentage}%` }}
             />
           </div>
-          {hungerPercentage < 30 && (
-            <p className="text-pink-soft-100 text-xs mt-1">Feed your pet soon!</p>
+          {hungerPercentage > 70 && (
+            <p className="text-red-400 text-xs mt-1 animate-pulse">Feed me! I'm starving!</p>
           )}
         </div>
 
@@ -125,11 +128,12 @@ export default function PetCard({ pet, onFeed, onDelete, isLocal = false }: PetC
       <div className="flex gap-3">
         <button
           onClick={onFeed}
-          disabled={hungerPercentage >= 100}
+          disabled={hungerPercentage <= 0 || (!isLocal && userXP < 35)}
           className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!isLocal && userXP < 35 ? "Not enough XP (Need 35)" : "Feed your pet"}
         >
           <Sparkles size={18} />
-          Feed
+          Feed {isLocal ? "" : "(-35 XP)"}
         </button>
         <button
           onClick={onDelete}
