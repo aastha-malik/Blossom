@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from jose import jwt
 import models
-from models import User, Task
-from database import SessionLocal, engine, Base
+from models import User, Task, Base
+from database import SessionLocal, engine
 import task_crud
 import pet_crud
 import auth_crud
