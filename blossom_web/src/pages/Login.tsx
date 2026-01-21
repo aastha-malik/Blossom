@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Toast from '../components/ui/Toast';
@@ -10,9 +10,30 @@ export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, setAuthData } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toasts, showToast, removeToast } = useToast();
+
+  // Handle Google Login Redirect Token
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const username = searchParams.get('username');
+    const email = searchParams.get('email');
+
+    if (token) {
+      // If we have token but missing username/email (fallback)
+      const finalUsername = username || 'User';
+      const finalEmail = email || '';
+
+      setAuthData(token, finalUsername, finalEmail);
+      showToast('Successfully logged in with Google! 🚀', 'success');
+
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
+    }
+  }, [searchParams, setAuthData, navigate, showToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +50,21 @@ export default function Login() {
       showToast('Welcome back! 🎉', 'success');
       navigate('/');
     } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : 'Login failed. Please try again.',
-        'error'
-      );
+      // Check if it's an email verification error (403 status)
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
+
+      if (errorMessage.includes('verify your email') || errorMessage.includes('verification')) {
+        showToast(
+          'Please verify your email before logging in. Redirecting to verification page...',
+          'error'
+        );
+        // Redirect to verify email page after 2 seconds
+        setTimeout(() => {
+          navigate('/verify-email', { state: { email: usernameOrEmail.includes('@') ? usernameOrEmail : '' } });
+        }, 2000);
+      } else {
+        showToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,14 +1,171 @@
-import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon } from 'lucide-react';
+import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon, Trash2, KeyRound, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
+import { authAPI } from '../api/client';
 
 export default function Settings() {
   const navigate = useNavigate();
   const { isAuthenticated, username, email, logout } = useAuth();
 
+  // UI State - Show/Hide forms
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+
+  // Delete Account State
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
+
+  // Password Reset State (for logged-in users)
+  const [resetOldPassword, setResetOldPassword] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+
+  // Forgot Password State (with email verification)
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOTP, setForgotOTP] = useState('');
+  const [forgotUsername, setForgotUsername] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<'email' | 'verify'>('email');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+
   const handleGoogleLogin = () => {
-    // Redirect to backend Google OAuth endpoint
     window.location.href = 'https://blossombackend-ib15.onrender.com/login/google/start';
+  };
+
+  // Delete Account Handler
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleteSuccess('');
+
+    if (!deletePassword) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await authAPI.deleteAccount(deletePassword);
+      setDeleteSuccess('Account deleted successfully. Logging out...');
+      setTimeout(() => {
+        logout();
+        navigate('/');
+      }, 2000);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete account');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Password Reset Handler (for logged-in users)
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setResetSuccess('');
+
+    if (!resetOldPassword || !resetNewPassword || !resetConfirmPassword) {
+      setResetError('Please fill in all fields');
+      return;
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('New passwords do not match');
+      return;
+    }
+
+    if (resetNewPassword.length < 6) {
+      setResetError('New password must be at least 6 characters');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await authAPI.resetPassword(username!, resetOldPassword, resetNewPassword, resetConfirmPassword);
+      setResetSuccess('Password reset successfully!');
+      setResetOldPassword('');
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+    } catch (error) {
+      setResetError(error instanceof Error ? error.message : 'Failed to reset password');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // Forgot Password - Send OTP
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotEmail) {
+      setForgotError('Please enter your email');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await authAPI.sendForgotPasswordOTP(forgotEmail);
+      setForgotSuccess('OTP sent to your email!');
+      setForgotStep('verify');
+    } catch (error) {
+      setForgotError(error instanceof Error ? error.message : 'Failed to send OTP');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Forgot Password - Verify OTP and Reset
+  const handleForgotPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+
+    if (!forgotOTP || !forgotUsername || !forgotNewPassword || !forgotConfirmPassword) {
+      setForgotError('Please fill in all fields');
+      return;
+    }
+
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError('Passwords do not match');
+      return;
+    }
+
+    if (forgotNewPassword.length < 6) {
+      setForgotError('Password must be at least 6 characters');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      await authAPI.forgotPassword(forgotOTP, forgotUsername, forgotNewPassword, forgotConfirmPassword);
+      setForgotSuccess('Password reset successfully! You can now login.');
+      // Reset form
+      setForgotEmail('');
+      setForgotOTP('');
+      setForgotUsername('');
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+      setForgotStep('email');
+    } catch (error) {
+      setForgotError(error instanceof Error ? error.message : 'Failed to reset password');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   return (
@@ -95,6 +252,324 @@ export default function Settings() {
               </>
             )}
           </div>
+
+          {/* Password Reset Card - Only show when logged in */}
+          {isAuthenticated && (
+            <div className="card">
+              <div className="flex items-center gap-3 mb-4">
+                <KeyRound size={24} className="text-purple-gentle-100" />
+                <h3 className="text-2xl font-semibold text-text-primary">Reset Password</h3>
+              </div>
+
+              {!showPasswordReset ? (
+                <>
+                  <p className="text-text-muted mb-4">
+                    Change your account password. If you logged in with Google or don't remember your current password, please use the "Forgot Password" option below.
+                  </p>
+                  <button
+                    onClick={() => setShowPasswordReset(true)}
+                    className="btn-primary flex items-center gap-2"
+                  >
+                    <KeyRound size={18} />
+                    Reset Password
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4 p-3 bg-blue-muted-100/10 border border-blue-muted-100/30 rounded-lg">
+                    <p className="text-blue-muted-100 text-sm">
+                      💡 <strong>Note:</strong> If you logged in with Google or don't remember your password, please logout and use the "Forgot Password" feature instead.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div>
+                      <label className="block text-text-secondary mb-2">Current Password</label>
+                      <input
+                        type="password"
+                        value={resetOldPassword}
+                        onChange={(e) => setResetOldPassword(e.target.value)}
+                        className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                        placeholder="Enter current password"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-text-secondary mb-2">New Password</label>
+                      <input
+                        type="password"
+                        value={resetNewPassword}
+                        onChange={(e) => setResetNewPassword(e.target.value)}
+                        className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                        placeholder="Enter new password"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-text-secondary mb-2">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={resetConfirmPassword}
+                        onChange={(e) => setResetConfirmPassword(e.target.value)}
+                        className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                        placeholder="Confirm new password"
+                      />
+                    </div>
+
+                    {resetError && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                        {resetError}
+                      </div>
+                    )}
+
+                    {resetSuccess && (
+                      <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                        {resetSuccess}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPasswordReset(false);
+                          setResetError('');
+                          setResetSuccess('');
+                          setResetOldPassword('');
+                          setResetNewPassword('');
+                          setResetConfirmPassword('');
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={resetLoading}
+                        className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <KeyRound size={18} />
+                        {resetLoading ? 'Resetting...' : 'Reset Password'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Forgot Password Card - Only show when NOT logged in */}
+          {!isAuthenticated && (
+            <div className="card">
+              <div className="flex items-center gap-3 mb-4">
+                <Mail size={24} className="text-blue-muted-100" />
+                <h3 className="text-2xl font-semibold text-text-primary">Forgot Password</h3>
+              </div>
+
+              {forgotStep === 'email' ? (
+                <form onSubmit={handleSendOTP} className="space-y-4">
+                  <div>
+                    <label className="block text-text-secondary mb-2">Email Address</label>
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+
+                  {forgotError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                      {forgotError}
+                    </div>
+                  )}
+
+                  {forgotSuccess && (
+                    <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                      {forgotSuccess}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Mail size={18} />
+                    {forgotLoading ? 'Sending...' : 'Send OTP'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleForgotPasswordReset} className="space-y-4">
+                  <div>
+                    <label className="block text-text-secondary mb-2">OTP Code</label>
+                    <input
+                      type="text"
+                      value={forgotOTP}
+                      onChange={(e) => setForgotOTP(e.target.value)}
+                      className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                      placeholder="Enter OTP from email"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-text-secondary mb-2">Username</label>
+                    <input
+                      type="text"
+                      value={forgotUsername}
+                      onChange={(e) => setForgotUsername(e.target.value)}
+                      className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                      placeholder="Enter your username"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-text-secondary mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={forgotNewPassword}
+                      onChange={(e) => setForgotNewPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                      placeholder="Enter new password"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-text-secondary mb-2">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={forgotConfirmPassword}
+                      onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-background-secondary border border-pink-soft-100/30 rounded-lg text-text-primary focus:outline-none focus:border-pink-soft-100"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  {forgotError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                      {forgotError}
+                    </div>
+                  )}
+
+                  {forgotSuccess && (
+                    <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                      {forgotSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotStep('email');
+                        setForgotError('');
+                        setForgotSuccess('');
+                      }}
+                      className="btn-secondary"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <KeyRound size={18} />
+                      {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Delete Account Card - Only show when logged in */}
+          {isAuthenticated && (
+            <div className="card border-red-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <Trash2 size={24} className="text-red-400" />
+                <h3 className="text-2xl font-semibold text-red-400">Delete Account</h3>
+              </div>
+
+              {!showDeleteAccount ? (
+                <>
+                  <p className="text-text-muted mb-4">
+                    ⚠️ <strong>Warning:</strong> This action is permanent and cannot be undone. All your data will be lost.
+                  </p>
+                  <p className="text-text-secondary mb-4 text-sm">
+                    If you logged in with Google or don't remember your password, please contact support or logout and use "Forgot Password" to reset your password first.
+                  </p>
+                  <button
+                    onClick={() => setShowDeleteAccount(true)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={18} />
+                    Delete Account
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-red-400 text-sm mb-2">
+                      ⚠️ <strong>Final Warning:</strong> This will permanently delete your account and all associated data.
+                    </p>
+                    <p className="text-red-400 text-sm">
+                      💡 <strong>Note:</strong> If you logged in with Google, you may not have a password. Please logout and use "Forgot Password" to set one first, or contact support.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleDeleteAccount} className="space-y-4">
+                    <div>
+                      <label className="block text-text-secondary mb-2">Confirm Password</label>
+                      <input
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        className="w-full px-4 py-2 bg-background-secondary border border-red-500/30 rounded-lg text-text-primary focus:outline-none focus:border-red-500"
+                        placeholder="Enter your password to confirm"
+                      />
+                    </div>
+
+                    {deleteError && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                        {deleteError}
+                      </div>
+                    )}
+
+                    {deleteSuccess && (
+                      <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                        {deleteSuccess}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDeleteAccount(false);
+                          setDeleteError('');
+                          setDeleteSuccess('');
+                          setDeletePassword('');
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={deleteLoading}
+                        className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <Trash2 size={18} />
+                        {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
 
           {/* About Card */}
           <div className="card">

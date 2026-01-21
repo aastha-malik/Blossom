@@ -39,8 +39,10 @@ export default function Signup() {
       });
 
       showToast('Account created! Please check your email to verify your account. 📧', 'success');
-      // Navigate to login page instead of home
-      navigate('/login');
+      // Navigate to verify email page with the email pre-filled
+      setTimeout(() => {
+        navigate('/verify-email', { state: { email } });
+      }, 1500);
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : 'Sign up failed. Please try again.',

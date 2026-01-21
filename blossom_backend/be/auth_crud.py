@@ -59,6 +59,12 @@ def authenticate_user(db:Session, username:str, email:str, password:str):
     if user is None:
         print("user not found")
         return None
+    
+    # Check if email is verified (skip for Google OAuth users)
+    if not user.user_verified and user.provider != "google":
+        print("email not verified")
+        return "unverified"
+    
     # Truncate password to 72 bytes (bcrypt limit)
     truncated_password = truncate_password(password)
     password_check = pwd_context.verify(truncated_password, user.hashed_password)
@@ -82,6 +88,8 @@ def create_access_token(data:dict, expires_delta:timedelta):
 # delete account
 def del_user(db:Session, user_id: int, plain_password:str):
     user = db.query(User).filter(User.id == user_id).first()
+    all_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
+    all_pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
     if user is None:
         print("user not found")
         return None

@@ -21,6 +21,7 @@ from schemas import (
     RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest
 )
 from starlette.responses import RedirectResponse, HTMLResponse
+from starlette.middleware.sessions import SessionMiddleware
 from oauth import oauth
 from dotenv import load_dotenv
 import uuid
@@ -33,6 +34,10 @@ load_dotenv()
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="SUPER_SECRET_RANDOM_STRING"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,7 +47,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-uth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 login_sessions = {}   
 
@@ -218,20 +222,20 @@ async def google_login(request: Request):
     redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
-@app.get("/login/google/start")
-def start_google_login(request:Request):     
-    session_id = str(uuid.uuid4())
-    login_sessions[session_id] = { "status": "pending", "jwt": None }
-    login_url = request.url_for("google_login") + f"?session_id={session_id}"
-    return {
-        "session_id":session_id,
-        "login_url":login_url
-    }
+# @app.get("/login/google/start")
+# def start_google_login(request:Request):     
+#     session_id = str(uuid.uuid4())
+#     login_sessions[session_id] = { "status": "pending", "jwt": None }
+#     login_url = request.url_for("google_login") + f"?session_id={session_id}"
+#     return {
+#         "session_id":session_id,
+#         "login_url":login_url
+#     }
 
 
 @app.get("/login/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
-    session_id = request.query_params.get("session_id")
+    # session_id = request.query_params.get("session_id")
     
 
     # S1: Exchange code for tokens
@@ -274,7 +278,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        data = {  "sub": str(new_user.id)  }
+        user = new_user
         
 
     # in case of creating account
@@ -283,16 +287,16 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
 
  # if the fe is web application then remove the whole sessionID logic & html_response and replace it with this code give below in comments
-    # # 4. Redirect to frontend with JWT
-    # redirect_url = f"http://localhost:3000/auth/success?token={jwt_token}"
+    # 4. Redirect to frontend with JWT
+    redirect_url = f"http://localhost:5173/login?token={jwt_token}"
 
-    # return RedirectResponse(redirect_url)
+    return RedirectResponse(redirect_url)
 
-    if session_id and session_id in login_sessions:
-        login_sessions[session_id]["status"] = "success"
-        login_sessions[session_id]["jwt"] = jwt_token
+    # if session_id and session_id in login_sessions:
+    #     login_sessions[session_id]["status"] = "success"
+    #     login_sessions[session_id]["jwt"] = jwt_token
 
-    return HTMLResponse("<h2>Login / Account created successfully. You may close this window.</h2>")
+    # return HTMLResponse("<h2>Login / Account created successfully. You may close this window.</h2>")
 
 @app.post("/token", response_model=TokenResponse)
 def login(
@@ -307,9 +311,18 @@ def login(
     else:
         user = auth_crud.authenticate_user(db, username, '', password)
 
+    if user == "unverified":
+        raise HTTPException(status_code=403, detail="Please verify your email before logging in. Check your inbox for the verification code.")
+    
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-
+    
+    if user.provider == "google":
+        raise HTTPException(
+            status_code=400,
+            detail="This account uses Google login. Please continue with Google."
+        )
+    
     data = {"sub": user.username}
     token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
     return {"access_token": token, "token_type": "bearer", "username":user.username, "email":user.email}
