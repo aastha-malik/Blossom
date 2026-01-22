@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-
+import os
 """
 This file sets up the database connection and base class for SQLAlchemy models.
 """
@@ -15,7 +15,7 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
 #temp connection to db
 #autocommit=False => give control and changes are saved only after i commit!
