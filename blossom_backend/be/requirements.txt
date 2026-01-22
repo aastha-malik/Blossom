@@ -10,3 +10,4 @@ python-dotenv
 authlib
 requests
 psycopg2-binary
+itsdangerous
