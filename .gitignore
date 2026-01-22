@@ -1,41 +1,70 @@
-# Python
+############################
+# PYTHON
+############################
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.so
 *.egg-info/
-*.egg
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Virtual Environments
+############################
+# VIRTUAL ENVIRONMENTS
+############################
 venv/
-env/
 .venv/
+env/
 ENV/
 env.bak/
 venv.bak/
 
-# VS Code
-.vscode/
-
-# macOS
-.DS_Store
-
-# Node / Frontend
-node_modules/
-.next/
-dist/
-build/
-
-# Environment variables
+############################
+# ENVIRONMENT / SECRETS
+############################
 .env
+.env.*
 .env.local
 .env.*.local
 
-# Logs
+############################
+# NODE / FRONTEND
+############################
+node_modules/
+dist/
+build/
+.next/
+out/
+
+############################
+# VITE / REACT
+############################
+*.tsbuildinfo
+
+############################
+# DATABASE FILES (LOCAL)
+############################
+*.sqlite3
+*.db
+
+############################
+# OS / EDITOR
+############################
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+############################
+# LOGS
+############################
 *.log
 
-# Coverage / test
-.coverage
-.pytest_cache/
-htmlcov/
+############################
+# MISC
+############################
+test_connection.sh
+user_data.json
