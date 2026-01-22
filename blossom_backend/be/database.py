@@ -10,9 +10,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-SQLALCHEMY_DATABASE_URL = (
-    "postgresql+psycopg2://blossom_user:blossom%40task_manager@localhost:5432/blossom_db"
-)
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time
