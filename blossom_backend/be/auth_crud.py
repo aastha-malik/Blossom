@@ -5,15 +5,16 @@ from auth import pwd_context, truncate_password
 from jose import jwt, JWTError
 from datetime import timedelta, datetime
 import random
+import os
 from email_verify import send_email
 from password_reset import password_reset
 from forget_password import forget_password
 # JWT has  => header | payload | SIGNATURE
 
 # below part is SIGNATURE
-SECRET_KEY = "blossom_app"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_DAYS = os.getenv("ACCESS_TOKEN_EXPIRE_DAYS")
 
 # 72 = 72 characters max password length
 

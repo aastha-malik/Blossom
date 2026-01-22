@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from jose import jwt
 import models
+import os
 from models import User, Task, Base
 from database import SessionLocal, engine
 import task_crud
@@ -36,12 +37,15 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.add_middleware(
     SessionMiddleware,
-    secret_key="SUPER_SECRET_RANDOM_STRING"
+    secret_key=os.getenv("secret_key")
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://blossom-arru.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
