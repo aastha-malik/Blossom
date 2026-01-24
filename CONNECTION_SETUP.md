@@ -2,19 +2,12 @@
 
 ## Quick Setup Guide
 
-### 1. Backend Setup (Local Development)
+### 1. Backend (Production)
+The backend is deployed on Render.
+URL: `https://blossombackend-ib15.onrender.com`
+Docs: `https://blossombackend-ib15.onrender.com/docs`
 
-The backend runs on **port 8000** by default.
-
-**Start the backend:**
-```bash
-cd blossom_backend/be
-source venv/bin/activate  # Activate virtual environment
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The backend will be available at: `http://localhost:8000`
-API docs will be at: `http://localhost:8000/docs`
+The backend is available at: `https://blossombackend-ib15.onrender.com`
 
 ### 2. Frontend Setup
 
@@ -26,9 +19,8 @@ cd blossom_web
 echo "VITE_API_URL=http://localhost:8000" > .env
 ```
 
-**Option B: Use Deployed Backend**
-
-The frontend defaults to the deployed backend at `https://blossombackend-ib15.onrender.com` if no `.env` file is found.
+The frontend is configured to use the deployed backend at `https://blossombackend-ib15.onrender.com`.
+Production URL: `https://blossom-arru.onrender.com`
 
 **Start the frontend:**
 ```bash
@@ -42,7 +34,7 @@ The frontend will be available at: `http://localhost:5173` (or next available po
 
 1. Start the backend server (see step 1)
 2. Start the frontend dev server (see step 2)
-3. Open browser to `http://localhost:5173`
+1. Open browser to `https://blossom-arru.onrender.com`
 4. Check browser console for any API connection errors
 5. Try logging in or registering a new account
 

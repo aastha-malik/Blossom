@@ -11,22 +11,16 @@
 
 ## 🧪 **Testing Steps**
 
-### **1. Start Backend**
-```bash
-cd blossom_backend/be
-source venv/bin/activate
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+### **1. Backend (Render)**
+- URL: `https://blossombackend-ib15.onrender.com`
+- Docs: `https://blossombackend-ib15.onrender.com/docs`
 
-### **2. Start Frontend**
-```bash
-cd blossom_web
-npm run dev
-```
+### **2. Frontend (Render)**
+- URL: `https://blossom-arru.onrender.com`
 
 ### **3. Test Registration**
 
-1. Open `http://localhost:5173`
+1. Open `https://blossom-arru.onrender.com`
 2. Click "Sign Up" or go to `/signup`
 3. Fill in:
    - Username: `testuser`
@@ -49,7 +43,7 @@ npm run dev
 2. We'll need to create an email verification page or use the API directly
 
 **Using Swagger UI:**
-- Go to `http://localhost:8000/docs`
+- Go to `https://blossombackend-ib15.onrender.com/docs`
 - Find `/verify_email` endpoint
 - Use POST method with:
   ```json
@@ -85,7 +79,7 @@ npm run dev
 2. **Check browser console** (F12) for API errors
 3. **Check Network tab** to see the actual request/response
 4. **Verify backend is running** on port 8000
-5. **Check `.env.local`** has correct `VITE_API_URL=http://localhost:8000`
+5. **Check `.env.local`** has correct `VITE_API_URL=https://blossombackend-ib15.onrender.com`
 
 ### **If Login Fails:**
 

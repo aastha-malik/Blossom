@@ -119,7 +119,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
     
     # SOLUTION: Redirect to frontend with token
-    redirect_url = f"http://localhost:5173/auth/callback?token={jwt_token}&username={user.username}&email={user.email}"
+    redirect_url = f"https://blossom-arru.onrender.com/auth/callback?token={jwt_token}&username={user.username}&email={user.email}"
     
     return RedirectResponse(redirect_url)
 ```
@@ -211,7 +211,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
     
     # Redirect to frontend with token and user info
-    redirect_url = f"http://localhost:5173/auth/callback?token={jwt_token}&username={user.username}&email={user.email}"
+    redirect_url = f"https://blossom-arru.onrender.com/auth/callback?token={jwt_token}&username={user.username}&email={user.email}"
     
     return RedirectResponse(redirect_url)
 ```
@@ -225,10 +225,10 @@ You can also remove the `/login/google/start` endpoint (lines 221-229) and the `
 
 ## 🧪 Testing After Fix
 
-1. **Go to Login page**: `http://localhost:5173/login`
+1. **Go to Login page**: `https://blossom-arru.onrender.com/login`
 2. **Click "Continue with Google"**
 3. **Authenticate with Google**
-4. **You should be redirected back** to `http://localhost:5173/auth/callback?token=...`
+4. **You should be redirected back** to `https://blossom-arru.onrender.com/auth/callback?token=...`
 5. **Then automatically redirected** to home page
 6. **Check**: You should be logged in (see username in header)
 

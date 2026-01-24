@@ -43,7 +43,6 @@ app.add_middleware(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
         "https://blossom-arru.onrender.com",
     ],
     allow_credentials=True,
@@ -293,7 +292,8 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
  # if the fe is web application then remove the whole sessionID logic & html_response and replace it with this code give below in comments
     # 4. Redirect to frontend with JWT and user info
-    redirect_url = f"http://localhost:5173/login?token={jwt_token}&username={user.username}&email={user.email}"
+    redirect_url = "https://blossombackend-ib15.onrender.com/login/google/callback"
+
 
     return RedirectResponse(redirect_url)
 

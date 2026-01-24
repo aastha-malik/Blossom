@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'https://blossombackend-ib15.onrender.com';
+export const API_URL = import.meta.env.VITE_API_URL
 
 export const SESSION_LENGTHS = {
   SHORT: 25,

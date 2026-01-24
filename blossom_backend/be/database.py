@@ -8,9 +8,17 @@ This file sets up the database connection and base class for SQLAlchemy models.
 #database url
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+# Try DATABASE_URL first (often provided by Render), fallback to SQLALCHEMY_DATABASE_URL
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URL")
+
+# Handle potential SQLAlchemy compatibility issue with 'postgres://' URLs
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time

@@ -103,21 +103,15 @@
 
 ## 🚀 **Quick Start Testing**
 
-### 1. Start Backend
-```bash
-cd blossom_backend/be
-source venv/bin/activate
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+### 1. Backend (Render)
+- URL: `https://blossombackend-ib15.onrender.com`
+- Docs: `https://blossombackend-ib15.onrender.com/docs`
 
-### 2. Start Frontend
-```bash
-cd blossom_web
-npm run dev
-```
+### 2. Frontend (Render)
+- URL: `https://blossom-arru.onrender.com`
 
 ### 3. Test Authentication
-- Open `http://localhost:5173`
+- Open `https://blossom-arru.onrender.com`
 - Click "Sign Up" or "Log In"
 - Try creating an account
 - Try logging in
