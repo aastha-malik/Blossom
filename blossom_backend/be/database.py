@@ -20,6 +20,11 @@ SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+if not SQLALCHEMY_DATABASE_URL:
+    raise RuntimeError("SQLALCHEMY_DATABASE_URL is not set")
+
+
+
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time
 
