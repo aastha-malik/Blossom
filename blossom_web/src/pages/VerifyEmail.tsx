@@ -4,20 +4,30 @@ import { X, Mail, CheckCircle } from 'lucide-react';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { authAPI } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function VerifyEmail() {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { toasts, showToast, removeToast } = useToast();
+    const { login } = useAuth();
 
-    // Get email from navigation state if available
+    // Get email and auth data from navigation state if available
     useEffect(() => {
         if (location.state?.email) {
             setEmail(location.state.email);
+        }
+        if (location.state?.password) {
+            setPassword(location.state.password);
+        }
+        if (location.state?.username) {
+            setUsername(location.state.username);
         }
     }, [location]);
 
@@ -36,10 +46,23 @@ export default function VerifyEmail() {
             setIsVerified(true);
             showToast('Email verified successfully! 🎉', 'success');
 
-            // Redirect to login after 2 seconds
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
+            // Auto-login if we have credentials
+            if (username && password) {
+                try {
+                    await login({ username, password });
+                    showToast('Logged in successfully! 🚀', 'success');
+                    navigate('/');
+                } catch (loginError) {
+                    console.error('Auto-login failed:', loginError);
+                    showToast('Verification successful, but auto-login failed. Please log in manually.', 'error');
+                    setTimeout(() => navigate('/login'), 2000);
+                }
+            } else {
+                // Fallback to login redirect if no credentials
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
+            }
         } catch (error) {
             showToast(
                 error instanceof Error ? error.message : 'Verification failed. Please check your code.',
@@ -69,7 +92,7 @@ export default function VerifyEmail() {
                                 </div>
                                 <h2 className="text-3xl font-bold text-text-primary mb-2">Email Verified!</h2>
                                 <p className="text-text-secondary">
-                                    Your email has been verified successfully. Redirecting to login...
+                                    Your email has been verified successfully. {username && password ? 'Logging you in...' : 'Redirecting to login...'}
                                 </p>
                             </>
                         ) : (
@@ -95,8 +118,9 @@ export default function VerifyEmail() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="your@email.com"
-                                        className="input-field w-full py-3"
+                                        className={`input-field w-full py-3 ${location.state?.email ? 'opacity-70 cursor-not-allowed' : ''}`}
                                         required
+                                        readOnly={!!location.state?.email}
                                     />
                                 </div>
 

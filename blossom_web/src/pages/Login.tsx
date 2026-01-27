@@ -52,19 +52,7 @@ export default function Login() {
     } catch (error) {
       // Check if it's an email verification error (403 status)
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
-
-      if (errorMessage.includes('verify your email') || errorMessage.includes('verification')) {
-        showToast(
-          'Please verify your email before logging in. Redirecting to verification page...',
-          'error'
-        );
-        // Redirect to verify email page after 2 seconds
-        setTimeout(() => {
-          navigate('/verify-email', { state: { email: usernameOrEmail.includes('@') ? usernameOrEmail : '' } });
-        }, 2000);
-      } else {
-        showToast(errorMessage, 'error');
-      }
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }

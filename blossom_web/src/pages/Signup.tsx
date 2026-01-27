@@ -38,11 +38,11 @@ export default function Signup() {
         password,
       });
 
-      showToast('Account created! Please check your email to verify your account. 📧', 'success');
-      // Navigate to verify email page with the email pre-filled
+      showToast('Account created! Please verify your email. 📧', 'success');
+      // Navigate to verify email page with the email pre-filled along with username and password for auto-login
       setTimeout(() => {
-        navigate('/verify-email', { state: { email } });
-      }, 1500);
+        navigate('/verify-email', { state: { email, username, password } });
+      }, 500);
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : 'Sign up failed. Please try again.',
