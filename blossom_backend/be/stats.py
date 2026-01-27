@@ -7,27 +7,6 @@ from auth_dependencies import get_current_user
 from fastapi import Depends
 
 
-
-def start_of_today(current_user: None):
-    today = datetime.utcnow()
-    start_date = datetime(today.year, today.month, today.day)
-    return start_date
-
-def start_of_week(current_user: None):
-    today = datetime.utcnow()
-    start_date = today - timedelta(days=today.weekday())  # Get the start of the week (Monday)
-    return datetime(start_date.year, start_date.month, start_date.day)
-    
-def start_of_month(current_user: None):
-    today = datetime.utcnow()
-    start_date = datetime(today.year, today.month, 1)
-    return start_date
-
-def start_of_year(current_user: None):
-    today = datetime.utcnow()
-    start_date = datetime(today.year, 1, 1) # Get the start of the year
-    return start_date
-
 def start_of_all_time(current_user: User):
     return User.start_acc_time
 
