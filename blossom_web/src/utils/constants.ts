@@ -1,4 +1,5 @@
-export const API_URL = import.meta.env.VITE_API_URL
+const rawApiUrl = import.meta.env.VITE_API_URL;
+export const API_URL = (rawApiUrl && rawApiUrl !== 'undefined') ? rawApiUrl.replace(/\/$/, '') : '';
 
 export const SESSION_LENGTHS = {
   SHORT: 25,

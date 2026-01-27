@@ -45,7 +45,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
       if (response.url.includes('/tasks') || response.url.includes('/pet')) {
         return [] as T;
       }
-      throw new Error('Not found');
+      throw new Error(`Not found (${response.url})`);
     }
 
     // Handle 401 Unauthorized
@@ -53,10 +53,28 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
       throw new Error('Unauthorized. Please log in again.');
     }
 
-    const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.detail || errorMessage;
+    } catch (e) {
+      // If json() fails, try to get text to see what the server actually sent
+      const text = await response.text().catch(() => '');
+      console.error('Failed to parse error JSON:', e, 'Raw response:', text);
+      if (!text) {
+        errorMessage = `Server returned an empty ${response.status} response. This usually indicates a backend crash or configuration issue.`;
+      }
+    }
+    throw new Error(errorMessage);
   }
-  return response.json();
+
+  try {
+    return await response.json();
+  } catch (e) {
+    console.error('Failed to parse response JSON:', e);
+    const text = await response.text().catch(() => '');
+    throw new Error(`Invalid JSON response from server. Status: ${response.status}. Body preview: ${text.substring(0, 100)}`);
+  }
 };
 
 // Auth API

@@ -14,7 +14,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Try DATABASE_URL first (often provided by Render), fallback to SQLALCHEMY_DATABASE_URL
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URL")
+SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
 
 # Handle potential SQLAlchemy compatibility issue with 'postgres://' URLs
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):

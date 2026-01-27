@@ -71,8 +71,8 @@ export default function Login() {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to backend Google OAuth endpoint
-    window.location.href = `${API_URL}/login/google`;
+    // Redirect to backend Google OAuth endpoint (browser redirect, not API call)
+    window.location.href = `${API_URL}/auth/google/login`;
   };
 
   return (

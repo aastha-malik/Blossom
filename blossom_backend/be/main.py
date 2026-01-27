@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -23,10 +26,10 @@ from schemas import (
 )
 from starlette.responses import RedirectResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from oauth import oauth
-from dotenv import load_dotenv
 import uuid
-load_dotenv()
+import urllib.parse
 
 # ---------------------------------------------------
 # DATABASE & APP SETUP
@@ -35,15 +38,22 @@ load_dotenv()
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("secret_key")
+    secret_key="dev-secret",
+    same_site="lax",
+    https_only=False
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://blossom-arru.onrender.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -70,6 +80,14 @@ def get_db():
 @app.get("/")
 def read_root():
     return {"message": "This is Task Manager side of our app Blossom!!"}
+
+@app.get("/debug/session")
+def debug_session(request: Request):
+    return {
+        "session_keys": list(request.session.keys()),
+        "cookies": request.cookies,
+        "is_https": request.url.scheme == "https"
+    }
 
 
 @app.get("/user/xp")
@@ -220,9 +238,11 @@ def delete_pet_endpoint(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@app.get("/login/google")
+@app.get("/auth/google/login")
 async def google_login(request: Request):
-    redirect_uri = request.url_for("google_callback")
+    # Hardcoded for local development consistency
+    redirect_uri = "http://localhost:8000/auth/google/callback"
+    print(f"Starting Google Login, redirecting to: {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 # @app.get("/login/google/start")
@@ -236,13 +256,17 @@ async def google_login(request: Request):
 #     }
 
 
-@app.get("/login/google/callback")
+@app.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
-    # session_id = request.query_params.get("session_id")
+    print(f"Callback received. Session state keys: {list(request.session.keys())}")
     
-
-    # S1: Exchange code for tokens
-    token = await oauth.google.authorize_access_token(request)
+    try:
+        # Authlib uses the request session + internal state for validation
+        # redirect_uri is NOT passed here to ensure Authlib uses the state stored in session
+        token = await oauth.google.authorize_access_token(request)
+    except Exception as e:
+        print(f"OAuth Error: {str(e)}")
+        raise e
 
     # S2: Extract user info from Google
     user_info = token.get("userinfo")
@@ -290,11 +314,18 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
     jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
 
- # if the fe is web application then remove the whole sessionID logic & html_response and replace it with this code give below in comments
     # 4. Redirect to frontend with JWT and user info
-    redirect_url = "https://blossombackend-ib15.onrender.com/login/google/callback"
+    encoded_username = urllib.parse.quote(user.username)
+    encoded_email = urllib.parse.quote(user.email)
+    
+    # Dynamic frontend URL: use localhost if callback was via localhost
+    frontend_url = "https://blossom-arru.onrender.com"
+    if "localhost" in str(request.url) or "127.0.0.1" in str(request.url):
+        frontend_url = "http://localhost:5173"
+        
+    redirect_url = f"{frontend_url}/login?token={jwt_token}&username={encoded_username}&email={encoded_email}"
 
-
+    print(f"Redirecting user {user.username} to frontend: {redirect_url}")
     return RedirectResponse(redirect_url)
 
     # if session_id and session_id in login_sessions:
