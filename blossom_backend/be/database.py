@@ -13,22 +13,22 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Try DATABASE_URL first (often provided by Render), fallback to SQLALCHEMY_DATABASE_URL
-SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
+# Try DATABASE_URL first (often provided by Render), fallback to DATABASE_URL
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Handle potential SQLAlchemy compatibility issue with 'postgres://' URLs
-if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-if not SQLALCHEMY_DATABASE_URL:
-    raise RuntimeError("SQLALCHEMY_DATABASE_URL is not set")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
 
 
 #main connection b/w db and app
 #connect_args={"check_same_thread": False} => this allows multiple parts of your app to access the db at the same time
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 #temp connection to db
 #autocommit=False => give control and changes are saved only after i commit!
