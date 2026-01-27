@@ -13,11 +13,4 @@ export const TASK_PRIORITIES = {
   HIGH: 'High',
 } as const;
 
-export const STATS_PERIODS = {
-  TODAY: 'today',
-  WEEK: 'week',
-  MONTH: 'month',
-  YEAR: 'year',
-  ALL_TIME: 'all_time',
-} as const;
 

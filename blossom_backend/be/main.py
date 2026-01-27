@@ -240,8 +240,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 @app.get("/auth/google/login")
 async def google_login(request: Request):
-    # Hardcoded for local development consistency
-    redirect_uri = "http://localhost:8000/auth/google/callback"
+    redirect_uri = request.url_for("google_callback")
+    
+    # Force the redirect URI to use HTTPS on Render or localhost for dev
+    if "onrender.com" in str(request.url):
+        redirect_uri = str(redirect_uri).replace("http://", "https://")
+    else:
+        # Crucial for local dev: Force localhost to match cookie domain
+        redirect_uri = str(redirect_uri).replace("127.0.0.1", "localhost")
+        
     print(f"Starting Google Login, redirecting to: {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
@@ -258,12 +265,18 @@ async def google_login(request: Request):
 
 @app.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
+    # Standardize callback URL to match login (must be identical)
+    redirect_uri = request.url_for("google_callback")
+    if "onrender.com" in str(request.url):
+        redirect_uri = str(redirect_uri).replace("http://", "https://")
+    else:
+        redirect_uri = str(redirect_uri).replace("127.0.0.1", "localhost")
+
     print(f"Callback received. Session state keys: {list(request.session.keys())}")
     
     try:
-        # Authlib uses the request session + internal state for validation
-        # redirect_uri is NOT passed here to ensure Authlib uses the state stored in session
-        token = await oauth.google.authorize_access_token(request)
+        # Authlib uses the request session + redirect_uri for validation
+        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
     except Exception as e:
         print(f"OAuth Error: {str(e)}")
         raise e
@@ -334,7 +347,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
     # return HTMLResponse("<h2>Login / Account created successfully. You may close this window.</h2>")
 
-@app.post("/token", response_model=TokenResponse)
+@app.post("/login", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
@@ -413,7 +426,7 @@ def delete_account(data: DeleteAccountRequest,db: Session = Depends(get_db),curr
 # REGISTRATION & EMAIL VERIFICATION
 # ---------------------------------------------------
 
-@app.post("/register")
+@app.post("/signup")
 def register_user(user: RegistrationUser, db: Session = Depends(get_db)):
     from sqlalchemy import or_
     # Check if username or email already exists
@@ -460,41 +473,10 @@ async def verify_email_endpoint(
 # STATS ROUTES
 # ---------------------------------------------------
 
-@app.get("/stats/{user_id}/all_time")
+@app.get("/analysis/{user_id}")
 def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
     user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
 
-
-@app.get("/stats/{user_id}/today")
-def get_user_stats_today(user_id: int, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_today, current_user)
-    if not user_stats:
-        raise HTTPException(status_code=404, detail="User stats not found")
-    return user_stats
-
-
-@app.get("/stats/{user_id}/week")
-def get_user_stats_week(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_week, current_user)
-    if not user_stats:
-        raise HTTPException(status_code=404, detail="User stats not found")
-    return user_stats
-
-
-@app.get("/stats/{user_id}/month")
-def get_user_stats_month(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_month, current_user)
-    if not user_stats:
-        raise HTTPException(status_code=404, detail="User stats not found")
-    return user_stats
-
-
-@app.get("/stats/{user_id}/year")
-def get_user_stats_year(user_id: int, current_user= Depends(get_current_user), db: Session = Depends(get_db)):
-    user_stats = stats.get_user_stats(db, user_id, stats.start_of_year, current_user)
-    if not user_stats:
-        raise HTTPException(status_code=404, detail="User stats not found")
-    return user_stats

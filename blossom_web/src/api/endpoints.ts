@@ -2,8 +2,8 @@ import { API_URL } from '../utils/constants';
 
 export const API_ENDPOINTS = {
   // Auth
-  LOGIN: `${API_URL}/token`,
-  REGISTER: `${API_URL}/register`,
+  LOGIN: `${API_URL}/login`,
+  REGISTER: `${API_URL}/signup`,
   VERIFY_EMAIL: `${API_URL}/verify_email`,
   FORGOT_PASSWORD_OTP: `${API_URL}/send_forgot_password_otp`,
   FORGOT_PASSWORD: `${API_URL}/forgot_password`,
@@ -25,6 +25,6 @@ export const API_ENDPOINTS = {
   FEED_PET: (id: number) => `${API_URL}/pet/feed/${id}`,
 
   // Stats
-  STATS: (userId: number, period: string) => `${API_URL}/stats/${userId}/${period}`,
+  STATS: (userId: number) => `${API_URL}/analysis/${userId}`,
 } as const;
 

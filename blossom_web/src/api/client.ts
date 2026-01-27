@@ -263,8 +263,8 @@ export const petsAPI = {
 
 // Stats API
 export const statsAPI = {
-  getStats: async (userId: number, period: string): Promise<UserStats> => {
-    const response = await fetch(API_ENDPOINTS.STATS(userId, period), {
+  getStats: async (userId: number): Promise<UserStats> => {
+    const response = await fetch(API_ENDPOINTS.STATS(userId), {
       headers: getAuthHeaders(),
     });
 

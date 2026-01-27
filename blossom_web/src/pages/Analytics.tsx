@@ -41,8 +41,8 @@ export default function Analytics() {
 
   // Fetch stats from backend (only when authenticated)
   const { data: stats, isLoading: statsLoading, error } = useQuery({
-    queryKey: ['stats', userId, 'all_time'],
-    queryFn: () => statsAPI.getStats(userId!, 'all_time'),
+    queryKey: ['stats', userId],
+    queryFn: () => statsAPI.getStats(userId!),
     enabled: isAuthenticated && userId !== null,
     retry: 1,
   });
@@ -50,7 +50,7 @@ export default function Analytics() {
   // Calculate local stats from local tasks when not authenticated
   const localStats = useMemo(() => {
     if (isAuthenticated) return null;
-    
+
     const completedTasks = localTasks.filter(task => task.completed).length;
     // Simple streak calculation: count consecutive days with completed tasks
     // For now, just return 0 for streak (can be enhanced later)
