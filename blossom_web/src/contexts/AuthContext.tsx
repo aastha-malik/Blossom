@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authAPI } from '../api/client';
 import type { TokenResponse, LoginRequest, RegisterRequest } from '../api/types';
@@ -20,19 +20,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Store token in memory (useRef to persist across renders but not trigger re-renders)
-  const tokenRef = useRef<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(localStorage.getItem('token'));
+  const [username, setUsername] = useState<string | null>(() => localStorage.getItem('username'));
+  const [email, setEmail] = useState<string | null>(() => localStorage.getItem('email'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
 
   // Set up token getter for API client
   setTokenGetter(() => tokenRef.current);
+
+
+
+  // Effect to validate token on mount
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken && isTokenExpired(storedToken)) {
+      logout();
+    }
+  }, []);
 
   const setAuthData = useCallback((newToken: string, newUsername: string, newEmail: string) => {
     tokenRef.current = newToken;
     setToken(newToken);
     setUsername(newUsername);
     setEmail(newEmail);
+
+    // Persist to localStorage
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('username', newUsername);
+    localStorage.setItem('email', newEmail);
   }, []);
 
   const login = useCallback(async (credentials: LoginRequest) => {
@@ -61,6 +76,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setUsername(null);
     setEmail(null);
+
+    // Clear localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
   }, []);
 
   // Check if token is expired
