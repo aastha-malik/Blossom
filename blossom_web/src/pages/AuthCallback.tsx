@@ -17,9 +17,9 @@ export default function AuthCallback() {
             // Set auth data in context
             setAuthData(token, username, email);
 
-            // Redirect to home page
+            // Redirect to tasks page
             setTimeout(() => {
-                navigate('/', { replace: true });
+                navigate('/tasks', { replace: true });
             }, 500);
         } else {
             // If no token, redirect to login with error

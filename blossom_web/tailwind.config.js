@@ -9,38 +9,38 @@ export default {
       colors: {
         // Soft Pink Palette
         'pink-soft': {
-          50: '#F5E6E8',
-          100: '#E8B4B8',
-          200: '#D4A5A9',
-          300: '#C8969A',
+          50: 'var(--pink-soft-light)',
+          100: 'var(--pink-soft)',
+          200: 'var(--pink-soft-light)',
+          300: 'var(--pink-bright)',
         },
         // Muted Blue Palette
         'blue-muted': {
-          50: '#B8C5D6',
-          100: '#8FA3BF',
-          200: '#7A8FA8',
-          300: '#6B7D95',
+          50: 'var(--blue-muted-light)',
+          100: 'var(--blue-muted)',
+          200: 'var(--blue-muted-light)',
+          300: 'var(--blue-muted)',
         },
         // Gentle Purple Palette
         'purple-gentle': {
-          50: '#D4C8E0',
-          100: '#B8A9C9',
-          200: '#A89BB8',
-          300: '#988BA7',
+          50: 'var(--purple-gentle-light)',
+          100: 'var(--purple-gentle)',
+          200: 'var(--purple-gentle-light)',
+          300: 'var(--purple-vivid)',
         },
-        // Dark Base Colors
+        // Base Theme Colors
         'dark': {
-          base: '#0F1419',
-          card: '#1A1A2E',
-          elevated: '#16213E',
-          surface: '#2D2D44',
-          border: '#3A3A5C',
+          base: 'var(--background)',
+          card: 'var(--card-bg)',
+          elevated: 'var(--elevated-bg)',
+          surface: 'var(--surface-bg)',
+          border: 'var(--border-color)',
         },
         // Text Colors
         'text': {
-          primary: '#FFFFFF',
-          secondary: '#E5E5E5',
-          muted: '#B0B0B0',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
         },
       },
       fontFamily: {
@@ -50,4 +50,5 @@ export default {
   },
   plugins: [],
 }
+
 

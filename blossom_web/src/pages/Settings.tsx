@@ -1,9 +1,10 @@
-import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon, Trash2, KeyRound, Mail, Sun, Moon } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon, Trash2, KeyRound, Mail, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useState } from 'react';
 import { authAPI } from '../api/client';
+import { API_URL } from '../utils/constants';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function Settings() {
   const [forgotSuccess, setForgotSuccess] = useState('');
 
   const handleGoogleLogin = () => {
-    window.location.href = 'https://blossombackend-ib15.onrender.com/login/google/start';
+    window.location.href = `${API_URL}/auth/google/login`;
   };
 
   // Delete Account Handler

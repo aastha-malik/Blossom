@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle, Heart, BarChart3, Shield } from 'lucide-react';
+import { ArrowRight, CheckCircle, Heart, BarChart3, Shield, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Landing() {
+    const { isAuthenticated } = useAuth();
     return (
         <div className="min-h-screen bg-dark-base text-text-primary font-sans selection:bg-pink-soft-200 selection:text-dark-base">
 
@@ -35,19 +37,39 @@ export default function Landing() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row justify-center gap-6">
-                            <Link
-                                to="/signup"
-                                className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-dark-base bg-pink-soft-100 hover:bg-pink-soft-200 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(232,180,184,0.3)]"
-                            >
-                                Get Started
-                                <ArrowRight className="ml-2 h-5 w-5" />
-                            </Link>
-                            <Link
-                                to="/login"
-                                className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-text-primary border border-dark-border hover:bg-dark-surface transition-all"
-                            >
-                                Log In
-                            </Link>
+                            {isAuthenticated ? (
+                                <>
+                                    <Link
+                                        to="/tasks"
+                                        className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-dark-base bg-pink-soft-100 hover:bg-pink-soft-200 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(232,180,184,0.3)]"
+                                    >
+                                        Go to Tasks
+                                        <LayoutDashboard className="ml-2 h-5 w-5" />
+                                    </Link>
+                                    <Link
+                                        to="/pets"
+                                        className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-text-primary border border-dark-border hover:bg-dark-surface transition-all"
+                                    >
+                                        My Pets
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/signup"
+                                        className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-dark-base bg-pink-soft-100 hover:bg-pink-soft-200 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(232,180,184,0.3)]"
+                                    >
+                                        Get Started
+                                        <ArrowRight className="ml-2 h-5 w-5" />
+                                    </Link>
+                                    <Link
+                                        to="/login"
+                                        className="inline-flex items-center justify-center px-10 py-5 text-lg font-bold rounded-xl text-text-primary border border-dark-border hover:bg-dark-surface transition-all"
+                                    >
+                                        Log In
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
