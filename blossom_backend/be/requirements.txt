@@ -12,5 +12,6 @@ python-multipart
 Authlib
 httpx
 requests
-bcrypt
+bcrypt==3.2.2
 cryptography
+
