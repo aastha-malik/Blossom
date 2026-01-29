@@ -4,33 +4,42 @@
 
 @layer base {
 
-  /* DEFAULT: Dark Mode - Galaxy Tech-Girly Theme */
+  /* DEFAULT: Dark Mode - Balanced Galaxy Theme (Blue/Pink/Purple mix) */
   :root {
-    /* Galaxy Dark Background Colors */
-    --background: #0a0312;
-    --card-bg: #1a0b2e;
-    --elevated-bg: #2b1055;
-    --surface-bg: #3d1a6b;
-    --border-color: #6b2d9e;
+    /* Galaxy Dark Background Colors - More bluish/indigo now */
+    --background: #080b16;
+    /* Deep midnight space blue */
+    --card-bg: #111827;
+    /* Deep navy card bg */
+    --elevated-bg: #1e293b;
+    /* Indigo-blue elevation */
+    --surface-bg: #334155;
+    /* Muted slate blue surface */
+    --border-color: #475569;
+    /* Balanced slate blue border */
 
-    /* Galaxy Pink/Purple Accents */
-    --pink-soft: #ff6ec7;
-    --pink-soft-light: #ff8ed6;
-    --pink-bright: #ff3ea5;
+    /* Balanced Galaxy Accents */
+    --pink-soft: #f472b6;
+    /* Vibrant but soft galaxy pink */
+    --pink-soft-light: #fb7185;
+    /* Soft rose-pink light */
+    --pink-bright: #ec4899;
 
-    /* Galaxy Blue/Purple */
+    /* Balanced Galaxy Purple */
     --purple-gentle: #a78bfa;
+    /* Soft starlight purple */
     --purple-gentle-light: #c4b5fd;
     --purple-vivid: #8b5cf6;
 
-    /* Muted Galaxy Blue */
-    --blue-muted: #818cf8;
-    --blue-muted-light: #a5b4fc;
+    /* Balanced Galaxy Blue */
+    --blue-muted: #60a5fa;
+    /* Celestial sky blue */
+    --blue-muted-light: #93c5fd;
 
     /* Text Colors for Dark Mode */
-    --text-primary: #ffffff;
-    --text-secondary: #e9d5ff;
-    --text-muted: #c4b5fd;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
   }
 
   /* Light Mode - Soft & Elegant */

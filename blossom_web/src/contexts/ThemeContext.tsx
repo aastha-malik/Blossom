@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const { isAuthenticated } = useAuth();
-    const [theme, setThemeState] = useState<Theme>('dark');
+    const [theme, setThemeState] = useState<Theme>('light');
     const [isLoading, setIsLoading] = useState(true);
 
     // Fetch user's theme preference from backend when authenticated
@@ -28,8 +28,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                     document.documentElement.classList.toggle('light', userTheme === 'light');
                 } catch (error) {
                     console.error('Failed to fetch theme:', error);
-                    // Default to dark if fetch fails
-                    setThemeState('dark');
+                    // Default to light if fetch fails
+                    setThemeState('light');
                 }
             } else {
                 // Guest users: check localStorage
@@ -37,6 +37,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 if (savedTheme) {
                     setThemeState(savedTheme);
                     document.documentElement.classList.toggle('light', savedTheme === 'light');
+                } else {
+                    // Default for new guests
+                    setThemeState('light');
+                    document.documentElement.classList.toggle('light', true);
                 }
             }
             setIsLoading(false);

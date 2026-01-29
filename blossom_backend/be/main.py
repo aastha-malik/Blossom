@@ -40,7 +40,7 @@ from sqlalchemy import text
 # Emergency schema update for Render (since we added 'theme' column)
 with engine.connect() as conn:
     try:
-        conn.execute(text('ALTER TABLE "user" ADD COLUMN theme VARCHAR DEFAULT \'dark\''))
+        conn.execute(text('ALTER TABLE "user" ADD COLUMN theme VARCHAR DEFAULT \'light\''))
         conn.commit()
     except Exception:
         pass # Column already exists
@@ -492,8 +492,8 @@ def get_user_theme(current_user = Depends(get_current_user), db: Session = Depen
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    # Default to 'dark' if not set
-    theme = user.theme or 'dark'
+    # Default to 'light' if not set
+    theme = user.theme or 'light'
     return {"theme": theme}
 
 @app.patch("/user/theme")
