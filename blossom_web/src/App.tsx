@@ -31,7 +31,7 @@ function AppContent() {
 
         {/* Protected Routes - Require Authentication */}
         <Route
-          path="/dashboard"
+          path="/tasks"
           element={
             <ProtectedRoute>
               <TaskFocus />

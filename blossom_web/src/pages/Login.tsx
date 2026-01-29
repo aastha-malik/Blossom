@@ -30,7 +30,7 @@ export default function Login() {
       showToast('Successfully logged in with Google! 🚀', 'success');
 
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/tasks');
       }, 500);
     }
   }, [searchParams, setAuthData, navigate, showToast]);
@@ -48,7 +48,7 @@ export default function Login() {
       });
 
       showToast('Welcome back! 🎉', 'success');
-      navigate('/dashboard');
+      navigate('/tasks');
     } catch (error) {
       // Check if it's an email verification error (403 status)
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
