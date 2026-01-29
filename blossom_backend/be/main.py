@@ -35,6 +35,16 @@ import urllib.parse
 # DATABASE & APP SETUP
 # ---------------------------------------------------
 
+from sqlalchemy import text
+
+# Emergency schema update for Render (since we added 'theme' column)
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE "user" ADD COLUMN theme VARCHAR DEFAULT \'dark\''))
+        conn.commit()
+    except Exception:
+        pass # Column already exists
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
