@@ -9,6 +9,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
+    // Redirect to landing page if not authenticated
     return <Navigate to="/" replace />;
   }
 

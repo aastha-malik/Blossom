@@ -49,5 +49,8 @@ class User(Base):
     #for google login
     provider = Column(String, nullable=True)
     provider_id = Column(String, nullable=True)
+    # Theme preference: 'light' or 'dark' (default: 'dark')
+    theme = Column(String, default='dark')
+
 
 

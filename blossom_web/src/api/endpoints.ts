@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
 
   // User
   USER_XP: `${API_URL}/user/xp`,
+  USER_THEME: `${API_URL}/user/theme`,
 
   // Tasks
   TASKS: `${API_URL}/tasks`,

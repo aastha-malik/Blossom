@@ -3,39 +3,73 @@
 @tailwind utilities;
 
 @layer base {
-:root {
-    /* Dark mode only - no light mode */
-    --background: #0F1419;
-    --card-bg: #1A1A2E;
-    --elevated-bg: #16213E;
-    --surface-bg: #2D2D44;
-    --border-color: #3A3A5C;
-    
-    /* Soft Pink */
-    --pink-soft: #E8B4B8;
-    --pink-soft-light: #D4A5A9;
-    
-    /* Muted Blue */
-    --blue-muted: #8FA3BF;
-    --blue-muted-light: #7A8FA8;
-    
-    /* Gentle Purple */
-    --purple-gentle: #B8A9C9;
-    --purple-gentle-light: #A89BB8;
-    
-    /* Text Colors */
-    --text-primary: #FFFFFF;
-    --text-secondary: #E5E5E5;
-    --text-muted: #B0B0B0;
-}
 
-body {
+  /* DEFAULT: Dark Mode - Galaxy Tech-Girly Theme */
+  :root {
+    /* Galaxy Dark Background Colors */
+    --background: #0a0312;
+    --card-bg: #1a0b2e;
+    --elevated-bg: #2b1055;
+    --surface-bg: #3d1a6b;
+    --border-color: #6b2d9e;
+
+    /* Galaxy Pink/Purple Accents */
+    --pink-soft: #ff6ec7;
+    --pink-soft-light: #ff8ed6;
+    --pink-bright: #ff3ea5;
+
+    /* Galaxy Blue/Purple */
+    --purple-gentle: #a78bfa;
+    --purple-gentle-light: #c4b5fd;
+    --purple-vivid: #8b5cf6;
+
+    /* Muted Galaxy Blue */
+    --blue-muted: #818cf8;
+    --blue-muted-light: #a5b4fc;
+
+    /* Text Colors for Dark Mode */
+    --text-primary: #ffffff;
+    --text-secondary: #e9d5ff;
+    --text-muted: #c4b5fd;
+  }
+
+  /* Light Mode - Soft & Elegant */
+  :root.light {
+    /* Soft Light Backgrounds */
+    --background: #fef8ff;
+    --card-bg: #ffffff;
+    --elevated-bg: #f5f3ff;
+    --surface-bg: #ede9fe;
+    --border-color: #e9d5ff;
+
+    /* Soft Pink Accents for Light Mode */
+    --pink-soft: #ec4899;
+    --pink-soft-light: #fdbbd6;
+    --pink-bright: #db2777;
+
+    /* Soft Purple for Light Mode */
+    --purple-gentle: #a855f7;
+    --purple-gentle-light: #d8b4fe;
+    --purple-vivid: #9333ea;
+
+    /* Muted Blue for Light Mode */
+    --blue-muted: #8b5cf6;
+    --blue-muted-light: #c4b5fd;
+
+    /* Text Colors for Light Mode */
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+  }
+
+  body {
     background-color: var(--background);
     color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  margin: 0;
-  min-height: 100vh;
-}
+    margin: 0;
+    min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
 }
 
 @layer components {
@@ -44,53 +78,78 @@ body {
     border-radius: 0.5rem;
     padding: 1.5rem;
     border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
   }
-  
+
   .btn-primary {
     background-color: var(--pink-soft);
     color: white;
     font-weight: 500;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
   }
-  
+
   .btn-primary:hover {
     background-color: var(--pink-soft-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
   }
-  
+
   .btn-secondary {
-    background-color: var(--blue-muted);
+    background-color: var(--purple-gentle);
     color: white;
-  font-weight: 500;
+    font-weight: 500;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    transition: background-color 0.2s;
-}
-  
+    transition: all 0.2s;
+  }
+
   .btn-secondary:hover {
-    background-color: var(--blue-muted-light);
-}
-  
+    background-color: var(--purple-gentle-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+  }
+
   .input-field {
     background-color: var(--surface-bg);
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     padding: 0.5rem 1rem;
     color: var(--text-primary);
+    transition: all 0.3s ease;
   }
-  
+
   .input-field::placeholder {
     color: var(--text-muted);
   }
-  
+
   .input-field:focus {
     outline: none;
-    border-color: var(--purple-gentle);
+    border-color: var(--purple-vivid);
     box-shadow: 0 0 0 2px var(--purple-gentle);
   }
-  
+
   .page-background {
     background-color: var(--elevated-bg);
+    transition: background-color 0.3s ease;
   }
+}
+
+/* Animated gradient for landing page */
+@keyframes gradient-x {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 8s ease infinite;
 }

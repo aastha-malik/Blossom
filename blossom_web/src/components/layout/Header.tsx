@@ -32,42 +32,38 @@ export default function Header() {
         </Link>
         <nav className="flex gap-2">
           <Link
-            to="/"
-            className={`px-4 py-2 rounded-lg transition-all ${
-              isActive('/')
+            to="/dashboard"
+            className={`px-4 py-2 rounded-lg transition-all ${isActive('/dashboard')
                 ? 'bg-dark-elevated text-text-primary font-bold'
                 : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
-            }`}
+              }`}
           >
             Task & Focus
           </Link>
           <Link
             to="/pets"
-            className={`px-4 py-2 rounded-lg transition-all ${
-              isActive('/pets')
+            className={`px-4 py-2 rounded-lg transition-all ${isActive('/pets')
                 ? 'bg-dark-elevated text-text-primary font-bold'
                 : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
-            }`}
+              }`}
           >
             My Pets
           </Link>
           <Link
             to="/analytics"
-            className={`px-4 py-2 rounded-lg transition-all ${
-              isActive('/analytics')
+            className={`px-4 py-2 rounded-lg transition-all ${isActive('/analytics')
                 ? 'bg-dark-elevated text-text-primary font-bold'
                 : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
-            }`}
+              }`}
           >
             Analytics
           </Link>
           <Link
             to="/settings"
-            className={`px-4 py-2 rounded-lg transition-all ${
-              isActive('/settings')
+            className={`px-4 py-2 rounded-lg transition-all ${isActive('/settings')
                 ? 'bg-dark-elevated text-text-primary font-bold'
                 : 'text-text-secondary hover:text-text-primary hover:bg-dark-surface'
-            }`}
+              }`}
           >
             Settings
           </Link>

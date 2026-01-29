@@ -281,5 +281,24 @@ export const userAPI = {
 
     return handleResponse<UserXP>(response);
   },
+
+  getTheme: async (): Promise<{ theme: string }> => {
+    const response = await fetch(API_ENDPOINTS.USER_THEME, {
+      headers: getAuthHeaders(),
+    });
+
+    return handleResponse<{ theme: string }>(response);
+  },
+
+  updateTheme: async (theme: 'light' | 'dark'): Promise<{ message: string; theme: string }> => {
+    const response = await fetch(API_ENDPOINTS.USER_THEME, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ theme }),
+    });
+
+    return handleResponse<{ message: string; theme: string }>(response);
+  },
 };
+
 

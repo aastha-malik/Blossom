@@ -473,6 +473,35 @@ async def verify_email_endpoint(
 
 
 # ---------------------------------------------------
+# DARK MODE ROUTES
+# ---------------------------------------------------
+
+@app.get("/user/theme")
+def get_user_theme(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get current user's theme preference"""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Default to 'dark' if not set
+    theme = user.theme or 'dark'
+    return {"theme": theme}
+
+@app.patch("/user/theme")
+def update_user_theme(theme: str = Body(..., embed=True), current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update current user's theme preference"""
+    if theme not in ['light', 'dark']:
+        raise HTTPException(status_code=400, detail="Theme must be 'light' or 'dark'")
+    
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.theme = theme
+    db.commit()
+    return {"message": "Theme updated successfully", "theme": theme}
+
+
+# ---------------------------------------------------
 # STATS ROUTES
 # ---------------------------------------------------
 

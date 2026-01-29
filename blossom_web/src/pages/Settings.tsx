@@ -1,12 +1,14 @@
-import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon, Trash2, KeyRound, Mail } from 'lucide-react';
+import { Lock, Info, LogIn, UserPlus, Settings as SettingsIcon, Trash2, KeyRound, Mail, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useState } from 'react';
 import { authAPI } from '../api/client';
 
 export default function Settings() {
   const navigate = useNavigate();
   const { isAuthenticated, username, email, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   // UI State - Show/Hide forms
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -180,6 +182,54 @@ export default function Settings() {
         </div>
 
         <div className="space-y-6">
+          {/* Theme Toggle Card */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                {theme === 'dark' ? (
+                  <Moon size={24} className="text-purple-gentle-100" />
+                ) : (
+                  <Sun size={24} className="text-yellow-500" />
+                )}
+                <h3 className="text-2xl font-semibold text-text-primary">Theme</h3>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-text-primary font-medium mb-1">
+                  {theme === 'dark' ? '🌌 Galaxy Dark Mode' : '☀️ Light Mode'}
+                </p>
+                <p className="text-text-muted text-sm">
+                  {theme === 'dark'
+                    ? 'Tech-girly vibes with deep purples and cosmic pinks'
+                    : 'Soft and elegant with gentle pastels'}
+                </p>
+              </div>
+
+              <button
+                onClick={toggleTheme}
+                className="relative inline-flex h-12 w-24 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-gentle focus:ring-offset-2"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'var(--purple-gentle)' : 'var(--pink-soft)'
+                }}
+              >
+                <span
+                  className="inline-block h-10 w-10 transform rounded-full bg-white shadow-lg transition-transform flex items-center justify-center"
+                  style={{
+                    transform: theme === 'dark' ? 'translateX(0.5rem)' : 'translateX(3rem)'
+                  }}
+                >
+                  {theme === 'dark' ? (
+                    <Moon size={20} className="text-purple-gentle-300" />
+                  ) : (
+                    <Sun size={20} className="text-yellow-500" />
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Authentication Card */}
           <div className="card">
             <div className="flex items-center gap-3 mb-4">
