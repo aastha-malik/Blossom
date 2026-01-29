@@ -275,8 +275,10 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     print(f"Callback received. Session state keys: {list(request.session.keys())}")
     
     try:
-        # Authlib uses the request session + redirect_uri for validation
-        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
+        # Authlib 1.6+ automatically handles redirect_uri via the request and session state
+        # We print what we expect just for debugging, but we do NOT pass it to avoid TypeError
+        print(f"DEBUG: Expected redirect_uri: {redirect_uri}")
+        token = await oauth.google.authorize_access_token(request)
     except Exception as e:
         print(f"OAuth Error: {str(e)}")
         raise e
