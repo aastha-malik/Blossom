@@ -265,6 +265,7 @@ async def google_login(request: Request):
 
 @app.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
+    print(f"DEBUG: Google Callback hit. URL: {request.url}")
     # Standardize callback URL to match login (must be identical)
     redirect_uri = request.url_for("google_callback")
     if "onrender.com" in str(request.url):
