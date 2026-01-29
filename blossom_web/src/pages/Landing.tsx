@@ -109,6 +109,25 @@ export default function Landing() {
                 </div>
             </div>
 
+            {/* Feedback & Contact Section */}
+            <div className="py-16 border-t border-dark-border/50">
+                <div className="max-w-3xl mx-auto px-4 text-center">
+                    <h3 className="text-2xl font-bold text-text-primary mb-4">Have feedback or suggestions?</h3>
+                    <p className="text-text-muted mb-6">
+                        We'd love to hear from you! Any advice, corrections, or ideas to make Blossom better are welcome.
+                    </p>
+                    <a
+                        href="mailto:aasthamalik.work@gmail.com?subject=Blossom Feedback"
+                        className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-pink-soft-100 to-purple-gentle-100 text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Send us an email
+                    </a>
+                </div>
+            </div>
+
             {/* Footer */}
             <footer className="py-12 text-center text-text-muted text-sm bg-dark-base border-t border-dark-border">
                 <p>© 2026 Blossom. All rights reserved.</p>
