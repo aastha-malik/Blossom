@@ -7,20 +7,27 @@ def run_diagnostic():
     print("--- Blossom Email Diagnostic ---")
     if not email:
         print("❌ Could not find environment variables.")
-        print("Make sure you are running this from the directory containing .env")
     else:
         print(f"Found User: {mask_credential(email)}")
-        print("Attempting to send a test email to YOURSELF...")
         
-        # Test sending to self
-        success = send_email(email, "Blossom Diagnostic Test", "If you got this, the connection is 100% fixed!")
+        print("\n--- TEST 1: Port 587 (Standard) ---")
+        success1 = send_email(email, "Blossom Diagnostic Test (587)", "Connection worked on 587!")
         
-        if success:
-            print("\n🎉 DIAGNOSTIC PASSED!")
-            print("Check your email (including Spam folder).")
+        if not success1:
+            print("\n--- TEST 2: Port 465 (SSL) ---")
+            # Update env temporarily for test
+            os.environ["SMTP_PORT"] = "465"
+            success2 = send_email(email, "Blossom Diagnostic Test (465)", "Connection worked on 465!")
+            
+            if success2:
+                print("\n🎉 TEST 2 PASSED! Updating .env to use port 465.")
+                return
         else:
-            print("\n❌ DIAGNOSTIC FAILED.")
-            print("Look at the DEBUG steps above to see where it stopped.")
+            print("\n🎉 TEST 1 PASSED!")
+            return
+
+        print("\n❌ BOTH TESTS FAILED.")
+        print("This means the issue is definitely the PASSWORD/CREDENTIALS.")
 
 if __name__ == "__main__":
     run_diagnostic()

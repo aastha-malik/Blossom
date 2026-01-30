@@ -56,9 +56,13 @@ def send_email(to_email, subject, body):
         
         print(f"DEBUG: Step 1 - Connecting to {smtp_server}:{port}...")
         if port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, port, timeout=15)
+            # Use SSL directly for port 465
+            server = smtplib.SMTP_SSL(smtp_server, port, timeout=20)
+            server.ehlo()
         else:
-            server = smtplib.SMTP(smtp_server, port, timeout=15)
+            # Use STARTTLS for port 587
+            server = smtplib.SMTP(smtp_server, port, timeout=20)
+            server.ehlo()
             print("DEBUG: Step 2 - Sending STARTTLS...")
             server.starttls()
             server.ehlo() # Re-identify after TLS
