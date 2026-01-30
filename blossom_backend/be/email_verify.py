@@ -1,77 +1,47 @@
-import smtplib
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from dotenv import load_dotenv
 
-# Robust .env loading (Only load if vars aren't already set by Render)
-def load_app_env():
-    # Load .env but DON'T override existing environment variables (Render's variables take priority)
-    load_dotenv()
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(base_dir, ".env")
-    if os.path.exists(env_path):
-        load_dotenv(env_path, override=False)
+# Load env
+load_dotenv()
 
-load_app_env()
-
-def mask_credential(val):
-    if not val: return "NOT SET"
-    if len(val) < 4: return "****"
-    return f"{val[:2]}****{val[-2:]}"
-
-def send_email(to_email, subject, body, retry_with_465=True):
-    # Ensure any quotes or whitespaces are removed
-    def clean_env(key):
-        val = os.getenv(key, "")
-        if not val: return ""
-        return val.strip().strip('"').strip("'")
-
-    smtp_server = clean_env("SMTP_SERVER")
-    smtp_port = clean_env("SMTP_PORT")
-    email_address = clean_env("EMAIL_ADDRESS")
-    email_password = clean_env("EMAIL_PASSWORD")
-
-    if not all([smtp_server, smtp_port, email_address, email_password]):
-        print(f"❌ CRITICAL: Missing email configuration.")
+def send_email(to_email, subject, body):
+    api_key = os.getenv("RESEND_API_KEY")
+    
+    if not api_key:
+        print("❌ ERROR: RESEND_API_KEY is not set in environment variables.")
+        # FALLBACK: If API key is missing, we will print the OTP to the logs 
+        # so the user can at least see it in Render logs to "verify" manually.
+        print(f"DEBUG: [FALLBACK] Email would have been sent to {to_email}")
+        print(f"DEBUG: [FALLBACK] Subject: {subject}")
+        print(f"DEBUG: [FALLBACK] Body: {body}")
         return False
 
-    msg = MIMEMultipart()
-    msg["From"] = email_address
-    msg["To"] = to_email
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-
     try:
-        port = int(smtp_port)
-        print(f"DEBUG: Email Attempt for {to_email} on port {port}")
+        print(f"DEBUG: Sending email via Resend API to {to_email}...")
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": "Blossom App <onboarding@resend.dev>",
+                "to": to_email,
+                "subject": subject,
+                "text": body,
+            },
+            timeout=10
+        )
         
-        if port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, port, timeout=20)
-            server.ehlo()
+        if response.status_code in [200, 201]:
+            print(f"✅ SUCCESS: Email sent via Resend to {to_email}")
+            return True
         else:
-            server = smtplib.SMTP(smtp_server, port, timeout=20)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            
-        server.login(email_address, email_password)
-        server.send_message(msg)
-        server.quit()
-        print(f"✅ SUCCESS: Email sent to {to_email}")
-        return True
+            print(f"❌ ERROR: Resend API failed with status {response.status_code}")
+            print(f"❌ ERROR DETAIL: {response.text}")
+            return False
 
     except Exception as e:
-        error_msg = str(e)
-        print(f"❌ ERROR: Failed on port {smtp_port}: {error_msg}")
-        
-        # Fallback Logic: If 587 is blocked by network, try 465 automatically
-        if retry_with_465 and smtp_port == "587":
-            print("⚠️ Port 587 seems blocked. Falling back to Port 465 (SSL)...")
-            # Create a localized environment override for the retry
-            os.environ["SMTP_PORT"] = "465" 
-            return send_email(to_email, subject, body, retry_with_465=False)
-            
-        if "535" in error_msg:
-            print("💡 TIP: Gmail rejected credentials. Re-check your App Password.")
+        print(f"❌ ERROR: Exception during Resend API call: {str(e)}")
         return False
