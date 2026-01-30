@@ -10,10 +10,17 @@ export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, setAuthData } = useAuth();
+  const { login, setAuthData, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toasts, showToast, removeToast } = useToast();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !searchParams.get('token')) {
+      navigate('/tasks');
+    }
+  }, [isAuthenticated, navigate, searchParams]);
 
   // Handle Google Login Redirect Token
   useEffect(() => {

@@ -13,7 +13,7 @@ def to_confirm_email(db:Session, email:str):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     else:
-        email_token = random.randint(99999, 1000000)
+        email_token = random.randint(100000, 999999)
         user.user_verification_token = str(email_token)
         user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=15)
         db.commit()

@@ -1,9 +1,18 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Heart, BarChart3, Shield, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Landing() {
     const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/tasks');
+        }
+    }, [isAuthenticated, navigate]);
+
     return (
         <div className="min-h-screen bg-dark-base text-text-primary font-sans selection:bg-pink-soft-200 selection:text-dark-base">
 

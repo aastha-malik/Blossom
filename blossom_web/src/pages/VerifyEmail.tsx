@@ -51,7 +51,7 @@ export default function VerifyEmail() {
                 try {
                     await login({ username, password });
                     showToast('Logged in successfully! 🚀', 'success');
-                    navigate('/');
+                    navigate('/tasks');
                 } catch (loginError) {
                     console.error('Auto-login failed:', loginError);
                     showToast('Verification successful, but auto-login failed. Please log in manually.', 'error');

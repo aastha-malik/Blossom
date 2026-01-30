@@ -20,7 +20,7 @@ ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "1"))
 
 # creating user => registration part
 def create_user(db:Session, username:str, plain_password:str, email:str):
-    email_token = random.randint(99999, 1000000)
+    email_token = random.randint(100000, 999999)
     # Truncate password to 72 bytes (bcrypt limit)
     truncated_password = truncate_password(plain_password)
     hashed_password = pwd_context.hash(truncated_password)
