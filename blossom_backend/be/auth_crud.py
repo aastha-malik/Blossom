@@ -33,9 +33,15 @@ def create_user(db:Session, username:str, plain_password:str, email:str):
     new_user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=30)
     db.commit()
     email_body = f" Hello! Please verify your Email for Blossom  {email_token}  Thank you!"
-    send_email(email, "Verify your Blossom Account", email_body)
-    print(f"Mock email to {email}: Hello! Please verify your Email for Blossom {email_token} Thank you!")
-
+    success = send_email(email, "Verify your Blossom Account", email_body)
+    
+    if success:
+        print(f"✅ Verification email sent to {email}")
+    else:
+        print(f"❌ CRITICAL: Failed to send verification email to {email}")
+        # Note: We still return the user because they are already in the DB, 
+        # but they will be 'unverified' and unable to log in.
+    
     return new_user
 
 #to verify the email

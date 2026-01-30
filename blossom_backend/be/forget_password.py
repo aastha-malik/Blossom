@@ -17,11 +17,13 @@ def to_confirm_email(db:Session, email:str):
         user.user_verification_token = str(email_token)
         user.user_verification_token_expires_at = datetime.utcnow() + timedelta(minutes=15)
         db.commit()
-        send_email(user.email, "OTP for Password Reset" ,f"please enter the OTP in the app : {email_token}")
-        print("email send!")
+        success = send_email(user.email, "OTP for Password Reset" ,f"please enter the OTP in the app : {email_token}")
+        if success:
+            print(f"✅ Password reset OTP sent to {user.email}")
+        else:
+            print(f"❌ CRITICAL: Failed to send password reset OTP to {user.email}")
         
-
-        return {"message": "email send!"}
+        return {"message": "OTP processed"}
 
 
 from sqlalchemy import or_
