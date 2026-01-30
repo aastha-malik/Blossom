@@ -9,14 +9,15 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import VerifyEmail from './pages/VerifyEmail';
 import AuthCallback from './pages/AuthCallback';
+import ForgotPassword from './pages/ForgotPassword';
 import Landing from './pages/Landing';
 
 // Component that wraps the app and conditionally shows Header
 function AppContent() {
   const location = useLocation();
 
-  // Don't show header on landing, login, signup, or verify pages
-  const hideHeader = ['/', '/login', '/signup', '/verify-email', '/auth/callback'].includes(location.pathname);
+  // Don't show header on landing, login, signup, verify, or forgot-password pages
+  const hideHeader = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/auth/callback'].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-dark-base">
@@ -27,6 +28,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Protected Routes - Require Authentication */}

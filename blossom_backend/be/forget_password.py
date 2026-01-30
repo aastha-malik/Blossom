@@ -24,8 +24,10 @@ def to_confirm_email(db:Session, email:str):
         return {"message": "email send!"}
 
 
-def forget_password(db:Session, entered_verify_code:str, username:str, new_password:str, new_password_confirm:str):
-    user = db.query(User).filter(User.username == username).first()
+from sqlalchemy import or_
+
+def forget_password(db:Session, entered_verify_code:str, identity:str, new_password:str, new_password_confirm:str):
+    user = db.query(User).filter(or_(User.username == identity, User.email == identity)).first()
     if user:
         if entered_verify_code == user.user_verification_token :
             if user.user_verification_token_expires_at > datetime.utcnow():
