@@ -12,10 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def send_email(to_email, subject, body):
-    smtp_server = os.getenv("SMTP_SERVER")
-    smtp_port = os.getenv("SMTP_PORT")
-    email_address = os.getenv("EMAIL_ADDRESS")
-    email_password = os.getenv("EMAIL_PASSWORD")
+    smtp_server = os.getenv("SMTP_SERVER", "").strip().strip('"').strip("'")
+    smtp_port = os.getenv("SMTP_PORT", "").strip().strip('"').strip("'")
+    email_address = os.getenv("EMAIL_ADDRESS", "").strip().strip('"').strip("'")
+    email_password = os.getenv("EMAIL_PASSWORD", "").strip().strip('"').strip("'")
 
     if not all([smtp_server, smtp_port, email_address, email_password]):
         print(f"❌ Missing email configuration: SERVER={smtp_server}, PORT={smtp_port}, EMAIL={email_address}")
