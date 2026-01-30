@@ -1,21 +1,17 @@
 import smtplib
 import os
-import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
-# Robust .env loading 
+# Robust .env loading (Only load if vars aren't already set by Render)
 def load_app_env():
-    # 1. Try default
+    # Load .env but DON'T override existing environment variables (Render's variables take priority)
     load_dotenv()
-    # 2. Try explicit path relative to this file
     base_dir = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.join(base_dir, ".env")
     if os.path.exists(env_path):
-        load_dotenv(env_path, override=True)
-    # 3. Try parent dir (in case we are running from be/ and .env is in blossom_backend/)
-    load_dotenv(os.path.join(base_dir, "..", ".env"), override=True)
+        load_dotenv(env_path, override=False)
 
 load_app_env()
 
@@ -24,7 +20,7 @@ def mask_credential(val):
     if len(val) < 4: return "****"
     return f"{val[:2]}****{val[-2:]}"
 
-def send_email(to_email, subject, body):
+def send_email(to_email, subject, body, retry_with_465=True):
     # Ensure any quotes or whitespaces are removed
     def clean_env(key):
         val = os.getenv(key, "")
@@ -36,13 +32,8 @@ def send_email(to_email, subject, body):
     email_address = clean_env("EMAIL_ADDRESS")
     email_password = clean_env("EMAIL_PASSWORD")
 
-    print(f"DEBUG: Email Attempt for {to_email}")
-    print(f"DEBUG: Config - Server: {smtp_server}, Port: {smtp_port}")
-    print(f"DEBUG: Config - From: {mask_credential(email_address)}")
-    print(f"DEBUG: Config - Pass: {mask_credential(email_password)}")
-
     if not all([smtp_server, smtp_port, email_address, email_password]):
-        print(f"❌ CRITICAL: Missing email configuration in environment variables.")
+        print(f"❌ CRITICAL: Missing email configuration.")
         return False
 
     msg = MIMEMultipart()
@@ -53,33 +44,34 @@ def send_email(to_email, subject, body):
 
     try:
         port = int(smtp_port)
+        print(f"DEBUG: Email Attempt for {to_email} on port {port}")
         
-        print(f"DEBUG: Step 1 - Connecting to {smtp_server}:{port}...")
         if port == 465:
-            # Use SSL directly for port 465
             server = smtplib.SMTP_SSL(smtp_server, port, timeout=20)
             server.ehlo()
         else:
-            # Use STARTTLS for port 587
             server = smtplib.SMTP(smtp_server, port, timeout=20)
             server.ehlo()
-            print("DEBUG: Step 2 - Sending STARTTLS...")
             server.starttls()
-            server.ehlo() # Re-identify after TLS
+            server.ehlo()
             
-        print(f"DEBUG: Step 3 - Attempting Login for {mask_credential(email_address)}...")
         server.login(email_address, email_password)
-        
-        print(f"DEBUG: Step 4 - Sending Message...")
         server.send_message(msg)
         server.quit()
         print(f"✅ SUCCESS: Email sent to {to_email}")
         return True
+
     except Exception as e:
-        print(f"❌ ERROR: Failed to send email to {to_email}")
-        print(f"❌ ERROR DETAIL: {str(e)}")
-        if "535" in str(e):
-            print("💡 TIP: Gmail rejected your credentials. PLEASE RE-CHECK YOUR APP PASSWORD. Do not use your regular account password.")
-        elif "connect" in str(e).lower():
-            print("💡 TIP: Connection failed. Check if your SMTP_SERVER and SMTP_PORT are correct.")
+        error_msg = str(e)
+        print(f"❌ ERROR: Failed on port {smtp_port}: {error_msg}")
+        
+        # Fallback Logic: If 587 is blocked by network, try 465 automatically
+        if retry_with_465 and smtp_port == "587":
+            print("⚠️ Port 587 seems blocked. Falling back to Port 465 (SSL)...")
+            # Create a localized environment override for the retry
+            os.environ["SMTP_PORT"] = "465" 
+            return send_email(to_email, subject, body, retry_with_465=False)
+            
+        if "535" in error_msg:
+            print("💡 TIP: Gmail rejected credentials. Re-check your App Password.")
         return False
