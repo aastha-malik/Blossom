@@ -31,14 +31,19 @@ def send_email(to_email, subject, body):
         # Port must be integer for smtplib
         port = int(smtp_port)
         
+        print(f"DEBUG: Connecting to {smtp_server}:{port}...")
         # Use SMTP_SSL for port 465, otherwise use SMTP + starttls
         if port == 465:
             server = smtplib.SMTP_SSL(smtp_server, port, timeout=10)
         else:
             server = smtplib.SMTP(smtp_server, port, timeout=10)
+            print("DEBUG: Sending EHLO and STARTTLS...")
             server.starttls()
             
+        print(f"DEBUG: Attempting login for {email_address}...")
         server.login(email_address, email_password)
+        
+        print(f"DEBUG: Sending message to {to_email}...")
         server.send_message(msg)
         server.quit()
         print("✅ Email sent successfully!")
