@@ -8,7 +8,7 @@ from fastapi import Depends
 
 
 def start_of_all_time(current_user: User):
-    return User.start_acc_time
+    return current_user.start_acc_time
 
 
 def get_user_tasks(db: Session, user_id: int, start_date: datetime, current_user):
@@ -53,7 +53,7 @@ def streak_calculation(db: Session, user_id: int,start_date: datetime, current_u
     else:
         return streaks
 
-def total_xps(db:Session, user_id:int,current_user , xp=User.xp):
+def total_xps(db:Session, user_id:int,current_user):
     user = db.query(User).filter(User.id == current_user.id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
