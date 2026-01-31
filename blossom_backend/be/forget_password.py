@@ -38,6 +38,8 @@ def forget_password(db:Session, entered_verify_code:str, identity:str, new_passw
                     truncated_password = truncate_password(new_password)
                     hashed_password = pwd_context.hash(truncated_password)
                     user.hashed_password = hashed_password
+                    # If this was a Google user, allow them to log in with their new password now
+                    user.provider = None 
                     db.commit()
                     db.refresh(user)
                     return True

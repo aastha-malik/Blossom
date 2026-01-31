@@ -379,10 +379,10 @@ def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    if user.provider == "google":
+    if user.provider == "google" and not user.hashed_password:
         raise HTTPException(
             status_code=400,
-            detail="This account uses Google login. Please continue with Google."
+            detail="This account is linked to Google. Please use 'Forgot Password' to set a password or login with Google."
         )
     
     data = {"sub": user.username}
