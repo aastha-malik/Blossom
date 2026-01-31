@@ -8,23 +8,18 @@ load_dotenv()
 def send_email(to_email, subject, body):
     api_key = os.getenv("RESEND_API_KEY")
     
+    # ALWAYS print the OTP to logs as a fail-safe first
+    print("\n" + "!"*60)
+    print(f"🔑 SECURITY OTP FOR: {to_email}")
+    print(f"👉 CODE: {body} 👈")
+    print("!"*60 + "\n")
+    
     if not api_key:
-        print("❌ ERROR: RESEND_API_KEY is not set in environment variables.")
-        # FALLBACK: If API key is missing, we will print the OTP to the logs 
-        # so the user can at least see it in Render logs to "verify" manually.
-        print(f"DEBUG: [FALLBACK] Email would have been sent to {to_email}")
-        print(f"DEBUG: [FALLBACK] Subject: {subject}")
-        print(f"DEBUG: [FALLBACK] Body: {body}")
+        print("❌ ERROR: RESEND_API_KEY is missing in Render settings.")
         return False
 
     try:
-        # GIANT FAIL-SAFE LOG (So you can see the code even if email fails)
-        print("\n" + "="*50)
-        print(f"🔑 SECURITY OTP FOR {to_email}:")
-        print(f"👉 {body} 👈")
-        print("="*50 + "\n")
-
-        print(f"DEBUG: Sending email via Resend API to {to_email}...")
+        print(f"DEBUG: Requesting Resend API for {to_email}...")
         response = requests.post(
             "https://api.resend.com/emails",
             headers={
@@ -32,7 +27,7 @@ def send_email(to_email, subject, body):
                 "Content-Type": "application/json",
             },
             json={
-                "from": "Blossom App <onboarding@resend.dev>",
+                "from": "Blossom <onboarding@resend.dev>",
                 "to": to_email,
                 "subject": subject,
                 "text": body,
@@ -41,13 +36,16 @@ def send_email(to_email, subject, body):
         )
         
         if response.status_code in [200, 201]:
-            print(f"✅ SUCCESS: Email sent via Resend to {to_email}")
+            print(f"✅ SUCCESS: Email sent to {to_email}")
             return True
+        elif response.status_code == 403:
+            print(f"⚠️ RESEND RESTRICTION: You can ONLY send emails to the address you used to sign up for Resend.")
+            print(f"💡 TIP: Try signing up to Blossom with the same email you used for your Resend account.")
+            return False
         else:
-            print(f"❌ ERROR: Resend API failed with status {response.status_code}")
-            print(f"❌ ERROR DETAIL: {response.text}")
+            print(f"❌ ERROR: Resend API failed (Status {response.status_code})")
             return False
 
     except Exception as e:
-        print(f"❌ ERROR: Exception during Resend API call: {str(e)}")
+        print(f"❌ ERROR: Connection failed: {str(e)}")
         return False
