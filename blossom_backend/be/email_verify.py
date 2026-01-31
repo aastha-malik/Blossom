@@ -18,6 +18,12 @@ def send_email(to_email, subject, body):
         return False
 
     try:
+        # GIANT FAIL-SAFE LOG (So you can see the code even if email fails)
+        print("\n" + "="*50)
+        print(f"🔑 SECURITY OTP FOR {to_email}:")
+        print(f"👉 {body} 👈")
+        print("="*50 + "\n")
+
         print(f"DEBUG: Sending email via Resend API to {to_email}...")
         response = requests.post(
             "https://api.resend.com/emails",
