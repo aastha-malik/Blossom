@@ -115,5 +115,5 @@ def reset_password(db:Session, new_password:str, new_password_confirm: str, old_
     return password_reset(db, new_password, new_password_confirm, old_password, username)
 
 #when user forgot password while login
-def forgot_password(db:Session, entered_verify_code:str, new_password:str, new_password_confirm:str, email:str):
-    return forget_password(db,entered_verify_code, new_password, new_password_confirm, email)
+def forgot_password(db:Session, entered_verify_code:str, new_password:str, new_password_confirm:str, username:str):
+    return forget_password(db, entered_verify_code, username, new_password, new_password_confirm)

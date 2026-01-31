@@ -22,7 +22,7 @@ from auth_dependencies import get_current_user
 from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
     PetCreate, PetUpdate, PetResponse,PetFeed,
-    RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest
+    RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest, ForgotPasswordRequest
 )
 from starlette.responses import RedirectResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -414,13 +414,10 @@ def send_forgot_password_otp(email: str, db: Session = Depends(get_db)):
 
 @app.patch("/forgot_password")
 def forgot_password_endpoint(
-    entered_verify_code: str,
-    new_password: str,
-    new_password_confirm: str,
-    username: str,
+    data: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
-    forget = auth_crud.forget_password(db, entered_verify_code,username, new_password, new_password_confirm)
+    forget = auth_crud.forgot_password(db, data.entered_verify_code, data.new_password, data.new_password_confirm, data.username)
     if not forget:
         raise HTTPException(status_code=400, detail="Forget password reset failed")
     return {"message": "Forget password reset done!"}

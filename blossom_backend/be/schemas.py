@@ -125,7 +125,7 @@ class ForgotPasswordRequest(BaseModel):
     entered_verify_code: str
     new_password: str
     new_password_confirm: str
-    email: EmailStr
+    username: str
 
 
 class EmailVerificationRequest(BaseModel):
