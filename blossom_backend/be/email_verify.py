@@ -6,46 +6,54 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def send_email(to_email, subject, body):
-    api_key = os.getenv("RESEND_API_KEY")
+    # Try the Google Bridge first (Best for sending to anyone without a domain)
+    bridge_url = os.getenv("EMAIL_BRIDGE_URL")
+    resend_key = os.getenv("RESEND_API_KEY")
     
     # ALWAYS print the OTP to logs as a fail-safe first
     print("\n" + "!"*60)
     print(f"🔑 SECURITY OTP FOR: {to_email}")
     print(f"👉 CODE: {body} 👈")
     print("!"*60 + "\n")
-    
-    if not api_key:
-        print("❌ ERROR: RESEND_API_KEY is missing in Render settings.")
-        return False
 
-    try:
-        print(f"DEBUG: Requesting Resend API for {to_email}...")
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "Blossom <onboarding@resend.dev>",
+    # OPTION A: Google Apps Script Bridge (No Domain Needed)
+    if bridge_url:
+        try:
+            print(f"DEBUG: Using Google Bridge to send to {to_email}...")
+            response = requests.post(bridge_url, json={
                 "to": to_email,
                 "subject": subject,
-                "text": body,
-            },
-            timeout=10
-        )
-        
-        if response.status_code in [200, 201]:
-            print(f"✅ SUCCESS: Email sent to {to_email}")
-            return True
-        elif response.status_code == 403:
-            print(f"⚠️ RESEND RESTRICTION: You can ONLY send emails to the address you used to sign up for Resend.")
-            print(f"💡 TIP: Try signing up to Blossom with the same email you used for your Resend account.")
-            return False
-        else:
-            print(f"❌ ERROR: Resend API failed (Status {response.status_code})")
-            return False
+                "body": body
+            }, timeout=15)
+            if response.status_code == 200:
+                print(f"✅ SUCCESS: Email sent via Bridge to {to_email}")
+                return True
+        except Exception as e:
+            print(f"❌ BRIDGE ERROR: {str(e)}")
 
-    except Exception as e:
-        print(f"❌ ERROR: Connection failed: {str(e)}")
-        return False
+    # OPTION B: Resend API (Requires Domain for strangers)
+    if resend_key:
+        try:
+            print(f"DEBUG: Using Resend to send to {to_email}...")
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={
+                    "from": "Blossom <onboarding@resend.dev>",
+                    "to": to_email,
+                    "subject": subject,
+                    "text": body,
+                },
+                timeout=10
+            )
+            if response.status_code in [200, 201]:
+                print(f"✅ SUCCESS: Email sent via Resend to {to_email}")
+                return True
+            else:
+                print(f"⚠️ RESEND FAILED (Status {response.status_code}). Note: Resend requires a domain to email others.")
+        except Exception as e:
+            print(f"❌ RESEND ERROR: {str(e)}")
+
+    # If both fail
+    print("❌ CRITICAL: No working email path found. OTP only exists in these logs.")
+    return False
