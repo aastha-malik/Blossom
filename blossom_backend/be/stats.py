@@ -28,30 +28,33 @@ def count_tasks_completed(db: Session, user_id: int, start_date: datetime, curre
     else:
         return num_completed
 
-def streak_calculation(db: Session, user_id: int,start_date: datetime, current_user):
-
+def streak_calculation(db: Session, user_id: int, start_date: datetime, current_user):
     tasks = get_user_tasks(db, user_id, start_date, current_user)
-    streaks = 0
-    task_dates = set()
-    for i in tasks:
-        date = i.created_at.date()
-        task_dates.add(date)
+    if not tasks:
+        return 0
+        
+    task_dates = {t.created_at.date() for t in tasks}
     sorted_dates = sorted(task_dates, reverse=True)
+    
     if not sorted_dates:
         return 0
+        
+    # A streak is active if the most recent task was completed today or yesterday
+    today = datetime.utcnow().date()
+    if sorted_dates[0] < today - timedelta(days=1):
+        return 0
+        
+    streaks = 1
     current_date = sorted_dates[0]
-    for date in sorted_dates:
-        if current_date - date == timedelta(days = 1):
+    
+    for i in range(1, len(sorted_dates)):
+        if current_date - sorted_dates[i] == timedelta(days=1):
             streaks += 1
-            current_date = date
+            current_date = sorted_dates[i]
         else:
             break
-    if streaks is None:
-        raise HTTPException(status_code=404, detail="No Streaks found for the user")    
-    elif streaks < 0:
-        raise HTTPException(status_code=400, detail="Invalid Streaks value")
-    else:
-        return streaks
+            
+    return streaks
 
 def total_xps(db:Session, user_id:int,current_user):
     user = db.query(User).filter(User.id == current_user.id).first()

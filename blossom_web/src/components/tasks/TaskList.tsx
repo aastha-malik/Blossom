@@ -36,16 +36,27 @@ export default function TaskList({ onError }: TaskListProps) {
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
   // Sort tasks: incomplete first, completed last
-  const sortedTasks = tasks
-    ? [...tasks].sort((a, b) => {
-      // Incomplete tasks come first (completed: false = 0, true = 1)
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-      // If both have same completion status, sort by creation date (newest first)
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    })
-    : [];
+  // Update: Only show incomplete tasks OR tasks completed today
+  const filteredTasks = (tasks || []).filter(task => {
+    if (!task.completed) return true;
+
+    // For completed tasks, check if they were created today
+    const createdAt = new Date(task.created_at);
+    const today = new Date();
+
+    return createdAt.getFullYear() === today.getFullYear() &&
+      createdAt.getMonth() === today.getMonth() &&
+      createdAt.getDate() === today.getDate();
+  });
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    // Incomplete tasks come first (completed: false = 0, true = 1)
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
+    // If both have same completion status, sort by creation date (newest first)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   if (isAuthenticated && isLoading) {
     return (
