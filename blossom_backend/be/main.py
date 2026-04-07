@@ -91,6 +91,10 @@ def get_db():
 def read_root():
     return {"message": "This is Task Manager side of our app Blossom!!"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.get("/debug/session")
 def debug_session(request: Request):
     return {
