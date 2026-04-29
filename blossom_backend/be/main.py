@@ -45,6 +45,14 @@ with engine.connect() as conn:
     except Exception:
         pass # Column already exists
 
+# Add category column to tasks table
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE tasks ADD COLUMN category VARCHAR(50)'))
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -123,7 +131,7 @@ def get_user_xp(current_user = Depends(get_current_user), db: Session = Depends(
 
 @app.post("/tasks", response_model=None)
 def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user),db: Session = Depends(get_db)):
-    task = task_crud.create_task(db, task.title, task.priority, current_user)
+    task = task_crud.create_task(db, task.title, task.priority, current_user, task.category)
     if not task:
         raise HTTPException(status_code=400, detail="Task creation failed")
     return TaskResponse.model_validate(task)

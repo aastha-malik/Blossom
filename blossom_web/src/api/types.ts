@@ -23,6 +23,7 @@ export interface Task {
   title: string;
   description?: string | null;
   priority?: string | null;
+  category?: string | null;
   completed: boolean;
   created_at: string;
   user_id: number;
@@ -33,6 +34,7 @@ export interface Task {
 export interface TaskCreate {
   title: string;
   priority?: string;
+  category?: string;
 }
 
 export interface TaskCompletionUpdate {

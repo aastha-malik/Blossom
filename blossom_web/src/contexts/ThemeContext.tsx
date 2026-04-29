@@ -12,12 +12,15 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+function applyTheme(t: Theme) {
+    document.documentElement.classList.toggle('dark', t === 'dark');
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const { isAuthenticated } = useAuth();
     const [theme, setThemeState] = useState<Theme>('light');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch user's theme preference from backend when authenticated
     useEffect(() => {
         const fetchTheme = async () => {
             if (isAuthenticated) {
@@ -25,23 +28,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                     const response = await userAPI.getTheme();
                     const userTheme = response.theme as Theme;
                     setThemeState(userTheme);
-                    document.documentElement.classList.toggle('light', userTheme === 'light');
+                    applyTheme(userTheme);
                 } catch (error) {
                     console.error('Failed to fetch theme:', error);
-                    // Default to light if fetch fails
                     setThemeState('light');
+                    applyTheme('light');
                 }
             } else {
-                // Guest users: check localStorage
-                const savedTheme = localStorage.getItem('theme') as Theme;
-                if (savedTheme) {
-                    setThemeState(savedTheme);
-                    document.documentElement.classList.toggle('light', savedTheme === 'light');
-                } else {
-                    // Default for new guests
-                    setThemeState('light');
-                    document.documentElement.classList.toggle('light', true);
-                }
+                const saved = localStorage.getItem('tendr-theme') as Theme | null;
+                const resolved = saved === 'dark' ? 'dark' : 'light';
+                setThemeState(resolved);
+                applyTheme(resolved);
             }
             setIsLoading(false);
         };
@@ -49,25 +46,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         fetchTheme();
     }, [isAuthenticated]);
 
-    // Apply theme to document
-    useEffect(() => {
-        document.documentElement.classList.toggle('light', theme === 'light');
-    }, [theme]);
-
     const setTheme = async (newTheme: Theme) => {
         setThemeState(newTheme);
-        document.documentElement.classList.toggle('light', newTheme === 'light');
+        applyTheme(newTheme);
 
         if (isAuthenticated) {
-            // Save to backend for logged-in users
             try {
                 await userAPI.updateTheme(newTheme);
             } catch (error) {
                 console.error('Failed to update theme:', error);
             }
         } else {
-            // Save to localStorage for guests
-            localStorage.setItem('theme', newTheme);
+            localStorage.setItem('tendr-theme', newTheme);
         }
     };
 
@@ -76,7 +66,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
 
     if (isLoading) {
-        return null; // Or a loading spinner
+        return null;
     }
 
     return (

@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
 
 interface ToastProps {
   message: string;
@@ -8,34 +7,60 @@ interface ToastProps {
   duration?: number;
 }
 
-export default function Toast({ message, type = 'info', onClose, duration = 3000 }: ToastProps) {
+export default function Toast({ message, type = 'info', onClose, duration = 4000 }: ToastProps) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, duration);
-
+    const timer = setTimeout(onClose, duration);
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const bgColor =
-    type === 'success'
-      ? 'bg-blue-muted-100'
-      : type === 'error'
-      ? 'bg-pink-soft-100'
-      : 'bg-purple-gentle-100';
+  const borderColor = type === 'error' ? 'var(--accent)' : type === 'success' ? 'var(--accent-2)' : 'var(--accent-3)';
 
   return (
     <div
-      className={`fixed bottom-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] z-50 animate-in slide-in-from-bottom-5`}
+      style={{
+        position: 'fixed',
+        bottom: 24,
+        right: 24,
+        background: 'var(--card)',
+        border: '1px solid var(--rule)',
+        borderLeft: `4px solid ${borderColor}`,
+        padding: '14px 18px',
+        minWidth: 300,
+        maxWidth: 420,
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
+        boxShadow: '2px 4px 0 var(--shadow)',
+      }}
     >
-      <p className="flex-1">{message}</p>
+      <p style={{
+        fontFamily: 'Fraunces, Georgia, serif',
+        fontStyle: 'italic',
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: 'var(--ink)',
+        margin: 0,
+        flex: 1,
+      }}>
+        {message}
+      </p>
       <button
         onClick={onClose}
-        className="flex-shrink-0 hover:opacity-80 transition-opacity"
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          fontSize: 11,
+          color: 'var(--muted)',
+          padding: 0,
+          flexShrink: 0,
+        }}
       >
-        <X size={18} />
+        ×
       </button>
     </div>
   );
 }
-

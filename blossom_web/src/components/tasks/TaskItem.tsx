@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, X } from 'lucide-react';
 import { tasksAPI } from '../../api/client';
 import type { Task } from '../../api/types';
 
@@ -11,6 +10,8 @@ interface TaskItemProps {
   onUpdateLocal?: (updates: Partial<Task>) => void;
 }
 
+const XP_BY_PRIORITY: Record<string, number> = { High: 25, Medium: 15, Low: 10 };
+
 export default function TaskItem({ task, onDelete, onError, isLocal = false, onUpdateLocal }: TaskItemProps) {
   const queryClient = useQueryClient();
 
@@ -20,62 +21,115 @@ export default function TaskItem({ task, onDelete, onError, isLocal = false, onU
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['userXP'] });
     },
-    onError: (error: Error) => {
-      onError?.(error);
-    },
+    onError: (error: Error) => { onError?.(error); },
   });
 
   const handleToggle = () => {
     if (isLocal && onUpdateLocal) {
-      // Update local task immediately
       onUpdateLocal({ completed: !task.completed });
     } else {
-      // Use backend API
       toggleCompletionMutation.mutate(!task.completed);
     }
   };
 
+  const xp = task.xpReward ?? XP_BY_PRIORITY[task.priority ?? ''] ?? 2;
+
   return (
-    <div className={`flex items-center gap-3 p-4 bg-dark-surface rounded-lg border border-dark-border hover:border-blue-muted-100/50 transition-colors ${task.completed ? 'opacity-50' : ''}`}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '24px 1fr auto auto auto',
+      alignItems: 'center',
+      gap: 14,
+      padding: '11px 0',
+      borderBottom: '1px dashed var(--rule)',
+    }}>
+      {/* Circle checkbox */}
       <button
         onClick={handleToggle}
         disabled={!isLocal && toggleCompletionMutation.isPending}
-        className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${task.completed
-          ? 'bg-blue-muted-100 border-blue-muted-100'
-          : 'border-blue-muted-100 bg-transparent hover:bg-blue-muted-100/20'
-          } disabled:opacity-50`}
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 9,
+          border: `1.5px solid var(--ink)`,
+          background: task.completed ? 'var(--accent)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0,
+          padding: 0,
+          opacity: (!isLocal && toggleCompletionMutation.isPending) ? 0.5 : 1,
+        }}
       >
-        {task.completed && <Check size={16} className="text-white" />}
+        {task.completed && (
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M1 5 L4 8 L9 2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" />
+          </svg>
+        )}
       </button>
 
-      <div className="flex-1">
-        <p
-          className={`${task.completed ? 'line-through text-text-muted' : 'text-text-primary'
-            }`}
-        >
-          {task.title}
-        </p>
-        {task.priority && (
-          <span
-            className={`text-xs px-2 py-1 rounded ${task.priority === 'High'
-              ? 'bg-pink-soft-100/20 text-pink-soft-100'
-              : task.priority === 'Medium'
-                ? 'bg-blue-muted-100/20 text-blue-muted-100'
-                : 'bg-purple-gentle-100/20 text-purple-gentle-100'
-              }`}
-          >
-            {task.priority}
-          </span>
-        )}
+      {/* Task title */}
+      <div style={{
+        fontFamily: 'Fraunces, Georgia, serif',
+        fontSize: 17,
+        color: task.completed ? 'var(--muted)' : 'var(--ink)',
+        textDecoration: task.completed ? 'line-through' : 'none',
+        textDecorationColor: 'var(--accent)',
+        textDecorationThickness: 2,
+      }}>
+        {task.title}
       </div>
 
-      <button
-        onClick={onDelete}
-        className="flex-shrink-0 p-1 text-text-muted hover:text-text-primary transition-colors"
-      >
-        <X size={18} />
-      </button>
+      {/* Priority tag */}
+      <div style={{
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 10,
+        letterSpacing: '1.5px',
+        color: 'var(--ink-soft)',
+        textTransform: 'uppercase',
+      }}>
+        {task.priority ?? 'LOW'}
+      </div>
+
+      {/* Category tag */}
+      <div style={{
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 9,
+        letterSpacing: '1.5px',
+        color: task.category ? 'var(--accent-3)' : 'transparent',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+      }}>
+        {task.category ?? '·'}
+      </div>
+
+      {/* XP + delete */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          fontSize: 11,
+          color: 'var(--amber)',
+          fontFeatureSettings: '"tnum"',
+        }}>
+          +{xp}
+        </span>
+        <button
+          onClick={onDelete}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+            fontSize: 12,
+            color: 'var(--muted)',
+            padding: 0,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 }
-

@@ -11,9 +11,13 @@ interface TaskFormProps {
   onError?: (error: Error) => void;
 }
 
+const TASK_CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
+
 export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<string>(TASK_PRIORITIES.MEDIUM);
+  const [category, setCategory] = useState<string>('');
+  const [isOpen, setIsOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { addTask: addLocalTask } = useLocalTasksContext();
@@ -24,29 +28,25 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setTitle('');
       setPriority(TASK_PRIORITIES.MEDIUM);
+      setCategory('');
+      setIsOpen(false);
       onSuccess?.();
     },
-    onError: (error: Error) => {
-      onError?.(error);
-    },
+    onError: (error: Error) => { onError?.(error); },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-
     if (isAuthenticated) {
-      // Use backend API when logged in
-      createTaskMutation.mutate({ title: title.trim(), priority });
+      createTaskMutation.mutate({ title: title.trim(), priority, ...(category ? { category } : {}) });
     } else {
-      // Use local storage when not logged in
       try {
-        addLocalTask({
-          title: title.trim(),
-          priority: priority || TASK_PRIORITIES.MEDIUM,
-        });
+        addLocalTask({ title: title.trim(), priority: priority || TASK_PRIORITIES.MEDIUM });
         setTitle('');
         setPriority(TASK_PRIORITIES.MEDIUM);
+        setCategory('');
+        setIsOpen(false);
         onSuccess?.();
       } catch (error) {
         onError?.(error as Error);
@@ -54,45 +54,118 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
     }
   };
 
+  if (!isOpen) {
+    return (
+      <div
+        onClick={() => setIsOpen(true)}
+        style={{
+          fontFamily: 'Fraunces, Georgia, serif',
+          fontStyle: 'italic',
+          fontSize: 14,
+          color: 'var(--muted)',
+          padding: '8px 0',
+          cursor: 'pointer',
+          borderBottom: '1px dashed var(--rule)',
+        }}
+      >
+        + add another…
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-6">
-      <h3 className="text-xl font-semibold text-text-primary mb-4">Add New Task</h3>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="What do you need to focus on?"
-          className="input-field w-full"
-        />
+    <form onSubmit={handleSubmit} style={{ borderBottom: '1px dashed var(--rule)', paddingBottom: 10, marginBottom: 4 }}>
+      <input
+        type="text"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        placeholder="what needs doing…"
+        autoFocus
+        style={{
+          width: '100%',
+          padding: '8px 0',
+          border: 'none',
+          borderBottom: '1.5px solid var(--accent)',
+          background: 'transparent',
+          color: 'var(--ink)',
+          fontFamily: 'Fraunces, Georgia, serif',
+          fontSize: 16,
+          outline: 'none',
+          boxSizing: 'border-box',
+          marginBottom: 8,
+        }}
+      />
+      {/* Category chips */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        {TASK_CATEGORIES.map(c => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(category === c ? '' : c)}
+            style={{
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 9,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              background: category === c ? 'var(--accent-3)' : 'transparent',
+              color: category === c ? 'var(--paper)' : 'var(--muted)',
+              border: `1px solid ${category === c ? 'var(--accent-3)' : 'var(--rule)'}`,
+              cursor: 'pointer',
+            }}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
 
-        <div className="flex gap-3">
-          {Object.values(TASK_PRIORITIES).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors flex-1 ${
-                priority === p
-                  ? 'bg-blue-muted-100 text-white'
-                  : 'bg-dark-surface text-text-secondary hover:bg-dark-border'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {Object.values(TASK_PRIORITIES).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPriority(p)}
+            style={{
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 10,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              padding: '4px 8px',
+              background: priority === p ? 'var(--ink)' : 'transparent',
+              color: priority === p ? 'var(--paper)' : 'var(--muted)',
+              border: `1px solid ${priority === p ? 'var(--ink)' : 'var(--rule)'}`,
+              cursor: 'pointer',
+            }}
+          >
+            {p}
+          </button>
+        ))}
+        <div style={{ flex: 1 }} />
         <button
           type="submit"
           disabled={!title.trim() || createTaskMutation.isPending}
-          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            fontFamily: '"Inter", system-ui, sans-serif',
+            fontSize: 12,
+            fontWeight: 500,
+            padding: '5px 12px',
+            background: 'var(--ink)',
+            color: 'var(--paper)',
+            border: 'none',
+            cursor: title.trim() ? 'pointer' : 'not-allowed',
+            opacity: (!title.trim() || createTaskMutation.isPending) ? 0.5 : 1,
+          }}
         >
-          {createTaskMutation.isPending ? 'Adding...' : 'Add Task'}
+          {createTaskMutation.isPending ? 'Adding…' : 'Add'}
         </button>
-      </form>
-    </div>
+        <button
+          type="button"
+          onClick={() => { setIsOpen(false); setTitle(''); setCategory(''); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, color: 'var(--muted)', padding: 0 }}
+        >
+          ×
+        </button>
+      </div>
+    </form>
   );
 }
-

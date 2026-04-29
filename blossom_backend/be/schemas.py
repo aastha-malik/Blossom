@@ -31,6 +31,7 @@ class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
     priority: Optional[Union[str, int]] = None
+    category: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
@@ -42,6 +43,7 @@ class TaskResponse(BaseModel):
     title: str
     description: Optional[str] = None
     priority: Optional[str | int] = None
+    category: Optional[str] = None
     completed: Optional[bool] = False
     created_at: datetime
     user_id: int

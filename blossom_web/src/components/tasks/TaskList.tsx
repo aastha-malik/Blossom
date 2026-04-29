@@ -6,9 +6,10 @@ import TaskItem from './TaskItem';
 
 interface TaskListProps {
   onError?: (error: Error) => void;
+  activeCategory?: string;
 }
 
-export default function TaskList({ onError }: TaskListProps) {
+export default function TaskList({ onError, activeCategory }: TaskListProps) {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { tasks: localTasks, updateTask: updateLocalTask, deleteTask: deleteLocalTask } = useLocalTasksContext();
@@ -49,7 +50,12 @@ export default function TaskList({ onError }: TaskListProps) {
       createdAt.getDate() === today.getDate();
   });
 
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
+  // Apply category filter if active
+  const categoryFiltered = activeCategory
+    ? filteredTasks.filter(t => (t.category ?? '').toLowerCase() === activeCategory.toLowerCase())
+    : filteredTasks;
+
+  const sortedTasks = [...categoryFiltered].sort((a, b) => {
     // Incomplete tasks come first (completed: false = 0, true = 1)
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1;
@@ -60,32 +66,30 @@ export default function TaskList({ onError }: TaskListProps) {
 
   if (isAuthenticated && isLoading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-text-secondary">Loading tasks...</p>
+      <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)', padding: '12px 0' }}>
+        Loading…
       </div>
     );
   }
 
   if (isAuthenticated && error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-text-secondary">Error loading tasks. Please try again.</p>
+      <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--accent)', padding: '12px 0' }}>
+        Could not load tasks. Please try again.
       </div>
     );
   }
 
   if (!sortedTasks || sortedTasks.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-blue-muted-100 text-lg">
-          No tasks yet! Add your first task above 😊
-        </p>
+      <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)', padding: '12px 0', borderBottom: '1px dashed var(--rule)' }}>
+        a light page. no tasks yet.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div>
       {sortedTasks.map((task) => (
         <TaskItem
           key={task.id}

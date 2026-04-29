@@ -17,6 +17,7 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
     priority = Column(String(50), default="Low")
+    category = Column(String(50), nullable=True)
     user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table
     user = relationship("User", back_populates="tasks")  # Establishing a relationship with User model
 

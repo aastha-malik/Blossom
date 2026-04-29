@@ -3,162 +3,56 @@
 @tailwind utilities;
 
 @layer base {
-
-  /* DEFAULT: Dark Mode - Balanced Galaxy Theme (Blue/Pink/Purple mix) */
+  /* Tendr — light mode (default) */
   :root {
-    /* Galaxy Dark Background Colors - More bluish/indigo now */
-    --background: #080b16;
-    /* Deep midnight space blue */
-    --card-bg: #111827;
-    /* Deep navy card bg */
-    --elevated-bg: #1e293b;
-    /* Indigo-blue elevation */
-    --surface-bg: #334155;
-    /* Muted slate blue surface */
-    --border-color: #475569;
-    /* Balanced slate blue border */
-
-    /* Balanced Galaxy Accents */
-    --pink-soft: #f472b6;
-    /* Vibrant but soft galaxy pink */
-    --pink-soft-light: #fb7185;
-    /* Soft rose-pink light */
-    --pink-bright: #ec4899;
-
-    /* Balanced Galaxy Purple */
-    --purple-gentle: #a78bfa;
-    /* Soft starlight purple */
-    --purple-gentle-light: #c4b5fd;
-    --purple-vivid: #8b5cf6;
-
-    /* Balanced Galaxy Blue */
-    --blue-muted: #60a5fa;
-    /* Celestial sky blue */
-    --blue-muted-light: #93c5fd;
-
-    /* Text Colors for Dark Mode */
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --paper:       #f4ece0;
+    --paper-deep:  #ead9c1;
+    --card:        #fffaf1;
+    --ink:         #2a2118;
+    --ink-soft:    #5a4d3c;
+    --muted:       #8a7a64;
+    --accent:      #c94e3a;
+    --accent-2:    #5b7a4c;
+    --accent-3:    #3d5a7c;
+    --amber:       #c08a2a;
+    --rule:        rgba(42,33,24,0.18);
+    --rule-soft:   rgba(42,33,24,0.08);
+    --shadow:      rgba(42,33,24,0.08);
+    --hi:          rgba(201,78,58,0.08);
   }
 
-  /* Light Mode - Soft & Elegant */
-  :root.light {
-    /* Soft Light Backgrounds */
-    --background: #fef8ff;
-    --card-bg: #ffffff;
-    --elevated-bg: #f5f3ff;
-    --surface-bg: #ede9fe;
-    --border-color: #e9d5ff;
-
-    /* Soft Pink Accents for Light Mode */
-    --pink-soft: #ec4899;
-    --pink-soft-light: #fdbbd6;
-    --pink-bright: #db2777;
-
-    /* Soft Purple for Light Mode */
-    --purple-gentle: #a855f7;
-    --purple-gentle-light: #d8b4fe;
-    --purple-vivid: #9333ea;
-
-    /* Muted Blue for Light Mode */
-    --blue-muted: #8b5cf6;
-    --blue-muted-light: #c4b5fd;
-
-    /* Text Colors for Light Mode */
-    --text-primary: #1f2937;
-    --text-secondary: #4b5563;
-    --text-muted: #6b7280;
+  /* Tendr — dark mode */
+  :root.dark {
+    --paper:       #1a1410;
+    --paper-deep:  #241c16;
+    --card:        #221a14;
+    --ink:         #f0e8d8;
+    --ink-soft:    #c9bfae;
+    --muted:       #8a7e6a;
+    --accent:      #e07158;
+    --accent-2:    #9bb87a;
+    --accent-3:    #7ea0c4;
+    --amber:       #e0b25a;
+    --rule:        rgba(240,232,216,0.15);
+    --rule-soft:   rgba(240,232,216,0.06);
+    --shadow:      rgba(0,0,0,0.4);
+    --hi:          rgba(224,113,88,0.12);
   }
 
   body {
-    background-color: var(--background);
-    color: var(--text-primary);
+    background-color: var(--paper);
+    color: var(--ink);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
-}
 
-@layer components {
-  .card {
-    background-color: var(--card-bg);
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+  * {
+    font-feature-settings: "tnum" 0;
   }
 
-  .btn-primary {
-    background-color: var(--pink-soft);
-    color: white;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
+  .tabular-nums {
+    font-feature-settings: "tnum";
   }
-
-  .btn-primary:hover {
-    background-color: var(--pink-soft-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-  }
-
-  .btn-secondary {
-    background-color: var(--purple-gentle);
-    color: white;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-  }
-
-  .btn-secondary:hover {
-    background-color: var(--purple-gentle-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
-  }
-
-  .input-field {
-    background-color: var(--surface-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    color: var(--text-primary);
-    transition: all 0.3s ease;
-  }
-
-  .input-field::placeholder {
-    color: var(--text-muted);
-  }
-
-  .input-field:focus {
-    outline: none;
-    border-color: var(--purple-vivid);
-    box-shadow: 0 0 0 2px var(--purple-gentle);
-  }
-
-  .page-background {
-    background-color: var(--elevated-bg);
-    transition: background-color 0.3s ease;
-  }
-}
-
-/* Animated gradient for landing page */
-@keyframes gradient-x {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.animate-gradient-x {
-  background-size: 200% 200%;
-  animation: gradient-x 8s ease infinite;
 }
