@@ -27,5 +27,9 @@ export const API_ENDPOINTS = {
 
   // Stats
   STATS: (userId: number) => `${API_URL}/analysis/${userId}`,
+
+  // Focus
+  FOCUS_SESSION: `${API_URL}/focus/session`,
+  FOCUS_TOTAL: `${API_URL}/focus/total`,
 } as const;
 

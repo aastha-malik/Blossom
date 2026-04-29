@@ -1,4 +1,4 @@
--- Database schema for Blossom Focus app
+-- Database schema for Tendr app
 -- You can modify this based on your database needs
 
 CREATE TABLE IF NOT EXISTS users (

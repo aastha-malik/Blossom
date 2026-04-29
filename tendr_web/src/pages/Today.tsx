@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { tasksAPI, petsAPI, statsAPI, userAPI } from '../api/client';
+import { tasksAPI, petsAPI, statsAPI, userAPI, focusAPI } from '../api/client';
 import TaskList from '../components/tasks/TaskList';
 import TaskForm from '../components/tasks/TaskForm';
 import FocusTimer from '../components/focus/FocusTimer';
@@ -91,6 +91,13 @@ export default function Today() {
     enabled: isAuthenticated && !!userId,
   });
 
+  const { data: focusTotal } = useQuery({
+    queryKey: ['focusTotal'],
+    queryFn: () => focusAPI.getTotal(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
   const pet = pets.find(p => p.is_alive) ?? pets[0];
   const completedToday = tasks.filter(t => {
     if (!t.completed) return false;
@@ -102,6 +109,15 @@ export default function Today() {
   const streak = stats?.streaks ?? 0;
   const tasksCompleted = stats?.num_task_completed ?? completedToday;
   const heatmapData = buildHeatmapData(tasks);
+
+  const totalFocusSecs = focusTotal?.total_seconds ?? 0;
+  const focusHrs = Math.floor(totalFocusSecs / 3600);
+  const focusMins = Math.floor((totalFocusSecs % 3600) / 60);
+  const focusDisplay = focusHrs === 0
+    ? `${focusMins} min`
+    : focusMins === 0
+      ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
+      : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
 
   const petHunger = pet?.hunger ?? 50;
   const petHappiness = 100 - petHunger;
@@ -189,7 +205,7 @@ export default function Today() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18, marginBottom: 16, paddingBottom: 14, borderBottom: '1px dashed var(--rule)' }}>
               {[
                 ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
-                ['TIME TOGETHER', `${Math.floor((stats?.xps ?? 0) / 10)} ${Math.floor((stats?.xps ?? 0) / 10) === 1 ? 'hr' : 'hrs'}`, 'var(--accent-3)'],
+                ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
                 ['STREAK', `${streak} days`, 'var(--amber)'],
               ].map(([label, value, color]) => (
                 <div key={label}>

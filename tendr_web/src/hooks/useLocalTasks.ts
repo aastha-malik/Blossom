@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Task } from '../api/types';
 
-const STORAGE_KEY = 'blossom_local_tasks';
+const STORAGE_KEY = 'tendr_local_tasks';
 
 export const useLocalTasks = () => {
   const [tasks, setTasks] = useState<Task[]>(() => {

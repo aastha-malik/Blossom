@@ -33,6 +33,14 @@ class Pet(Base):
     user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table
     user = relationship("User", back_populates="pets")  # Establishing a relationship
 
+class FocusSession(Base):
+    __tablename__ = "focus_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("user.id"))
+    duration_seconds = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="focus_sessions")
+
 class User(Base):
     __tablename__ = "user"
     id = Column(Integer, primary_key=True, index=True)
@@ -47,6 +55,7 @@ class User(Base):
     user_verification_token_expires_at = Column(DateTime, default=datetime.utcnow) #when verification token expires
     pets = relationship("Pet", back_populates="user", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
+    focus_sessions = relationship("FocusSession", back_populates="user", cascade="all, delete-orphan")
     #for google login
     provider = Column(String, nullable=True)
     provider_id = Column(String, nullable=True)

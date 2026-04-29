@@ -8,7 +8,8 @@ import type {
   Pet,
   PetCreate,
   UserStats,
-  UserXP
+  UserXP,
+  FocusTotal
 } from './types';
 
 // Get token from auth context (will be passed as parameter)
@@ -301,4 +302,21 @@ export const userAPI = {
   },
 };
 
+// Focus API
+export const focusAPI = {
+  saveSession: async (duration_seconds: number): Promise<void> => {
+    const response = await fetch(API_ENDPOINTS.FOCUS_SESSION, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ duration_seconds }),
+    });
+    return handleResponse<void>(response);
+  },
 
+  getTotal: async (): Promise<FocusTotal> => {
+    const response = await fetch(API_ENDPOINTS.FOCUS_TOTAL, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse<FocusTotal>(response);
+  },
+};

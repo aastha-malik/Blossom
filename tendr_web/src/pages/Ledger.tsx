@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { tasksAPI, statsAPI, petsAPI } from '../api/client';
+import { tasksAPI, statsAPI, petsAPI, focusAPI } from '../api/client';
 import type { Task } from '../api/types';
 
 const MONTH_NAMES = [
@@ -77,6 +77,12 @@ export default function Ledger() {
     enabled: isAuthenticated && !!userId,
   });
 
+  const { data: focusTotal } = useQuery({
+    queryKey: ['focusTotal'],
+    queryFn: () => focusAPI.getTotal(),
+    enabled: isAuthenticated,
+  });
+
   const monthCounts = buildMonthCounts(tasks, viewMonth, viewYear);
   const tagCounts = buildTagCounts(tasks);
   const tagMax = Math.max(...Object.values(tagCounts), 1);
@@ -84,7 +90,15 @@ export default function Ledger() {
 
   const streak = stats?.streaks ?? 0;
   const tasksCompleted = stats?.num_task_completed ?? tasks.filter(t => t.completed).length;
-  const timeEst = Math.floor((stats?.xps ?? 0) / 10);
+
+  const totalFocusSecs = focusTotal?.total_seconds ?? 0;
+  const focusHrs = Math.floor(totalFocusSecs / 3600);
+  const focusMins = Math.floor((totalFocusSecs % 3600) / 60);
+  const focusDisplay = focusHrs === 0
+    ? `${focusMins} min`
+    : focusMins === 0
+      ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
+      : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
 
   const tagColors: Record<string, string> = {
     HIGH: 'var(--accent)',
@@ -124,7 +138,7 @@ export default function Ledger() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
-            ['TIME TOGETHER', `${timeEst} ${timeEst === 1 ? 'hr' : 'hrs'}`, 'var(--accent-3)'],
+            ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
             ['STREAK', `${streak} days`, 'var(--amber)'],
           ] as [string, string, string][]).map(([label, value, color]) => (
             <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>

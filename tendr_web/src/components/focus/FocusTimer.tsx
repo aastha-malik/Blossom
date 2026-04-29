@@ -1,12 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { SESSION_LENGTHS } from '../../utils/constants';
 import { formatTimer } from '../../utils/formatters';
+import { useAuth } from '../../contexts/AuthContext';
+import { focusAPI } from '../../api/client';
 
 export default function FocusTimer() {
   const [selectedLength, setSelectedLength] = useState<number>(SESSION_LENGTHS.MEDIUM);
   const [timeLeft, setTimeLeft] = useState<number>(SESSION_LENGTHS.MEDIUM * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number | null>(null); // timestamp when current run segment started
+  const { isAuthenticated } = useAuth();
+
+  // Save elapsed time when isRunning transitions true → false
+  useEffect(() => {
+    if (!isRunning && startTimeRef.current !== null) {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      startTimeRef.current = null;
+      if (elapsed >= 30 && isAuthenticated) {
+        focusAPI.saveSession(elapsed).catch(() => {});
+      }
+    }
+    if (isRunning) {
+      startTimeRef.current = Date.now();
+    }
+  }, [isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {

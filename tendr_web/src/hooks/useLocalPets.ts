@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Pet } from '../api/types';
 
-const STORAGE_KEY = 'blossom_local_pets';
+const STORAGE_KEY = 'tendr_local_pets';
 
 export const useLocalPets = () => {
   const [pets, setPets] = useState<Pet[]>(() => {

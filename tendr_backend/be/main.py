@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from jose import jwt
 import models
 import os
-from models import User, Task, Base
+from models import User, Task, Base, FocusSession
 from database import SessionLocal, engine
 import task_crud
 import pet_crud
@@ -21,8 +21,9 @@ from auth_crud import SECRET_KEY, ALGORITHM
 from auth_dependencies import get_current_user
 from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
-    PetCreate, PetUpdate, PetResponse,PetFeed,
-    RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest, ForgotPasswordRequest
+    PetCreate, PetUpdate, PetResponse, PetFeed,
+    RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest, ForgotPasswordRequest,
+    FocusSessionCreate, FocusSessionResponse
 )
 from starlette.responses import RedirectResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -35,7 +36,7 @@ import urllib.parse
 # DATABASE & APP SETUP
 # ---------------------------------------------------
 
-from sqlalchemy import text
+from sqlalchemy import text, func
 
 # Emergency schema update for Render (since we added 'theme' column)
 with engine.connect() as conn:
@@ -52,6 +53,21 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass  # Column already exists
+
+# Create focus_sessions table
+with engine.connect() as conn:
+    try:
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS focus_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
+                duration_seconds INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        '''))
+        conn.commit()
+    except Exception:
+        pass
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -530,4 +546,31 @@ def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_use
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")
     return user_stats
+
+
+# ---------------------------------------------------
+# FOCUS SESSION ROUTES
+# ---------------------------------------------------
+
+@app.post("/focus/session", response_model=FocusSessionResponse)
+def save_focus_session(
+    session: FocusSessionCreate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if session.duration_seconds < 30:
+        raise HTTPException(status_code=400, detail="Session too short (minimum 30 seconds)")
+    new_session = FocusSession(user_id=current_user.id, duration_seconds=session.duration_seconds)
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+    return new_session
+
+
+@app.get("/focus/total")
+def get_focus_total(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(func.sum(FocusSession.duration_seconds)).filter(
+        FocusSession.user_id == current_user.id
+    ).scalar() or 0
+    return {"total_seconds": int(total)}
 

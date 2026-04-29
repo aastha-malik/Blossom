@@ -137,3 +137,20 @@ class EmailVerificationRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     password: str
+
+
+# --------------------------------------
+# FOCUS SESSION SCHEMAS
+# --------------------------------------
+
+class FocusSessionCreate(BaseModel):
+    duration_seconds: int
+
+class FocusSessionResponse(BaseModel):
+    id: int
+    user_id: int
+    duration_seconds: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -70,3 +70,8 @@ export interface UserXP {
   xp: number;
 }
 
+// Focus Types
+export interface FocusTotal {
+  total_seconds: number;
+}
+
