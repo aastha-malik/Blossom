@@ -105,7 +105,6 @@ export default function Ledger() {
   };
 
   const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
-  const totalDays = daysInMonth(viewMonth, viewYear);
   const startOffset = firstDayOfWeek(viewMonth, viewYear); // empty cells before day 1
   const totalMonthTasks = monthCounts.reduce((a, b) => a + b, 0);
 
