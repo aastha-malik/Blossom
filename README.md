@@ -1,4 +1,4 @@
-# 🌸 Blossom — Productivity, Focus & Virtual Pet System
+# 🌸 Tendr — Productivity, Focus & Virtual Pet System
 
 Blossom is a **full-stack productivity application** that combines task management, focus sessions, analytics, and a gamified virtual pet system to encourage consistency and disciplined work habits.
 
