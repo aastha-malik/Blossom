@@ -29,7 +29,7 @@ export const API_ENDPOINTS = {
   FEED_PET: (id: number) => `${API_URL}/pet/feed/${id}`,
 
   // Stats
-  STATS: (userId: number) => `${API_URL}/analysis/${userId}`,
+  STATS: (userId: string) => `${API_URL}/analysis/${userId}`,
 
   // Focus
   FOCUS_SESSION: `${API_URL}/focus/session`,

@@ -11,14 +11,14 @@ def start_of_all_time(current_user: User):
     return current_user.start_acc_time
 
 
-def get_user_tasks(db: Session, user_id: int, start_date: datetime, current_user):
+def get_user_tasks(db: Session, user_id: str, start_date: datetime, current_user):
     tasks = db.query(Task).filter(Task.user_id == current_user.id).filter(Task.completed==True).filter(Task.created_at >= start_date).all()
     if tasks is None:
         return []
     else:
         return tasks
 
-def count_tasks_completed(db: Session, user_id: int, start_date: datetime, current_user):
+def count_tasks_completed(db: Session, user_id: str, start_date: datetime, current_user):
 
     num_completed = db.query(Task).filter(Task.user_id == current_user.id, Task.completed == True).filter(Task.created_at >= start_date).count()
     if num_completed is None:
@@ -28,7 +28,7 @@ def count_tasks_completed(db: Session, user_id: int, start_date: datetime, curre
     else:
         return num_completed
 
-def streak_calculation(db: Session, user_id: int, start_date: datetime, current_user):
+def streak_calculation(db: Session, user_id: str, start_date: datetime, current_user):
     tasks = get_user_tasks(db, user_id, start_date, current_user)
     if not tasks:
         return 0
@@ -56,7 +56,7 @@ def streak_calculation(db: Session, user_id: int, start_date: datetime, current_
             
     return streaks
 
-def total_xps(db:Session, user_id:int,current_user):
+def total_xps(db:Session, user_id:str,current_user):
     user = db.query(User).filter(User.id == current_user.id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -65,7 +65,7 @@ def total_xps(db:Session, user_id:int,current_user):
     else:
         return user.xp or 0
 
-def get_user_stats(db: Session, user_id: int, start_period_func, current_user):
+def get_user_stats(db: Session, user_id: str, start_period_func, current_user):
     start_date = start_period_func(current_user)
     num_task_completed = count_tasks_completed(db, user_id, start_date, current_user)
     streaks_count = streak_calculation(db, user_id, start_date, current_user)

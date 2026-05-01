@@ -29,9 +29,9 @@ export const useLocalTasks = () => {
   const addTask = (task: { title: string; priority?: string | null; description?: string | null }) => {
     const newTask: Task = {
       ...task,
-      id: Date.now(), // Use timestamp as ID for local tasks
+      id: `local-${Date.now()}`,
       created_at: new Date().toISOString(),
-      user_id: 0, // Local user ID
+      user_id: 'local',
       completed: false,
       priority: task.priority || null,
       description: task.description || null,
@@ -40,13 +40,13 @@ export const useLocalTasks = () => {
     return newTask;
   };
 
-  const updateTask = (taskId: number, updates: Partial<Task>) => {
+  const updateTask = (taskId: string, updates: Partial<Task>) => {
     setTasks((prev) =>
       prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
     );
   };
 
-  const deleteTask = (taskId: number) => {
+  const deleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((task) => task.id !== taskId));
   };
 

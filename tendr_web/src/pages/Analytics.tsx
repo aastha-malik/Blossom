@@ -10,7 +10,7 @@ import { BarChart2, BarChart, CheckCircle2, Flame } from 'lucide-react';
 export default function Analytics() {
   const { isAuthenticated } = useAuth();
   const { tasks: localTasks } = useLocalTasksContext();
-  const [userId, setUserId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Try to get user ID from tasks (only when authenticated)
   const { data: tasks, isLoading: tasksLoading } = useQuery({

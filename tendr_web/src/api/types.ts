@@ -19,14 +19,14 @@ export interface RegisterRequest {
 
 // Task Types
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   description?: string | null;
   priority?: string | null;
   category?: string | null;
   completed: boolean;
   created_at: string;
-  user_id: number;
+  user_id: string;
   xpReward?: number | null;
   userXP?: number | null;
 }
@@ -43,14 +43,14 @@ export interface TaskCompletionUpdate {
 
 // Pet Types
 export interface Pet {
-  id: number;
+  id: string;
   name: string;
   type: string;
   age: number;
   hunger: number;
   last_fed: string;
   is_alive: boolean;
-  user_id: number;
+  user_id: string;
 }
 
 export interface PetCreate {

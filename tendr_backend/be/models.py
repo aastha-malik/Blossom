@@ -2,6 +2,11 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Foreig
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
+import uuid
+
+
+def _uuid() -> str:
+    return str(uuid.uuid4())
 
 """"
 Q - What is a Model?
@@ -10,40 +15,40 @@ For ex - a "Task" model will become a "tasks" table, and each task you add will 
 """
 
 class Task(Base):
-    __tablename__ = "tasks" # name  of my db table
-    id = Column(Integer, primary_key=True, index=True) #column names in db table
+    __tablename__ = "tasks"
+    id = Column(String, primary_key=True, default=_uuid, index=True)
     title = Column(String(1000), index=True)
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
     priority = Column(String(50), default="Low")
     category = Column(String(50), nullable=True)
-    user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table
-    user = relationship("User", back_populates="tasks")  # Establishing a relationship with User model
+    user_id = Column(String, ForeignKey("user.id"))
+    user = relationship("User", back_populates="tasks")
 
 class Pet(Base):
     __tablename__ = "pets"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, nullable=False) #names for pet
+    id = Column(String, primary_key=True, default=_uuid, index=True)
+    name = Column(String, index=True, nullable=False)
     age = Column(Float, default=0.0)
-    type = Column(String,nullable=False)
+    type = Column(String, nullable=False)
     hunger = Column(Integer, default=100)
     last_fed = Column(DateTime, default=datetime.utcnow)
     is_alive = Column(Boolean, default=True)
-    user_id  = Column(Integer, ForeignKey("user.id"))   # Foreign key to link to the User table
-    user = relationship("User", back_populates="pets")  # Establishing a relationship
+    user_id = Column(String, ForeignKey("user.id"))
+    user = relationship("User", back_populates="pets")
 
 class FocusSession(Base):
     __tablename__ = "focus_sessions"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user.id"))
+    id = Column(String, primary_key=True, default=_uuid, index=True)
+    user_id = Column(String, ForeignKey("user.id"))
     duration_seconds = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="focus_sessions")
 
 class User(Base):
     __tablename__ = "user"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, default=_uuid, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     email = Column(String, unique=True, index=True)

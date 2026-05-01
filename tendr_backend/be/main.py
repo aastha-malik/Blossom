@@ -603,7 +603,7 @@ def update_user_theme(theme: str = Body(..., embed=True), current_user = Depends
 # ---------------------------------------------------
 
 @app.get("/analysis/{user_id}")
-def get_user_stats_all_time(user_id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+def get_user_stats_all_time(user_id: str, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
     user_stats = stats.get_user_stats(db, user_id, stats.start_of_all_time, current_user)
     if not user_stats:
         raise HTTPException(status_code=404, detail="User stats not found")

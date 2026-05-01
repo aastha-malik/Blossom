@@ -29,28 +29,28 @@ export const useLocalPets = () => {
   const addPet = (pet: { name: string; type: string }) => {
     const newPet: Pet = {
       ...pet,
-      id: Date.now(), // Use timestamp as ID for local pets
+      id: `local-${Date.now()}`,
       age: 0.0,
       hunger: 100,
       last_fed: new Date().toISOString(),
       is_alive: true,
-      user_id: 0, // Local user ID
+      user_id: 'local',
     };
     setPets((prev) => [...prev, newPet]);
     return newPet;
   };
 
-  const updatePet = (petId: number, updates: Partial<Pet>) => {
+  const updatePet = (petId: string, updates: Partial<Pet>) => {
     setPets((prev) =>
       prev.map((pet) => (pet.id === petId ? { ...pet, ...updates } : pet))
     );
   };
 
-  const deletePet = (petId: number) => {
+  const deletePet = (petId: string) => {
     setPets((prev) => prev.filter((pet) => pet.id !== petId));
   };
 
-  const feedPet = (petId: number) => {
+  const feedPet = (petId: string) => {
     setPets((prev) =>
       prev.map((pet) => {
         if (pet.id === petId) {

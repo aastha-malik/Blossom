@@ -17,7 +17,7 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    id: int
+    id: str
 
     class Config:
         from_attributes = True
@@ -39,14 +39,14 @@ class TaskCreate(TaskBase):
 
 
 class TaskResponse(BaseModel):
-    id: int
+    id: str
     title: str
     description: Optional[str] = None
     priority: Optional[str | int] = None
     category: Optional[str] = None
     completed: Optional[bool] = False
     created_at: datetime
-    user_id: int
+    user_id: str
     xpReward: Optional[int] = None
     userXP: Optional[int] = None
 
@@ -86,14 +86,14 @@ class PetFeed(BaseModel):
 
 
 class PetResponse(BaseModel):
-    id: int
+    id: str
     name: str
     type: str
     age: float
     hunger: int
     last_fed: datetime
     is_alive: bool
-    user_id: int
+    user_id: str
 
     class Config:
         from_attributes = True
@@ -156,8 +156,8 @@ class FocusSessionCreate(BaseModel):
     duration_seconds: int
 
 class FocusSessionResponse(BaseModel):
-    id: int
-    user_id: int
+    id: str
+    user_id: str
     duration_seconds: int
     created_at: datetime
 

@@ -93,7 +93,7 @@ def create_access_token(data:dict, expires_delta:timedelta):
     return encode_jwt
 
 # delete account
-def del_user(db:Session, user_id: int, plain_password:str):
+def del_user(db:Session, user_id: str, plain_password:str):
     user = db.query(User).filter(User.id == user_id).first()
     # Note: Cascading delete in DB should handle tasks and pets if configured, 
     # but let's ensure the user object exists first.
