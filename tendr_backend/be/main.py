@@ -23,7 +23,7 @@ from schemas import (
     TaskCreate, TaskResponse, TaskCompletionUpdate,
     PetCreate, PetUpdate, PetResponse, PetFeed,
     RegistrationUser, TokenResponse, DeleteAccountRequest, EmailVerificationRequest, ForgotPasswordRequest,
-    FocusSessionCreate, FocusSessionResponse
+    FocusSessionCreate, FocusSessionResponse, GoogleCompleteRegistrationRequest, DeleteAccountOtpRequest
 )
 from starlette.responses import RedirectResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -85,7 +85,7 @@ app.add_middleware(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://blossom-arru.onrender.com",
+        "https://tendr-tick-treats.onrender.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ],
@@ -334,59 +334,90 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     user_email = user_info["email"]
     user_sub = user_info["sub"]
     
-    user = db.query(User).filter(User.email == user_email).first()
-    # in case of login
-    if not user:
-        base_username = user_email.split("@")[0]
-        username = base_username
-        count = 1
-
-
-        while db.query(User).filter(User.username == username).first():
-            username = f"{base_username}_{count}"
-            count += 1
-
-        new_user = User(
-            username=username,
-            hashed_password="", 
-            email=user_email, 
-            user_verified=True, 
-            start_acc_time= datetime.utcnow(), 
-            provider="google",
-            provider_id=user_sub
-            )
-
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        user = new_user
-        
-
-    # in case of creating account
-    # IMPORTANT: Use username as 'sub' to match auth_dependencies.py
-    data = { "sub": user.username }
-
-    jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
-
-    # 4. Redirect to frontend with JWT and user info
-    encoded_username = urllib.parse.quote(user.username)
-    encoded_email = urllib.parse.quote(user.email)
-    
     # Dynamic frontend URL: use localhost if callback was via localhost
-    frontend_url = "https://blossom-arru.onrender.com"
+    frontend_url = "https://tendr-tick-treats.onrender.com"
     if "localhost" in str(request.url) or "127.0.0.1" in str(request.url):
         frontend_url = "http://localhost:5173"
-        
+
+    user = db.query(User).filter(User.email == user_email).first()
+
+    if not user:
+        # New user — issue a short-lived pending token and let them pick a username
+        pending_data = {
+            "type": "google_pending",
+            "email": user_email,
+            "google_sub": user_sub,
+        }
+        pending_token = auth_crud.create_access_token(pending_data, expires_delta=timedelta(minutes=10))
+        redirect_url = f"{frontend_url}/choose-username?pending_token={pending_token}"
+        print(f"New Google user {user_email} — redirecting to choose-username")
+        return RedirectResponse(redirect_url)
+
+    # Returning user — issue normal auth token
+    data = { "sub": user.username }
+    jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
+
+    encoded_username = urllib.parse.quote(user.username)
+    encoded_email = urllib.parse.quote(user.email)
     redirect_url = f"{frontend_url}/login?token={jwt_token}&username={encoded_username}&email={encoded_email}"
 
-    print(f"Redirecting user {user.username} to frontend: {redirect_url}")
+    print(f"Returning Google user {user.username} — redirecting to login")
     return RedirectResponse(redirect_url)
 
-    # if session_id and session_id in login_sessions:
-    #     login_sessions[session_id]["status"] = "success"
-    #     login_sessions[session_id]["jwt"] = jwt_token
+@app.post("/auth/google/complete-registration")
+def complete_google_registration(body: GoogleCompleteRegistrationRequest, db: Session = Depends(get_db)):
+    from jose import JWTError
 
-    # return HTMLResponse("<h2>Login / Account created successfully. You may close this window.</h2>")
+    try:
+        payload = jwt.decode(body.pending_token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired registration token. Please sign in with Google again.")
+
+    if payload.get("type") != "google_pending":
+        raise HTTPException(status_code=400, detail="Invalid token type.")
+
+    user_email = payload.get("email")
+    user_sub = payload.get("google_sub")
+
+    if not user_email or not user_sub:
+        raise HTTPException(status_code=400, detail="Invalid token payload.")
+
+    username = body.username.strip()
+
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters.")
+    if len(username) > 30:
+        raise HTTPException(status_code=400, detail="Username must be at most 30 characters.")
+    if not all(c.isalnum() or c in "_-" for c in username):
+        raise HTTPException(status_code=400, detail="Username may only contain letters, numbers, underscores, and hyphens.")
+
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=400, detail="Username already taken. Please choose another.")
+
+    # Guard against double-submission — user may already exist if they hit this twice
+    existing = db.query(User).filter(User.email == user_email).first()
+    if existing:
+        data = {"sub": existing.username}
+        jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
+        return {"token": jwt_token, "username": existing.username, "email": existing.email}
+
+    new_user = User(
+        username=username,
+        hashed_password="",
+        email=user_email,
+        user_verified=True,
+        start_acc_time=datetime.utcnow(),
+        provider="google",
+        provider_id=user_sub,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    data = {"sub": new_user.username}
+    jwt_token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=30))
+    return {"token": jwt_token, "username": new_user.username, "email": new_user.email}
+
 
 @app.post("/login", response_model=TokenResponse)
 def login(
@@ -457,6 +488,36 @@ def delete_account(data: DeleteAccountRequest,db: Session = Depends(get_db),curr
     if not result:
         raise HTTPException(status_code=404, detail="user not found")
     return {"message": "user account deleted successfully"}
+
+
+@app.get("/user/provider")
+def get_user_provider(current_user = Depends(get_current_user)):
+    return {"provider": current_user.provider}
+
+
+@app.delete("/delete_account_otp")
+def delete_account_with_otp(
+    data: DeleteAccountOtpRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    if current_user.provider != "google":
+        raise HTTPException(status_code=400, detail="This endpoint is only for Google-linked accounts.")
+
+    otp = data.otp.strip()
+    if not otp:
+        raise HTTPException(status_code=400, detail="OTP is required.")
+    if otp != current_user.user_verification_token:
+        raise HTTPException(status_code=400, detail="Incorrect OTP.")
+    if (
+        not current_user.user_verification_token_expires_at
+        or current_user.user_verification_token_expires_at < datetime.utcnow()
+    ):
+        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account deleted successfully."}
 
 
 

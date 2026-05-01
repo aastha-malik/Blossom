@@ -139,6 +139,15 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+class GoogleCompleteRegistrationRequest(BaseModel):
+    pending_token: str
+    username: str
+
+
+class DeleteAccountOtpRequest(BaseModel):
+    otp: str
+
+
 # --------------------------------------
 # FOCUS SESSION SCHEMAS
 # --------------------------------------

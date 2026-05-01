@@ -172,6 +172,29 @@ export const authAPI = {
 
     return handleResponse<{ message: string }>(response);
   },
+
+  deleteAccountWithOtp: async (otp: string): Promise<{ message: string }> => {
+    const response = await fetch(API_ENDPOINTS.DELETE_ACCOUNT_OTP, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ otp }),
+    });
+
+    return handleResponse<{ message: string }>(response);
+  },
+
+  completeGoogleRegistration: async (
+    pendingToken: string,
+    username: string
+  ): Promise<{ token: string; username: string; email: string }> => {
+    const response = await fetch(API_ENDPOINTS.GOOGLE_COMPLETE_REGISTRATION, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pending_token: pendingToken, username }),
+    });
+
+    return handleResponse<{ token: string; username: string; email: string }>(response);
+  },
 };
 
 // Tasks API
@@ -275,6 +298,14 @@ export const statsAPI = {
 
 // User API
 export const userAPI = {
+  getProvider: async (): Promise<{ provider: string | null }> => {
+    const response = await fetch(API_ENDPOINTS.USER_PROVIDER, {
+      headers: getAuthHeaders(),
+    });
+
+    return handleResponse<{ provider: string | null }>(response);
+  },
+
   getXP: async (): Promise<UserXP> => {
     const response = await fetch(API_ENDPOINTS.USER_XP, {
       headers: getAuthHeaders(),

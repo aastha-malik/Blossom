@@ -9,10 +9,13 @@ export const API_ENDPOINTS = {
   FORGOT_PASSWORD: `${API_URL}/forgot_password`,
   RESET_PASSWORD: `${API_URL}/reset_password`,
   DELETE_ACCOUNT: `${API_URL}/delete_account`,
+  GOOGLE_COMPLETE_REGISTRATION: `${API_URL}/auth/google/complete-registration`,
+  DELETE_ACCOUNT_OTP: `${API_URL}/delete_account_otp`,
 
   // User
   USER_XP: `${API_URL}/user/xp`,
   USER_THEME: `${API_URL}/user/theme`,
+  USER_PROVIDER: `${API_URL}/user/provider`,
 
   // Tasks
   TASKS: `${API_URL}/tasks`,

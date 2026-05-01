@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../api/client';
+import { authAPI, userAPI } from '../api/client';
 import { API_URL } from '../utils/constants';
 
 const inputStyle: React.CSSProperties = {
@@ -75,14 +75,18 @@ export default function Settings() {
   const navigate = useNavigate();
   const { isAuthenticated, username, email, logout } = useAuth();
 
+  const [isGoogleUser, setIsGoogleUser] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      userAPI.getProvider()
+        .then(res => setIsGoogleUser(res.provider === 'google'))
+        .catch(() => setIsGoogleUser(false));
+    }
+  }, [isAuthenticated]);
+
+  // ── Regular password reset ───────────────────────────────────────────
   const [showPasswordReset, setShowPasswordReset] = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteError, setDeleteError] = useState('');
-  const [deleteSuccess, setDeleteSuccess] = useState('');
-
   const [resetOldPassword, setResetOldPassword] = useState('');
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
@@ -90,6 +94,30 @@ export default function Settings() {
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
 
+  // ── Google user: set/change password via OTP ─────────────────────────
+  const [googlePwStep, setGooglePwStep] = useState<'idle' | 'otp_sent'>('idle');
+  const [googlePwOtp, setGooglePwOtp] = useState('');
+  const [googlePwNew, setGooglePwNew] = useState('');
+  const [googlePwConfirm, setGooglePwConfirm] = useState('');
+  const [googlePwLoading, setGooglePwLoading] = useState(false);
+  const [googlePwError, setGooglePwError] = useState('');
+  const [googlePwSuccess, setGooglePwSuccess] = useState('');
+
+  // ── Regular delete account ────────────────────────────────────────────
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
+
+  // ── Google user: delete account via OTP ──────────────────────────────
+  const [googleDelStep, setGoogleDelStep] = useState<'idle' | 'otp_sent'>('idle');
+  const [googleDelOtp, setGoogleDelOtp] = useState('');
+  const [googleDelLoading, setGoogleDelLoading] = useState(false);
+  const [googleDelError, setGoogleDelError] = useState('');
+  const [googleDelSuccess, setGoogleDelSuccess] = useState('');
+
+  // ── Forgot password (logged-out) ─────────────────────────────────────
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOTP, setForgotOTP] = useState('');
   const [forgotUsername, setForgotUsername] = useState('');
@@ -102,6 +130,57 @@ export default function Settings() {
 
   const handleGoogleLogin = () => {
     window.location.href = `${API_URL}/auth/google/login`;
+  };
+
+  const handleGoogleSendOtp = async (onSuccess: () => void, setError: (s: string) => void, setLoading: (b: boolean) => void) => {
+    setError('');
+    setLoading(true);
+    try {
+      await authAPI.sendForgotPasswordOTP(email!);
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGooglePwError(''); setGooglePwSuccess('');
+    if (!googlePwOtp) { setGooglePwError('Please enter the OTP.'); return; }
+    if (!googlePwNew || !googlePwConfirm) { setGooglePwError('Please fill in all fields.'); return; }
+    if (googlePwNew !== googlePwConfirm) { setGooglePwError('Passwords do not match.'); return; }
+    if (googlePwNew.length < 6) { setGooglePwError('Password must be at least 6 characters.'); return; }
+    setGooglePwLoading(true);
+    try {
+      await authAPI.forgotPassword(googlePwOtp, username!, googlePwNew, googlePwConfirm);
+      setGooglePwSuccess('Password set. You can now log in with email too.');
+      setGooglePwOtp(''); setGooglePwNew(''); setGooglePwConfirm('');
+      setGooglePwStep('idle');
+      setIsGoogleUser(false);
+    } catch (err) {
+      setGooglePwError(err instanceof Error ? err.message : 'Failed to set password.');
+    } finally {
+      setGooglePwLoading(false);
+    }
+  };
+
+  const handleGoogleDeleteWithOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleDelError(''); setGoogleDelSuccess('');
+    if (!googleDelOtp) { setGoogleDelError('Please enter the OTP.'); return; }
+    if (!confirm('This will permanently delete your account and all data. Continue?')) return;
+    setGoogleDelLoading(true);
+    try {
+      await authAPI.deleteAccountWithOtp(googleDelOtp);
+      setGoogleDelSuccess('Account deleted. Logging out…');
+      setTimeout(() => { logout(); navigate('/'); }, 2000);
+    } catch (err) {
+      setGoogleDelError(err instanceof Error ? err.message : 'Failed to delete account.');
+    } finally {
+      setGoogleDelLoading(false);
+    }
   };
 
   const handleDeleteAccount = async (e: React.FormEvent) => {
@@ -224,41 +303,96 @@ export default function Settings() {
         {isAuthenticated && (
           <div style={cardStyle}>
             <div style={sectionHeadStyle}>RESET PASSWORD</div>
-            {!showPasswordReset ? (
-              <>
-                <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
-                  Change your account password. If you logged in via Google, use the forgot password flow instead.
-                </p>
-                <button onClick={() => setShowPasswordReset(true)} style={ghostBtn}>Change password →</button>
-              </>
-            ) : (
-              <form onSubmit={handlePasswordReset}>
-                {[
-                  { label: 'Current password', value: resetOldPassword, setter: setResetOldPassword },
-                  { label: 'New password', value: resetNewPassword, setter: setResetNewPassword },
-                  { label: 'Confirm new password', value: resetConfirmPassword, setter: setResetConfirmPassword },
-                ].map(({ label, value, setter }) => (
-                  <div key={label} style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>{label}</label>
-                    <input
-                      type="password"
-                      value={value}
-                      onChange={e => setter(e.target.value)}
-                      style={inputStyle}
-                      onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
-                      onBlur={e => { e.currentTarget.style.border = '1px solid var(--rule)'; }}
-                    />
-                  </div>
-                ))}
-                {resetError && <FeedbackLine msg={resetError} isError />}
-                {resetSuccess && <FeedbackLine msg={resetSuccess} />}
-                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                  <button type="submit" disabled={resetLoading} style={{ ...primaryBtn, opacity: resetLoading ? 0.6 : 1 }}>
-                    {resetLoading ? 'Saving…' : 'Save →'}
+
+            {/* Google user: OTP-based flow */}
+            {isGoogleUser && (
+              googlePwStep === 'idle' ? (
+                <>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    You signed in with Google and don't have a password yet. We'll send a one-time code to <strong>{email}</strong> to verify it's you.
+                  </p>
+                  {googlePwSuccess && <FeedbackLine msg={googlePwSuccess} />}
+                  {googlePwError && <FeedbackLine msg={googlePwError} isError />}
+                  <button
+                    onClick={() => handleGoogleSendOtp(() => setGooglePwStep('otp_sent'), setGooglePwError, setGooglePwLoading)}
+                    disabled={googlePwLoading}
+                    style={{ ...ghostBtn, opacity: googlePwLoading ? 0.6 : 1 }}
+                  >
+                    {googlePwLoading ? 'Sending…' : 'Send code to email →'}
                   </button>
-                  <button type="button" onClick={() => { setShowPasswordReset(false); setResetError(''); setResetSuccess(''); }} style={ghostBtn}>Cancel</button>
-                </div>
-              </form>
+                </>
+              ) : (
+                <form onSubmit={handleGoogleSetPassword}>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    Code sent to {email}. Enter it below along with your new password.
+                  </p>
+                  {[
+                    { label: 'Code (6 digits)', value: googlePwOtp, setter: setGooglePwOtp, type: 'text' },
+                    { label: 'New password', value: googlePwNew, setter: setGooglePwNew, type: 'password' },
+                    { label: 'Confirm password', value: googlePwConfirm, setter: setGooglePwConfirm, type: 'password' },
+                  ].map(({ label, value, setter, type }) => (
+                    <div key={label} style={{ marginBottom: 14 }}>
+                      <label style={labelStyle}>{label}</label>
+                      <input
+                        type={type}
+                        value={value}
+                        onChange={e => setter(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
+                        onBlur={e => { e.currentTarget.style.border = '1px solid var(--rule)'; }}
+                      />
+                    </div>
+                  ))}
+                  {googlePwError && <FeedbackLine msg={googlePwError} isError />}
+                  {googlePwSuccess && <FeedbackLine msg={googlePwSuccess} />}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                    <button type="submit" disabled={googlePwLoading} style={{ ...primaryBtn, opacity: googlePwLoading ? 0.6 : 1 }}>
+                      {googlePwLoading ? 'Setting…' : 'Set password →'}
+                    </button>
+                    <button type="button" onClick={() => { setGooglePwStep('idle'); setGooglePwError(''); setGooglePwOtp(''); setGooglePwNew(''); setGooglePwConfirm(''); }} style={ghostBtn}>Cancel</button>
+                  </div>
+                </form>
+              )
+            )}
+
+            {/* Regular user: current password flow */}
+            {isGoogleUser === false && (
+              !showPasswordReset ? (
+                <>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    Change your account password.
+                  </p>
+                  <button onClick={() => setShowPasswordReset(true)} style={ghostBtn}>Change password →</button>
+                </>
+              ) : (
+                <form onSubmit={handlePasswordReset}>
+                  {[
+                    { label: 'Current password', value: resetOldPassword, setter: setResetOldPassword },
+                    { label: 'New password', value: resetNewPassword, setter: setResetNewPassword },
+                    { label: 'Confirm new password', value: resetConfirmPassword, setter: setResetConfirmPassword },
+                  ].map(({ label, value, setter }) => (
+                    <div key={label} style={{ marginBottom: 14 }}>
+                      <label style={labelStyle}>{label}</label>
+                      <input
+                        type="password"
+                        value={value}
+                        onChange={e => setter(e.target.value)}
+                        style={inputStyle}
+                        onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
+                        onBlur={e => { e.currentTarget.style.border = '1px solid var(--rule)'; }}
+                      />
+                    </div>
+                  ))}
+                  {resetError && <FeedbackLine msg={resetError} isError />}
+                  {resetSuccess && <FeedbackLine msg={resetSuccess} />}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                    <button type="submit" disabled={resetLoading} style={{ ...primaryBtn, opacity: resetLoading ? 0.6 : 1 }}>
+                      {resetLoading ? 'Saving…' : 'Save →'}
+                    </button>
+                    <button type="button" onClick={() => { setShowPasswordReset(false); setResetError(''); setResetSuccess(''); }} style={ghostBtn}>Cancel</button>
+                  </div>
+                </form>
+              )
             )}
           </div>
         )}
@@ -325,38 +459,88 @@ export default function Settings() {
         {isAuthenticated && (
           <div style={{ ...cardStyle, borderColor: 'var(--accent)' }}>
             <div style={{ ...sectionHeadStyle, color: 'var(--accent)' }}>DELETE ACCOUNT</div>
-            {!showDeleteAccount ? (
-              <>
-                <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
-                  Permanent. All your tasks, pets, and history will be gone.
-                </p>
-                <button onClick={() => setShowDeleteAccount(true)} style={{ ...ghostBtn, borderColor: 'var(--accent)', color: 'var(--accent)' }}>
-                  Delete account
-                </button>
-              </>
-            ) : (
-              <form onSubmit={handleDeleteAccount}>
-                <div style={{ marginBottom: 14 }}>
-                  <label style={labelStyle}>Confirm password</label>
-                  <input
-                    type="password"
-                    value={deletePassword}
-                    onChange={e => setDeletePassword(e.target.value)}
-                    style={{ ...inputStyle, borderColor: 'var(--accent)' }}
-                    onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
-                    onBlur={e => { e.currentTarget.style.border = '1px solid var(--accent)'; }}
-                    required
-                  />
-                </div>
-                {deleteError && <FeedbackLine msg={deleteError} isError />}
-                {deleteSuccess && <FeedbackLine msg={deleteSuccess} />}
-                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                  <button type="submit" disabled={deleteLoading} style={{ ...primaryBtn, background: 'var(--accent)', opacity: deleteLoading ? 0.6 : 1 }}>
-                    {deleteLoading ? 'Deleting…' : 'Confirm delete'}
+
+            {/* Google user: OTP-based delete */}
+            {isGoogleUser && (
+              googleDelStep === 'idle' ? (
+                <>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    Permanent. All your tasks, pets, and history will be gone. We'll send a one-time code to <strong>{email}</strong> to confirm.
+                  </p>
+                  {googleDelError && <FeedbackLine msg={googleDelError} isError />}
+                  {googleDelSuccess && <FeedbackLine msg={googleDelSuccess} />}
+                  <button
+                    onClick={() => handleGoogleSendOtp(() => setGoogleDelStep('otp_sent'), setGoogleDelError, setGoogleDelLoading)}
+                    disabled={googleDelLoading}
+                    style={{ ...ghostBtn, borderColor: 'var(--accent)', color: 'var(--accent)', opacity: googleDelLoading ? 0.6 : 1 }}
+                  >
+                    {googleDelLoading ? 'Sending…' : 'Send code to confirm →'}
                   </button>
-                  <button type="button" onClick={() => { setShowDeleteAccount(false); setDeleteError(''); setDeletePassword(''); }} style={ghostBtn}>Cancel</button>
-                </div>
-              </form>
+                </>
+              ) : (
+                <form onSubmit={handleGoogleDeleteWithOtp}>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    Code sent to {email}. Enter it to permanently delete your account.
+                  </p>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Code (6 digits)</label>
+                    <input
+                      type="text"
+                      value={googleDelOtp}
+                      onChange={e => setGoogleDelOtp(e.target.value)}
+                      style={{ ...inputStyle, borderColor: 'var(--accent)' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
+                      onBlur={e => { e.currentTarget.style.border = '1px solid var(--accent)'; }}
+                      required
+                    />
+                  </div>
+                  {googleDelError && <FeedbackLine msg={googleDelError} isError />}
+                  {googleDelSuccess && <FeedbackLine msg={googleDelSuccess} />}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                    <button type="submit" disabled={googleDelLoading} style={{ ...primaryBtn, background: 'var(--accent)', opacity: googleDelLoading ? 0.6 : 1 }}>
+                      {googleDelLoading ? 'Deleting…' : 'Confirm delete'}
+                    </button>
+                    <button type="button" onClick={() => { setGoogleDelStep('idle'); setGoogleDelError(''); setGoogleDelOtp(''); }} style={ghostBtn}>Cancel</button>
+                  </div>
+                </form>
+              )
+            )}
+
+            {/* Regular user: password-based delete */}
+            {isGoogleUser === false && (
+              !showDeleteAccount ? (
+                <>
+                  <p style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 14 }}>
+                    Permanent. All your tasks, pets, and history will be gone.
+                  </p>
+                  <button onClick={() => setShowDeleteAccount(true)} style={{ ...ghostBtn, borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                    Delete account
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={handleDeleteAccount}>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Confirm password</label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={e => setDeletePassword(e.target.value)}
+                      style={{ ...inputStyle, borderColor: 'var(--accent)' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid var(--accent)'; }}
+                      onBlur={e => { e.currentTarget.style.border = '1px solid var(--accent)'; }}
+                      required
+                    />
+                  </div>
+                  {deleteError && <FeedbackLine msg={deleteError} isError />}
+                  {deleteSuccess && <FeedbackLine msg={deleteSuccess} />}
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                    <button type="submit" disabled={deleteLoading} style={{ ...primaryBtn, background: 'var(--accent)', opacity: deleteLoading ? 0.6 : 1 }}>
+                      {deleteLoading ? 'Deleting…' : 'Confirm delete'}
+                    </button>
+                    <button type="button" onClick={() => { setShowDeleteAccount(false); setDeleteError(''); setDeletePassword(''); }} style={ghostBtn}>Cancel</button>
+                  </div>
+                </form>
+              )
             )}
           </div>
         )}
