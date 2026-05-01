@@ -515,7 +515,8 @@ def delete_account_with_otp(
     ):
         raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
-    db.delete(current_user)
+    user = db.query(User).filter(User.id == current_user.id).first()
+    db.delete(user)
     db.commit()
     return {"message": "Account deleted successfully."}
 
