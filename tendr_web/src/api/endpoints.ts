@@ -20,13 +20,13 @@ export const API_ENDPOINTS = {
   // Tasks
   TASKS: `${API_URL}/tasks`,
   TASK_BY_TITLE: (title: string) => `${API_URL}/tasks/${title}`,
-  TASK_BY_ID: (id: number) => `${API_URL}/tasks/${id}`,
+  TASK_BY_ID: (id: string) => `${API_URL}/tasks/${id}`,
 
   // Pets
   PETS_LIST: `${API_URL}/pet`,
   PETS_CREATE: `${API_URL}/pets`,
-  PET_BY_ID: (id: number) => `${API_URL}/pet/${id}`,
-  FEED_PET: (id: number) => `${API_URL}/pet/feed/${id}`,
+  PET_BY_ID: (id: string) => `${API_URL}/pet/${id}`,
+  FEED_PET: (id: string) => `${API_URL}/pet/feed/${id}`,
 
   // Stats
   STATS: (userId: string) => `${API_URL}/analysis/${userId}`,

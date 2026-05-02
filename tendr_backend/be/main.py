@@ -177,7 +177,7 @@ def update_task_endpoint(
 
 @app.patch("/tasks/{task_id}", response_model=TaskResponse)
 def update_task_completion_endpoint(
-    task_id: int,
+    task_id: str,
     task_update: TaskCompletionUpdate,
     current_user= Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -194,7 +194,7 @@ def update_task_completion_endpoint(
 
 @app.delete("/tasks/{task_id}")
 def delete_task_by_id_endpoint(
-    task_id: int,
+    task_id: str,
     current_user= Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -237,7 +237,7 @@ def get_all_pets_endpoint(
 @app.put("/pet/{id}", response_model=PetResponse)
 def update_pet_endpoint(
     pet_update: PetUpdate,
-    id: int,
+    id: str,
     current_user= Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -251,7 +251,7 @@ def update_pet_endpoint(
 
 
 @app.patch("/pet/feed/{id}", response_model=PetResponse)
-def feed_pet_endpoint(id: int, db: Session = Depends(get_db), current_user= Depends(get_current_user)):
+def feed_pet_endpoint(id: str, db: Session = Depends(get_db), current_user= Depends(get_current_user)):
     pet_data = pet_crud.feed_pet(db, id, current_user)
     if not pet_data:
         raise HTTPException(status_code=400, details="Feeding pet failed")
@@ -259,7 +259,7 @@ def feed_pet_endpoint(id: int, db: Session = Depends(get_db), current_user= Depe
 
 @app.delete("/pet/{id}")
 def delete_pet_endpoint(
-    id: int,
+    id: str,
     current_user= Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

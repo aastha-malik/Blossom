@@ -226,7 +226,7 @@ export const tasksAPI = {
     return handleResponse<Task>(response);
   },
 
-  updateCompletion: async (taskId: number, completed: boolean): Promise<Task> => {
+  updateCompletion: async (taskId: string, completed: boolean): Promise<Task> => {
     const response = await fetch(API_ENDPOINTS.TASK_BY_ID(taskId), {
       method: 'PATCH',
       headers: getAuthHeaders(),
@@ -236,7 +236,7 @@ export const tasksAPI = {
     return handleResponse<Task>(response);
   },
 
-  delete: async (taskId: number): Promise<{ message: string }> => {
+  delete: async (taskId: string): Promise<{ message: string }> => {
     const response = await fetch(API_ENDPOINTS.TASK_BY_ID(taskId), {
       method: 'DELETE',
       headers: getAuthHeaders(),
@@ -266,7 +266,7 @@ export const petsAPI = {
     return handleResponse<Pet>(response);
   },
 
-  feed: async (petId: number): Promise<Pet> => {
+  feed: async (petId: string): Promise<Pet> => {
     const response = await fetch(API_ENDPOINTS.FEED_PET(petId), {
       method: 'PATCH',
       headers: getAuthHeaders(),
@@ -275,7 +275,7 @@ export const petsAPI = {
     return handleResponse<Pet>(response);
   },
 
-  delete: async (petId: number): Promise<{ message: string }> => {
+  delete: async (petId: string): Promise<{ message: string }> => {
     const response = await fetch(API_ENDPOINTS.PET_BY_ID(petId), {
       method: 'DELETE',
       headers: getAuthHeaders(),

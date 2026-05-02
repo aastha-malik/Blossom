@@ -18,7 +18,7 @@ def create_pet(db: Session, name:str, type:str , current_user):
     return new_pet
 
 #getting pet by id
-def get_pet_by_id(db:Session, id:int, current_user):
+def get_pet_by_id(db:Session, id:str, current_user):
     pet = db.query(Pet).filter(Pet.id == id, Pet.user_id == current_user.id).first()
     if not pet:
         return None
@@ -35,7 +35,7 @@ def get_all_pets(db:Session, current_user):
 
         
 #updating our pet
-def update_pet(db:Session, id:int, hunger:int, last_fed:datetime, age:float, current_user):
+def update_pet(db:Session, id:str, hunger:int, last_fed:datetime, age:float, current_user):
     pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return None
@@ -56,7 +56,7 @@ def check_last_fed(last_fed:datetime):
     return fed_time_diff.days
 
 #checking and updating(if needed) is_alive property of pet
-def updating_is_alive(db:Session, last_fed:datetime, id:int, current_user):
+def updating_is_alive(db:Session, last_fed:datetime, id:str, current_user):
     pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return None
@@ -71,7 +71,7 @@ def updating_is_alive(db:Session, last_fed:datetime, id:int, current_user):
     else:
         return pet.is_alive
 #feed pet  function
-def feed_pet(db:Session ,pet_id: int, current_user):
+def feed_pet(db:Session ,pet_id: str, current_user):
     pet = db.query(Pet).filter(Pet.id == pet_id, Pet.user_id == current_user.id).first()
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
@@ -131,7 +131,7 @@ def check_dead_pet(db: Session, current_user):
         return pets
 
 #deleteing pet from  db
-def delete_pet(db:Session, id:int, current_user):
+def delete_pet(db:Session, id:str, current_user):
     """
     Deletes a pet from the database by its ID.
     Returns True if deleted, False if not found.

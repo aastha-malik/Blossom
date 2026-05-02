@@ -31,7 +31,7 @@ def get_task_by_title(db: Session, task_title:str, current_user):
         return None
 
 #getting the task by id
-def get_task_by_id(db: Session, task_id: int, current_user):
+def get_task_by_id(db: Session, task_id: str, current_user):
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if task:
         return task
@@ -51,7 +51,7 @@ def update_task(db:Session, task_title : str, current_user):
         return None 
 
 #updating task completion by id
-def update_task_completion(db: Session, task_id: int, completed: bool, current_user: User):
+def update_task_completion(db: Session, task_id: str, completed: bool, current_user: User):
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     user = db.query(User).filter(User.id == current_user.id).first()
 
@@ -125,7 +125,7 @@ def delete_task(db: Session, task_title : str, current_user):
         return False
 
 #delete task by id
-def delete_task_by_id(db: Session, task_id: int, current_user):
+def delete_task_by_id(db: Session, task_id: str, current_user):
     task = get_task_by_id(db, task_id, current_user)
     if task is None:
         return None
