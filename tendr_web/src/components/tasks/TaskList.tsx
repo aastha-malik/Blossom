@@ -23,7 +23,7 @@ export default function TaskList({ onError, activeCategory }: TaskListProps) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (taskId: number) => tasksAPI.delete(taskId),
+    mutationFn: (taskId: string) => tasksAPI.delete(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },

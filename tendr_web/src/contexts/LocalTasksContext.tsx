@@ -7,8 +7,8 @@ interface LocalTasksContextType {
   tasks: Task[];
   incompleteTasks: Task[];
   addTask: (task: { title: string; priority?: string | null; description?: string | null }) => Task;
-  updateTask: (taskId: number, updates: Partial<Task>) => void;
-  deleteTask: (taskId: number) => void;
+  updateTask: (taskId: string, updates: Partial<Task>) => void;
+  deleteTask: (taskId: string) => void;
 }
 
 const LocalTasksContext = createContext<LocalTasksContextType | undefined>(undefined);
