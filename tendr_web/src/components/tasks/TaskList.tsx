@@ -36,24 +36,10 @@ export default function TaskList({ onError, activeCategory }: TaskListProps) {
   // Backend now returns all tasks (completed and incomplete)
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
-  // Sort tasks: incomplete first, completed last
-  // Update: Only show incomplete tasks OR tasks completed today
-  const filteredTasks = (tasks || []).filter(task => {
-    if (!task.completed) return true;
-
-    // For completed tasks, check if they were created today
-    const createdAt = new Date(task.created_at);
-    const today = new Date();
-
-    return createdAt.getFullYear() === today.getFullYear() &&
-      createdAt.getMonth() === today.getMonth() &&
-      createdAt.getDate() === today.getDate();
-  });
-
   // Apply category filter if active
   const categoryFiltered = activeCategory
-    ? filteredTasks.filter(t => (t.category ?? '').toLowerCase() === activeCategory.toLowerCase())
-    : filteredTasks;
+    ? (tasks || []).filter(t => (t.category ?? '').toLowerCase() === activeCategory.toLowerCase())
+    : (tasks || []);
 
   const sortedTasks = [...categoryFiltered].sort((a, b) => {
     // Incomplete tasks come first (completed: false = 0, true = 1)
