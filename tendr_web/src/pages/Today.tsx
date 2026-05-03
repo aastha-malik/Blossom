@@ -7,7 +7,8 @@ import TaskForm from '../components/tasks/TaskForm';
 import FocusTimer from '../components/focus/FocusTimer';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
-import { PetSvg } from '../components/ui/PetSvg';
+import { PetSprite, getStage, deriveMood } from '../components/PetSprite';
+import type { Species } from '../components/PetSprite';
 import { Heatmap } from '../components/ui/Heatmap';
 import type { Task } from '../api/types';
 
@@ -18,19 +19,6 @@ function getMoodSubtitle(streak: number, completedToday: number): string {
   return 'A light drizzle. Mochi is sleeping in.';
 }
 
-function getPetMood(hunger: number, happiness: number): 'content' | 'hungry' | 'sleepy' | 'excited' | 'sad' {
-  if (happiness >= 80) return 'content';
-  if (hunger >= 80) return 'hungry';
-  if (happiness < 30) return 'sad';
-  return 'content';
-}
-
-function getMoodQuote(hunger: number, happiness: number): string {
-  if (hunger >= 80) return '"a little hungry"';
-  if (happiness >= 80) return '"perfectly content"';
-  if (happiness < 30) return '"a bit lonely"';
-  return '"doing alright"';
-}
 
 function formatDayCounter(petAge?: number): string {
   if (!petAge) return 'DAY 001';
@@ -121,7 +109,9 @@ export default function Today() {
 
   const petHunger = pet?.hunger ?? 50;
   const petHappiness = 100 - petHunger;
-  const petMood = getPetMood(petHunger, petHappiness);
+  const petSpecies = (pet?.type?.toLowerCase() === 'cat' ? 'cat' : 'dog') as Species;
+  const petStage = getStage(pet?.age ?? 0);
+  const petMood = pet ? deriveMood(pet.hunger, pet.last_fed) : 'content';
   const petName = pet?.name ?? 'Tendr';
   const dayCounter = formatDayCounter(pet?.age);
 
@@ -230,10 +220,13 @@ export default function Today() {
 
           {/* Pet card */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
-            <PetSvg size={210} mood={petMood} />
+            <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
 
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 26, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 4, color: 'var(--ink)' }}>
-              {getMoodQuote(petHunger, petHappiness)}
+              {petMood === 'happy' ? '"perfectly content"'
+                : petMood === 'sad' ? '"a bit lonely"'
+                : petMood === 'sleepy' ? '"just waking up"'
+                : '"doing alright"'}
             </div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, color: 'var(--ink-soft)', marginTop: 4 }}>
               {petHunger > 60 ? 'getting hungry — feed when you can.' : 'doing well for now.'}

@@ -2,26 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { petsAPI, userAPI } from '../api/client';
-import { PetSvg } from '../components/ui/PetSvg';
+import { PetSprite, getStage, deriveMood } from '../components/PetSprite';
+import type { Species } from '../components/PetSprite';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import type { PetCreate } from '../api/types';
 
-function getPetMood(hunger: number): 'content' | 'hungry' | 'sleepy' | 'excited' | 'sad' {
-  const happiness = 100 - hunger;
-  if (happiness >= 80) return 'content';
-  if (hunger >= 80) return 'hungry';
-  if (happiness < 30) return 'sad';
-  return 'content';
-}
-
-function getMoodQuote(hunger: number): string {
-  const happiness = 100 - hunger;
-  if (hunger >= 80) return '"a little hungry"';
-  if (happiness >= 80) return '"perfectly content"';
-  if (happiness < 30) return '"a bit lonely"';
-  return '"doing alright"';
-}
 
 function formatDayCounter(age?: number): string {
   if (!age) return 'DAY 001';
@@ -89,7 +75,9 @@ export default function Pet() {
   const deadPets = pets.filter(p => !p.is_alive);
 
   const petHunger = pet?.hunger ?? 50;
-  const petMood = getPetMood(petHunger);
+  const petSpecies = (pet?.type?.toLowerCase() === 'cat' ? 'cat' : 'dog') as Species;
+  const petStage = getStage(pet?.age ?? 0);
+  const petMood = pet ? deriveMood(pet.hunger, pet.last_fed) : 'content';
   const petName = pet?.name ?? 'Tendr';
   const dayCounter = formatDayCounter(pet?.age);
   const xp = userXP?.xp ?? 0;
@@ -110,10 +98,13 @@ export default function Pet() {
 
           {/* Pet card */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 28, textAlign: 'center' }}>
-            <PetSvg size={240} mood={petMood} />
+            <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={240} />
 
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 28, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 8, color: 'var(--ink)' }}>
-              {getMoodQuote(petHunger)}
+              {petMood === 'happy' ? '"perfectly content"'
+                : petMood === 'sad' ? '"a bit lonely"'
+                : petMood === 'sleepy' ? '"just waking up"'
+                : '"doing alright"'}
             </div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, fontStyle: 'italic', color: 'var(--ink-soft)', marginTop: 4 }}>
               {petHunger > 60 ? 'getting hungry — feed when you can.' : 'doing well for now.'}
@@ -215,7 +206,7 @@ export default function Pet() {
                         onClick={() => setNewType(t)}
                         style={{
                           flex: 1,
-                          padding: '9px',
+                          padding: '12px 8px 8px',
                           fontFamily: '"JetBrains Mono", ui-monospace, monospace',
                           fontSize: 11,
                           letterSpacing: '1.5px',
@@ -224,8 +215,18 @@ export default function Pet() {
                           color: newType === t ? 'var(--paper)' : 'var(--muted)',
                           border: `1px solid ${newType === t ? 'var(--ink)' : 'var(--rule)'}`,
                           cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
+                        <PetSprite
+                          species={t.toLowerCase() as Species}
+                          stage="baby"
+                          mood="happy"
+                          size={80}
+                        />
                         {t}
                       </button>
                     ))}
