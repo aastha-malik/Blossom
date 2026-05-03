@@ -98,7 +98,9 @@ export default function Pet() {
 
           {/* Pet card */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 28, textAlign: 'center' }}>
-            <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={240} />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={240} />
+            </div>
 
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 28, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 8, color: 'var(--ink)' }}>
               {petMood === 'happy' ? '"perfectly content"'

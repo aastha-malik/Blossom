@@ -220,7 +220,9 @@ export default function Today() {
 
           {/* Pet card */}
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
-            <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
+            </div>
 
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 26, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 4, color: 'var(--ink)' }}>
               {petMood === 'happy' ? '"perfectly content"'
