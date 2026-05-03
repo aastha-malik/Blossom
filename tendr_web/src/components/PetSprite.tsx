@@ -301,7 +301,7 @@ function CatKid({ mood, size = 110 }: { mood: Mood; size?: number }) {
 }
 
 function CatTeen({ mood, size = 110 }: { mood: Mood; size?: number }) {
-  const fur = '#c9924d'; const furDark = '#7c5128'; const furLight = '#e8c188'; const stripe = '#7c5128';
+  const fur = '#c9924d'; const furLight = '#e8c188'; const stripe = '#7c5128';
   return (
     <svg width={size} height={size} viewBox="0 -8 100 108">
       <ellipse cx="50" cy="93" rx="34" ry="3.5" fill={INK} opacity="0.15" />
