@@ -30,7 +30,7 @@ export default function PetList({ onError, onSuccess }: PetListProps) {
   });
 
   const feedMutation = useMutation({
-    mutationFn: (petId: number) => petsAPI.feed(petId),
+    mutationFn: (petId: string) => petsAPI.feed(petId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
       queryClient.invalidateQueries({ queryKey: ['userXP'] });
@@ -42,7 +42,7 @@ export default function PetList({ onError, onSuccess }: PetListProps) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (petId: number) => petsAPI.delete(petId),
+    mutationFn: (petId: string) => petsAPI.delete(petId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
       onSuccess?.('Pet deleted successfully');

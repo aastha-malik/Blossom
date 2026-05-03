@@ -60,7 +60,7 @@ export default function Pet() {
   });
 
   const feedMutation = useMutation({
-    mutationFn: (petId: number) => petsAPI.feed(petId),
+    mutationFn: (petId: string) => petsAPI.feed(petId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
       showToast('Fed. She looks pleased.', 'success');

@@ -6,9 +6,9 @@ import type { Pet } from '../api/types';
 interface LocalPetsContextType {
   pets: Pet[];
   addPet: (pet: { name: string; type: string }) => Pet;
-  updatePet: (petId: number, updates: Partial<Pet>) => void;
-  deletePet: (petId: number) => void;
-  feedPet: (petId: number) => void;
+  updatePet: (petId: string, updates: Partial<Pet>) => void;
+  deletePet: (petId: string) => void;
+  feedPet: (petId: string) => void;
 }
 
 const LocalPetsContext = createContext<LocalPetsContextType | undefined>(undefined);
