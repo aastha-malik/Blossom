@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Load env
 load_dotenv()
 
-def send_email(to_email, subject, body):
+def send_email(to_email, subject, body, html_body=None):
     # Try the Google Bridge first (Best for sending to anyone without a domain)
     bridge_url = os.getenv("EMAIL_BRIDGE_URL")
     resend_key = os.getenv("RESEND_API_KEY")
@@ -35,15 +35,18 @@ def send_email(to_email, subject, body):
     if resend_key:
         try:
             print(f"DEBUG: Using Resend to send to {to_email}...")
+            payload = {
+                "from": "Tendr <onboarding@resend.dev>",
+                "to": to_email,
+                "subject": subject,
+                "text": body,
+            }
+            if html_body:
+                payload["html"] = html_body
             response = requests.post(
                 "https://api.resend.com/emails",
                 headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                json={
-                    "from": "Blossom <onboarding@resend.dev>",
-                    "to": to_email,
-                    "subject": subject,
-                    "text": body,
-                },
+                json=payload,
                 timeout=10
             )
             if response.status_code in [200, 201]:
