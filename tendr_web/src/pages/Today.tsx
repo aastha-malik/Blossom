@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { tasksAPI, petsAPI, statsAPI, userAPI, focusAPI } from '../api/client';
@@ -49,6 +49,16 @@ function buildHeatmapData(tasks: Task[]): number[] {
 export default function Today() {
   const { isAuthenticated } = useAuth();
   const { toasts, showToast, removeToast } = useToast();
+  const queryClient = useQueryClient();
+  const feedMutation = useMutation({
+    mutationFn: (petId: string) => petsAPI.feed(petId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pets'] });
+      queryClient.invalidateQueries({ queryKey: ['userXP'] });
+      showToast('Fed. She looks pleased.', 'success');
+    },
+    onError: () => showToast('Could not feed right now.', 'error'),
+  });
   const [activeCategory, setActiveCategory] = useState<string>('');
   const CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
 
@@ -252,7 +262,9 @@ export default function Today() {
 
             {/* Feed button */}
             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <div
+              <button
+                onClick={() => pet && feedMutation.mutate(pet.id)}
+                disabled={!pet || !isAuthenticated || (userXP?.xp ?? 0) < 35 || feedMutation.isPending}
                 style={{
                   flex: 1,
                   background: 'var(--accent)',
@@ -263,12 +275,13 @@ export default function Today() {
                   fontSize: 13,
                   letterSpacing: 0.3,
                   textAlign: 'center',
+                  border: 'none',
                   cursor: (isAuthenticated && (userXP?.xp ?? 0) >= 35) ? 'pointer' : 'not-allowed',
                   opacity: (isAuthenticated && (userXP?.xp ?? 0) < 35) ? 0.5 : 1,
                 }}
               >
-                Offer a treat · 35 xp
-              </div>
+                {feedMutation.isPending ? 'Feeding…' : 'Offer a treat · 35 xp'}
+              </button>
             </div>
           </div>
 
