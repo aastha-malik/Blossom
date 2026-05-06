@@ -1,155 +1,143 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
-from models import Pet, User
-from auth_dependencies import get_current_user
-from fastapi import Depends
+from models import Pet, User, FocusSession, PetQualifyingDay
+from fastapi import HTTPException
 
-#created a new pet
-def create_pet(db: Session, name:str, type:str , current_user):
-    new_pet = Pet(name=name, type=type, user_id=current_user.id)
-    new_pet.last_fed = datetime.utcnow()
-    new_pet.hunger = 80 # Start hungry
-    new_pet.is_alive = True
-    new_pet.age = 0.0
 
-    db.add(new_pet) #adding new_pet in db
-    db.commit() #saving all the data and pet in db
-    db.refresh(new_pet) #basically refresh all the data of new pet in db
+def create_pet(db: Session, name: str, type: str, current_user):
+    now = datetime.utcnow()
+    new_pet = Pet(
+        name=name,
+        type=type,
+        user_id=current_user.id,
+        last_fed=now,
+        last_focused_at=now,
+        hunger=100,
+        bond=0.0,
+        age=0,
+        is_alive=True,
+    )
+    db.add(new_pet)
+    db.commit()
+    db.refresh(new_pet)
     return new_pet
 
-#getting pet by id
-def get_pet_by_id(db:Session, id:str, current_user):
-    pet = db.query(Pet).filter(Pet.id == id, Pet.user_id == current_user.id).first()
+
+def get_pet_by_id(db: Session, id: str, current_user):
+    return db.query(Pet).filter(Pet.id == id, Pet.user_id == current_user.id).first()
+
+
+def get_all_pets(db: Session, current_user):
+    pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
+    if not pets:
+        return []
+    today = datetime.utcnow().date()
+    changed = False
+    for pet in pets:
+        if pet.is_alive:
+            days_since_fed = (today - pet.last_fed.date()).days
+            if days_since_fed >= 3:
+                pet.is_alive = False
+                changed = True
+    if changed:
+        db.commit()
+        for pet in pets:
+            db.refresh(pet)
+    return pets
+
+
+def _check_qualifying_day(db: Session, pet: Pet, user_id: str):
+    today = datetime.utcnow().date()
+    existing = db.query(PetQualifyingDay).filter(
+        PetQualifyingDay.pet_id == pet.id,
+        PetQualifyingDay.date == today,
+    ).first()
+    if existing:
+        return
+    start_of_today = datetime.combine(today, datetime.min.time())
+    fed_today = pet.last_fed.date() == today
+    focused_today = db.query(FocusSession).filter(
+        FocusSession.user_id == user_id,
+        FocusSession.created_at >= start_of_today,
+    ).first() is not None
+    if fed_today and focused_today:
+        qd = PetQualifyingDay(pet_id=pet.id, user_id=user_id, date=today)
+        db.add(qd)
+        pet.age = (pet.age or 0) + 1
+        db.commit()
+
+
+def feed_pet(db: Session, pet_id: str, current_user):
+    pet = db.query(Pet).filter(Pet.id == pet_id, Pet.user_id == current_user.id).first()
     if not pet:
         return None
-    else:
+
+    today = datetime.utcnow().date()
+    days_since_fed = (today - pet.last_fed.date()).days
+    if days_since_fed >= 3:
+        pet.is_alive = False
+        db.commit()
+        db.refresh(pet)
         return pet
 
-#getting all pets
-def get_all_pets(db:Session, current_user):
-    pets = db.query(Pet).filter(Pet.user_id == current_user.id, Pet.is_alive == True).all()
-    if not pets:
-        return None
-    else:
-        return pets
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user or user.xp < 35:
+        raise HTTPException(status_code=400, detail="Not enough XP to feed pet")
 
-        
-#updating our pet
-def update_pet(db:Session, id:str, hunger:int, last_fed:datetime, age:float, current_user):
+    user.xp -= 35
+    pet.hunger = 100
+    pet.last_fed = datetime.utcnow()
+
+    db.commit()
+    db.refresh(pet)
+    db.refresh(user)
+
+    _check_qualifying_day(db, pet, str(current_user.id))
+
+    return pet
+
+
+def add_bond_from_focus(db: Session, user_id: str, duration_seconds: int):
+    pet = db.query(Pet).filter(Pet.user_id == user_id, Pet.is_alive == True).first()
+    if not pet:
+        return
+
+    today = datetime.utcnow().date()
+    days_since_focus = (today - pet.last_focused_at.date()).days
+    pet.bond = max(0.0, (pet.bond or 0.0) - days_since_focus * 33)
+
+    duration_minutes = duration_seconds / 60
+    gain = (duration_minutes / 60) * 15
+    pet.bond = min(100.0, pet.bond + gain)
+    pet.last_focused_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(pet)
+
+    _check_qualifying_day(db, pet, str(user_id))
+
+
+def update_pet(db: Session, id: str, hunger: int, last_fed: datetime, age: float, current_user):
     pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return None
     pet.hunger = hunger
-    pet.last_fed=last_fed
-    pet.age=age
+    pet.last_fed = last_fed
+    pet.age = age
     db.commit()
     db.refresh(pet)
-    if not pet:
-        return None
-    else:
-        return pet
+    return pet
 
-#checking that when did the user fed its pet!
-def check_last_fed(last_fed:datetime):
-    now = datetime.utcnow()
-    fed_time_diff = now - last_fed
-    return fed_time_diff.days
 
-#checking and updating(if needed) is_alive property of pet
-def updating_is_alive(db:Session, last_fed:datetime, id:str, current_user):
-    pet = get_pet_by_id(db, id, current_user)
-    if pet is None:
-        return None
-    if check_last_fed(last_fed) > 7:
-        pet.is_alive = False
-    else:
-        pet.is_alive = True
-    db.commit()
-    db.refresh(pet)
-    if not pet:
-        return None
-    else:
-        return pet.is_alive
-#feed pet  function
-def feed_pet(db:Session ,pet_id: str, current_user):
-    pet = db.query(Pet).filter(Pet.id == pet_id, Pet.user_id == current_user.id).first()
-    user = db.query(User).filter(User.id == current_user.id).first()
-    if not user:
-        return None
-    if not pet:
-        return None
-    if check_last_fed(pet.last_fed) > 7:
-        pet.is_alive = False
-        db.commit()
-        return pet
-    elif check_last_fed(pet.last_fed) >= 1 and pet.is_alive:
-        pet.hunger = 100
-
-    
-    if user.xp >= 35:
-        user.xp -= 35
-        pet.hunger = max(pet.hunger - 50, 0)
-        pet.last_fed = datetime.utcnow()
-        pet.age += 0.01
-        pet.is_alive = True
-
-        db.commit()
-        db.refresh(pet)
-        db.refresh(user)
-
-        print({
-            "id": pet.id,
-            "name": pet.name,
-            "type": pet.type,
-            "age": pet.age,
-            "hunger": pet.hunger,
-            "last_fed": pet.last_fed,
-            "is_alive": pet.is_alive,
-            "user_id": pet.user_id
-        })
-        print("bla bla bla")
-        print(pet)
-
-        return pet
-
-    else:
-        print("Not enough XP to feed pet")
-        raise HTTPException(status_code=400, detail="Not enough XP to feed pet")
-    
-    
-#checking that whether the pet is dead or not! 
 def check_dead_pet(db: Session, current_user):
-    """
-    even after death of pet it stays in db.
-    so that we can show to user that how many its pet died!
-    """
+    pets = db.query(Pet).filter(Pet.is_alive == False, Pet.user_id == current_user.id).all()
+    return pets or None
 
-    pets = db.query(Pet).filter(Pet.is_alive==False, Pet.user_id == current_user.id).all()
-    if not pets:
-        return None
-    else:
-        return pets
 
-#deleteing pet from  db
-def delete_pet(db:Session, id:str, current_user):
-    """
-    Deletes a pet from the database by its ID.
-    Returns True if deleted, False if not found.
-    """
-    pet =  get_pet_by_id(db, id, current_user)
+def delete_pet(db: Session, id: str, current_user):
+    pet = get_pet_by_id(db, id, current_user)
     if pet is None:
         return False
     db.delete(pet)
     db.commit()
-    if pet:
-        return True  # Return True to indicate successful deletion
-    else:
-        return False
-    # Note: Returning True or False is a common practice to indicate success or failure of an operation.
-    # In this case, we return True if the task was successfully deleted, otherwise False
-    # This can be useful for the caller to know whether the deletion was successful or not.
-    # If you want to raise an exception instead, you can do so, but returning True
-
-
-
-
+    return True

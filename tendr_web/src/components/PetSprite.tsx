@@ -411,18 +411,16 @@ export function PetSprite({ species, stage, mood, size = 110 }: PetSpriteProps) 
 
 // ── utils ──
 
-export function getStage(age: number): Stage {
-  if (age < 7) return 'baby';
-  if (age < 21) return 'kid';
-  if (age < 60) return 'teen';
+export function getStage(qualifyingDays: number): Stage {
+  if (qualifyingDays < 8) return 'baby';
+  if (qualifyingDays < 22) return 'kid';
+  if (qualifyingDays < 41) return 'teen';
   return 'adult';
 }
 
-export function deriveMood(hunger: number, lastFed: string): Mood {
-  const hoursSinceFed = (Date.now() - new Date(lastFed).getTime()) / (1000 * 60 * 60);
-  const hour = new Date().getHours();
-  if (hour >= 22 || hour < 7) return 'sleepy';
-  if (hunger > 80 || hoursSinceFed >= 24) return 'sad';
-  if (hunger < 30 && hoursSinceFed < 4) return 'happy';
+export function deriveMood(belly: number, bond: number): Mood {
+  if (belly >= 80 && bond >= 75) return 'happy';
+  if (belly >= 70 && bond < 35) return 'sleepy';
+  if (belly < 30 && bond < 30) return 'sad';
   return 'content';
 }

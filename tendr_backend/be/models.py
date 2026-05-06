@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -35,8 +35,20 @@ class Pet(Base):
     hunger = Column(Integer, default=100)
     last_fed = Column(DateTime, default=datetime.utcnow)
     is_alive = Column(Boolean, default=True)
+    bond = Column(Float, default=0.0)
+    last_focused_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(String, ForeignKey("user.id"))
     user = relationship("User", back_populates="pets")
+    qualifying_days = relationship("PetQualifyingDay", cascade="all, delete-orphan")
+
+
+class PetQualifyingDay(Base):
+    __tablename__ = "pet_qualifying_days"
+    id = Column(String, primary_key=True, default=_uuid)
+    pet_id = Column(String, ForeignKey("pets.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    date = Column(Date, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class FocusSession(Base):
     __tablename__ = "focus_sessions"

@@ -14,6 +14,16 @@ function formatDayCounter(age?: number): string {
   return `DAY ${String(Math.floor(age)).padStart(3, '0')}`;
 }
 
+function computeBelly(lastFed: string): number {
+  const days = Math.floor((Date.now() - new Date(lastFed).getTime()) / 86400000);
+  return Math.max(0, 100 - days * 33);
+}
+
+function computeBond(storedBond: number, lastFocused: string): number {
+  const days = Math.floor((Date.now() - new Date(lastFocused).getTime()) / 86400000);
+  return Math.max(0, Math.round(storedBond - days * 33));
+}
+
 const monoStyle: React.CSSProperties = {
   fontFamily: '"JetBrains Mono", ui-monospace, monospace',
   fontSize: 10,
@@ -74,10 +84,12 @@ export default function Pet() {
   const pet = pets.find(p => p.is_alive) ?? pets[0];
   const deadPets = pets.filter(p => !p.is_alive);
 
-  const petHunger = pet?.hunger ?? 50;
+  const belly = pet ? computeBelly(pet.last_fed) : 50;
+  const bond = pet ? computeBond(pet.bond ?? 0, pet.last_focused_at) : 0;
   const petSpecies = (pet?.type?.toLowerCase() === 'cat' ? 'cat' : 'dog') as Species;
   const petStage = getStage(pet?.age ?? 0);
-  const petMood = pet ? deriveMood(pet.hunger, pet.last_fed) : 'content';
+  const petMood = pet ? deriveMood(belly, bond) : 'content';
+  const moodValue = ({ happy: 100, content: 67, sleepy: 33, sad: 0 } as const)[petMood];
   const petName = pet?.name ?? 'Tendr';
   const dayCounter = formatDayCounter(pet?.age);
   const xp = userXP?.xp ?? 0;
@@ -103,21 +115,21 @@ export default function Pet() {
             </div>
 
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 28, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 8, color: 'var(--ink)' }}>
-              {petMood === 'happy' ? '"perfectly content"'
-                : petMood === 'sad' ? '"a bit lonely"'
-                : petMood === 'sleepy' ? '"just waking up"'
+              {petMood === 'happy' ? '"thriving today"'
+                : petMood === 'sad' ? '"feeling a little lonely"'
+                : petMood === 'sleepy' ? '"needs more time together"'
                 : '"doing alright"'}
             </div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, fontStyle: 'italic', color: 'var(--ink-soft)', marginTop: 4 }}>
-              {petHunger > 60 ? 'getting hungry — feed when you can.' : 'doing well for now.'}
+              {belly < 40 ? 'getting hungry — feed when you can.' : 'doing well for now.'}
             </div>
 
             {/* Progress bars */}
             <div style={{ marginTop: 22, textAlign: 'left' }}>
               {([
-                ['Mood', 100 - petHunger, 'var(--accent)'],
-                ['Belly', 100 - petHunger, 'var(--accent-2)'],
-                ['Bond', Math.min(100, (pet?.age ?? 0) * 3), 'var(--amber)'],
+                ['Mood', moodValue, 'var(--accent)'],
+                ['Belly', belly, 'var(--accent-2)'],
+                ['Bond', bond, 'var(--amber)'],
               ] as [string, number, string][]).map(([label, value, color]) => (
                 <div key={label} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 36px', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                   <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 13, fontStyle: 'italic', color: 'var(--ink-soft)' }}>{label}</div>

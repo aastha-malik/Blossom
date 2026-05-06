@@ -69,6 +69,37 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# Add bond + last_focused_at to pets
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE pets ADD COLUMN bond FLOAT DEFAULT 0.0'))
+        conn.commit()
+    except Exception:
+        pass
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE pets ADD COLUMN last_focused_at TIMESTAMP DEFAULT NOW()'))
+        conn.commit()
+    except Exception:
+        pass
+
+# Create pet_qualifying_days table
+with engine.connect() as conn:
+    try:
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS pet_qualifying_days (
+                id VARCHAR PRIMARY KEY,
+                pet_id VARCHAR REFERENCES pets(id) ON DELETE CASCADE,
+                user_id VARCHAR REFERENCES "user"(id) ON DELETE CASCADE,
+                date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(pet_id, date)
+            )
+        '''))
+        conn.commit()
+    except Exception:
+        pass
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -227,8 +258,6 @@ def get_all_pets_endpoint(
     db: Session = Depends(get_db)
 ):
     pets = pet_crud.get_all_pets(db, current_user)
-    if not pets:
-        raise HTTPException(status_code=404, detail="No pets found")
     return [PetResponse.model_validate(p) for p in pets]
 
 
@@ -626,6 +655,7 @@ def save_focus_session(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
+    pet_crud.add_bond_from_focus(db, current_user.id, session.duration_seconds)
     return new_session
 
 
