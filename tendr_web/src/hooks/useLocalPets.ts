@@ -34,6 +34,8 @@ export const useLocalPets = () => {
       hunger: 100,
       last_fed: new Date().toISOString(),
       is_alive: true,
+      bond: 0.0,
+      last_focused_at: new Date().toISOString(),
       user_id: 'local',
     };
     setPets((prev) => [...prev, newPet]);
