@@ -314,16 +314,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @app.get("/auth/google/login")
-async def google_login(request: Request):
+async def google_login(request: Request, desktop_port: int = None):
+    if desktop_port:
+        request.session["desktop_port"] = desktop_port
     redirect_uri = request.url_for("google_callback")
-    
+
     # Force the redirect URI to use HTTPS on Render or localhost for dev
     if "onrender.com" in str(request.url):
         redirect_uri = str(redirect_uri).replace("http://", "https://")
     else:
         # Crucial for local dev: Force localhost to match cookie domain
         redirect_uri = str(redirect_uri).replace("127.0.0.1", "localhost")
-        
+
     print(f"Starting Google Login, redirecting to: {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
@@ -371,10 +373,16 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     user_email = user_info["email"]
     user_sub = user_info["sub"]
     
-    # Dynamic frontend URL: use localhost if callback was via localhost
-    frontend_url = "https://tendr-tick-treats.onrender.com"
-    if "localhost" in str(request.url) or "127.0.0.1" in str(request.url):
+    # Check if the desktop app initiated this flow
+    desktop_port = request.session.pop("desktop_port", None)
+
+    # Dynamic frontend URL
+    if desktop_port:
+        frontend_url = f"http://localhost:{desktop_port}"
+    elif "localhost" in str(request.url) or "127.0.0.1" in str(request.url):
         frontend_url = "http://localhost:5173"
+    else:
+        frontend_url = "https://tendr-tick-treats.onrender.com"
 
     user = db.query(User).filter(User.email == user_email).first()
 
@@ -386,7 +394,11 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
             "google_sub": user_sub,
         }
         pending_token = auth_crud.create_access_token(pending_data, expires_delta=timedelta(minutes=10))
-        redirect_url = f"{frontend_url}/choose-username?pending_token={pending_token}"
+        if desktop_port:
+            redirect_url = (f"{frontend_url}?pending_token={pending_token}"
+                            f"&email={urllib.parse.quote(user_email)}")
+        else:
+            redirect_url = f"{frontend_url}/choose-username?pending_token={pending_token}"
         print(f"New Google user {user_email} — redirecting to choose-username")
         return RedirectResponse(redirect_url)
 
@@ -396,7 +408,11 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
 
     encoded_username = urllib.parse.quote(user.username)
     encoded_email = urllib.parse.quote(user.email)
-    redirect_url = f"{frontend_url}/login?token={jwt_token}&username={encoded_username}&email={encoded_email}"
+    if desktop_port:
+        redirect_url = (f"{frontend_url}?token={jwt_token}"
+                        f"&username={encoded_username}&email={encoded_email}")
+    else:
+        redirect_url = f"{frontend_url}/login?token={jwt_token}&username={encoded_username}&email={encoded_email}"
 
     print(f"Returning Google user {user.username} — redirecting to login")
     return RedirectResponse(redirect_url)
