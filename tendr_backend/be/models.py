@@ -21,6 +21,7 @@ class Task(Base):
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True, default=None)
     priority = Column(String(50), default="Low")
     category = Column(String(50), nullable=True)
     user_id = Column(String, ForeignKey("user.id"))

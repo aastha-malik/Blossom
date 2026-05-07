@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 from models import Task, User
 from auth_dependencies import get_current_user
@@ -79,8 +80,9 @@ def update_task_completion(db: Session, task_id: str, completed: bool, current_u
         print(f"[DEBUG] XP before: {user.xp}")
         user.xp = (user.xp or 0) + xp_reward
         print(f"[DEBUG] XP after: {user.xp}")
-    
+
     task.completed = completed
+    task.completed_at = datetime.utcnow() if completed else None
 
     print(f"[DEBUG] Before commit: user {user.id} XP = {user.xp}, reward = {xp_reward}")
     db.commit()
@@ -105,6 +107,7 @@ def update_task_completion(db: Session, task_id: str, completed: bool, current_u
         "category": task.category,
         "completed": task.completed,
         "created_at": task.created_at,
+        "completed_at": task.completed_at,
         "user_id": task.user_id,
         "xpReward": xp_reward,
         "userXP": user.xp,

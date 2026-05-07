@@ -69,6 +69,14 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# Add completed_at to tasks
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE tasks ADD COLUMN completed_at TIMESTAMP DEFAULT NULL'))
+        conn.commit()
+    except Exception:
+        pass
+
 # Add bond + last_focused_at to pets
 with engine.connect() as conn:
     try:
@@ -448,34 +456,37 @@ def complete_google_registration(body: GoogleCompleteRegistrationRequest, db: Se
     return {"token": jwt_token, "username": new_user.username, "email": new_user.email}
 
 
-@app.post("/login", response_model=TokenResponse)
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
-    username = form_data.username
+def _authenticate_form(form_data: OAuth2PasswordRequestForm, db: Session):
+    """Shared logic for /login and /token — username field accepts email or username."""
+    identifier = form_data.username
     password = form_data.password
 
-    if '@' in username:
-        user = auth_crud.authenticate_user(db, '', username, password)
+    if '@' in identifier:
+        user = auth_crud.authenticate_user(db, '', identifier, password)
     else:
-        user = auth_crud.authenticate_user(db, username, '', password)
+        user = auth_crud.authenticate_user(db, identifier, '', password)
 
     if user == "unverified":
         raise HTTPException(status_code=403, detail="Please verify your email before logging in. Check your inbox for the verification code.")
-    
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     if user.provider == "google" and not user.hashed_password:
-        raise HTTPException(
-            status_code=400,
-            detail="This account is linked to Google. Please use 'Forgot Password' to set a password or login with Google."
-        )
-    
+        raise HTTPException(status_code=400, detail="This account uses Google login. Use 'Forgot Password' to set a password.")
+
     data = {"sub": user.username}
     token = auth_crud.create_access_token(data, expires_delta=timedelta(minutes=20))
-    return {"access_token": token, "token_type": "bearer", "username":user.username, "email":user.email}
+    return {"access_token": token, "token_type": "bearer", "username": user.username, "email": user.email}
+
+
+@app.post("/login", response_model=TokenResponse)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    return _authenticate_form(form_data, db)
+
+
+@app.post("/token", response_model=TokenResponse)
+def token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Swagger Authorize endpoint — username field accepts email or username."""
+    return _authenticate_form(form_data, db)
 
 
 @app.patch("/reset_password")

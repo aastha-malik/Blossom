@@ -36,10 +36,17 @@ export default function TaskList({ onError, activeCategory }: TaskListProps) {
   // Backend now returns all tasks (completed and incomplete)
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
+  // Hide completed tasks more than 24 hours after completion
+  const visibleTasks = (tasks || []).filter(t => {
+    if (!t.completed) return true;
+    if (!t.completed_at) return true; // no timestamp yet — keep visible
+    return (Date.now() - new Date(t.completed_at).getTime()) < 86400000;
+  });
+
   // Apply category filter if active
   const categoryFiltered = activeCategory
-    ? (tasks || []).filter(t => (t.category ?? '').toLowerCase() === activeCategory.toLowerCase())
-    : (tasks || []);
+    ? visibleTasks.filter(t => (t.category ?? '').toLowerCase() === activeCategory.toLowerCase())
+    : visibleTasks;
 
   const sortedTasks = [...categoryFiltered].sort((a, b) => {
     // Incomplete tasks come first (completed: false = 0, true = 1)

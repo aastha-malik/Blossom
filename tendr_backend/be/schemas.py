@@ -46,6 +46,7 @@ class TaskResponse(BaseModel):
     category: Optional[str] = None
     completed: Optional[bool] = False
     created_at: datetime
+    completed_at: Optional[datetime] = None
     user_id: str
     xpReward: Optional[int] = None
     userXP: Optional[int] = None
