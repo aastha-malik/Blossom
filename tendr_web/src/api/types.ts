@@ -50,8 +50,8 @@ export interface Pet {
   hunger: number;
   last_fed: string;
   is_alive: boolean;
-  bond: number;
-  last_focused_at: string;
+  bond: number | null;
+  last_focused_at: string | null;
   user_id: string;
 }
 

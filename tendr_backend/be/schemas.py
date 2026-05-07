@@ -93,8 +93,8 @@ class PetResponse(BaseModel):
     hunger: int
     last_fed: datetime
     is_alive: bool
-    bond: float = 0.0
-    last_focused_at: datetime
+    bond: Optional[float] = 0.0
+    last_focused_at: Optional[datetime] = None
     user_id: str
 
     class Config:

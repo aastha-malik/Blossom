@@ -144,7 +144,7 @@ def get_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "This is Task Manager side of our app Blossom!!"}
+    return {"message": "This is Task Manager side of our app Tendr!!"}
 
 @app.head("/health")
 def health():
@@ -283,7 +283,7 @@ def update_pet_endpoint(
 def feed_pet_endpoint(id: str, db: Session = Depends(get_db), current_user= Depends(get_current_user)):
     pet_data = pet_crud.feed_pet(db, id, current_user)
     if not pet_data:
-        raise HTTPException(status_code=400, details="Feeding pet failed")
+        raise HTTPException(status_code=400, detail="Feeding pet failed")
     return pet_data
 
 @app.delete("/pet/{id}")

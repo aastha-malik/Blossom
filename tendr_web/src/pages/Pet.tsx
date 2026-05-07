@@ -85,7 +85,7 @@ export default function Pet() {
   const deadPets = pets.filter(p => !p.is_alive);
 
   const belly = pet ? computeBelly(pet.last_fed) : 50;
-  const bond = pet ? computeBond(pet.bond ?? 0, pet.last_focused_at) : 0;
+  const bond = pet ? computeBond(pet.bond ?? 0, pet.last_focused_at ?? pet.last_fed) : 0;
   const petSpecies = (pet?.type?.toLowerCase() === 'cat' ? 'cat' : 'dog') as Species;
   const petStage = getStage(pet?.age ?? 0);
   const petMood = pet ? deriveMood(belly, bond) : 'content';
