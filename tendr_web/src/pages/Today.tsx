@@ -236,10 +236,39 @@ export default function Today() {
         <div>
           {/* Pet eyebrow */}
           <div style={{ ...monoStyle, marginBottom: 6 }}>
-            {petName.toUpperCase()} · FOX-MOCHI · {dayCounter}
+            {pet ? `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}` : 'NO COMPANION YET'}
           </div>
 
-          {/* Pet card */}
+          {/* Pet card — empty state if no pet */}
+          {!pet ? (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 40, textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 52, marginBottom: 16, opacity: 0.18 }}>
+                ʕ·ᴥ·ʔ
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontStyle: 'italic', letterSpacing: -0.4, color: 'var(--ink)', marginBottom: 8 }}>
+                No companion yet.
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 24, lineHeight: 1.6 }}>
+                A pet will live here once you adopt one.<br />They grow with every focus session and every task.
+              </div>
+              <a
+                href="/pet"
+                style={{
+                  display: 'inline-block',
+                  padding: '10px 24px',
+                  background: 'var(--ink)',
+                  color: 'var(--paper)',
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  letterSpacing: 0.2,
+                }}
+              >
+                Adopt a companion →
+              </a>
+            </div>
+          ) : (
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
@@ -296,6 +325,7 @@ export default function Today() {
               </button>
             </div>
           </div>
+          )}
 
         </div>
       </div>

@@ -99,16 +99,31 @@ export default function Pet() {
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         <div style={{ ...monoStyle, marginBottom: 6 }}>
-          {petName.toUpperCase()} · FOX-MOCHI · {dayCounter}
+          {pet?.is_alive ? `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}` : 'YOUR COMPANIONS'}
         </div>
 
         <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 28px' }}>
-          {petName}.
+          {pet?.is_alive ? `${petName}.` : 'Adopt a pet.'}
         </h1>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, alignItems: 'start' }}>
 
-          {/* Pet card */}
+          {/* Pet card — or empty state */}
+          {!pet?.is_alive ? (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 40, textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 52, marginBottom: 16, opacity: 0.18 }}>
+                ʕ·ᴥ·ʔ
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 20, fontStyle: 'italic', color: 'var(--ink)', marginBottom: 10 }}>
+                {deadPets.length > 0 ? 'Ready for a new companion?' : 'No companion yet.'}
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.7 }}>
+                {deadPets.length > 0
+                  ? 'Give your next pet a name and pick a species using the form.'
+                  : 'Pick a name and a species from the form.\nThey\'ll grow with every focus session and every fed day.'}
+              </div>
+            </div>
+          ) : (
           <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 28, textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={240} />
@@ -176,6 +191,7 @@ export default function Pet() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Right side */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
