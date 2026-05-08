@@ -7,134 +7,195 @@ import threading
 import time
 import requests
 import hashlib
+import http.server
+import socketserver
+import socket
+import webbrowser
+from urllib.parse import urlparse, parse_qs, unquote
 
-class BlossomFocusApp:
+
+def get_edition_label():
+    now = datetime.now()
+    start = datetime(now.year, 1, 1)
+    day_of_year = (now - start).days + 1
+    week = (day_of_year - 1) // 7 + 1
+    issue = ((week - 1) % 13) + 1
+    m = now.month
+    if m >= 3 and m <= 5:
+        season = "spring"
+    elif m >= 6 and m <= 8:
+        season = "summer"
+    elif m >= 9 and m <= 11:
+        season = "autumn"
+    else:
+        season = "winter"
+    yr = str(now.year)[2:]
+    return f"no. {str(issue).zfill(2)}  ·  {season} '{yr}"
+
+
+class TendrApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Blossom Focus: Tech-Girly Edition")
+        self.root.title("Tendr")
         self.root.geometry("1500x900")
-        self.root.configure(bg='#18181A')
-        
-        # App state
-        self.current_page = "focus" # Changed to "focus"
+
+        self.current_page = "today"
         self.user_data = self.load_user_data()
         self.timer_running = False
         self.timer_seconds = 0
-        self.focus_session_length = 25 * 60  # 25 minutes default
-        
-        # Authentication state
+        self.focus_session_length = 25 * 60
+
         self.is_logged_in = False
         self.current_username = None
         self.current_email = None
         self.auth_token = None
-        self.backend_url = "https://blossombackend-ib15.onrender.com"  # Backend API URL
-        
-        # Colors
-        self.colors = {
-            'hot_pink': '#FF2D95',
-            'electric_blue': '#00E0FF',
-            'neon_purple': '#B967FF',
-            'black': '#18181A',
-            'white': '#FFFFFF',
-            'dark_gray': '#2A2A2A',
-            'light_gray': '#404040'
+        self.backend_url = "https://tendrbackend.onrender.com"
+
+        self.C = {
+            'bg':       '#1a1410',
+            'surface':  '#221a14',
+            'surface2': '#2a2118',
+            'ink':      '#f0e8d8',
+            'ink_soft': '#c9bfae',
+            'muted':    '#8a7e6a',
+            'accent':   '#e07158',
+            'accent2':  '#9bb87a',
+            'accent3':  '#7ea0c4',
+            'amber':    '#e0b25a',
+            'rule':     '#2f2520',
+            'hi':       '#3d2a22',
+            # kept for backwards compat with old references
+            'hot_pink':     '#e07158',
+            'electric_blue':'#7ea0c4',
+            'neon_purple':  '#9bb87a',
+            'black':        '#1a1410',
+            'white':        '#f0e8d8',
+            'dark_gray':    '#221a14',
+            'light_gray':   '#2a2118',
         }
-        
-        self.setup_styles()
-        self.create_main_interface()
-        
-    def setup_styles(self):
-        """Configure custom styles for the app"""
+        # alias so old code that reads self.colors still works
+        self.colors = self.C
+
+        self.FONT_SERIF  = ('Georgia', )
+        self.FONT_MONO   = ('Courier', )
+        self.FONT_SANS   = ('Helvetica', )
+
+        self._oauth_raw_params = None   # set by local callback server
+        self._oauth_server = None
+
+        self.root.configure(bg=self.C['bg'])
+        self._setup_styles()
+        self._create_main_interface()
+
+    # ─── styles ───────────────────────────────────────────────────────────────
+
+    def _setup_styles(self):
         style = ttk.Style()
         style.theme_use('clam')
-        
-        # Configure custom styles
-        style.configure('Neon.TButton', 
-                       background=self.colors['hot_pink'],
-                       foreground=self.colors['white'],
-                       borderwidth=0,
-                       focuscolor='none',
-                       font=('Montserrat', 10, 'bold'))
-        
+
+        style.configure('Primary.TButton',
+                        background=self.C['accent'],
+                        foreground=self.C['bg'],
+                        borderwidth=0,
+                        focuscolor='none',
+                        font=(*self.FONT_SANS, 11, 'bold'))
+        style.map('Primary.TButton',
+                  background=[('active', '#c9604a')])
+
+        style.configure('Ghost.TButton',
+                        background=self.C['surface2'],
+                        foreground=self.C['ink_soft'],
+                        borderwidth=0,
+                        focuscolor='none',
+                        font=(*self.FONT_SANS, 10))
+        style.map('Ghost.TButton',
+                  background=[('active', self.C['surface'])])
+
+        style.configure('Danger.TButton',
+                        background=self.C['hi'],
+                        foreground=self.C['accent'],
+                        borderwidth=0,
+                        focuscolor='none',
+                        font=(*self.FONT_SANS, 10, 'bold'))
+
+        # keep old names alive so nothing breaks
+        style.configure('Neon.TButton',
+                        background=self.C['accent'],
+                        foreground=self.C['bg'],
+                        borderwidth=0, focuscolor='none',
+                        font=(*self.FONT_SANS, 10, 'bold'))
+        style.map('Neon.TButton', background=[('active', '#c9604a')])
+
         style.configure('Electric.TButton',
-                       background=self.colors['electric_blue'],
-                       foreground=self.colors['black'],
-                       borderwidth=0,
-                       focuscolor='none',
-                       font=('Montserrat', 10, 'bold'))
-        
+                        background=self.C['accent3'],
+                        foreground=self.C['bg'],
+                        borderwidth=0, focuscolor='none',
+                        font=(*self.FONT_SANS, 10, 'bold'))
+        style.map('Electric.TButton', background=[('active', '#6b8fb3')])
+
         style.configure('Purple.TButton',
-                       background=self.colors['neon_purple'],
-                       foreground=self.colors['white'],
-                       borderwidth=0,
-                       focuscolor='none',
-                       font=('Montserrat', 10, 'bold'))
-    
+                        background=self.C['accent2'],
+                        foreground=self.C['bg'],
+                        borderwidth=0, focuscolor='none',
+                        font=(*self.FONT_SANS, 10, 'bold'))
+        style.map('Purple.TButton', background=[('active', '#86a668')])
+
+        style.configure('TScrollbar',
+                        background=self.C['surface2'],
+                        troughcolor=self.C['surface'],
+                        bordercolor=self.C['rule'],
+                        arrowcolor=self.C['muted'])
+
+        style.configure('TProgressbar',
+                        background=self.C['accent2'],
+                        troughcolor=self.C['surface2'],
+                        bordercolor=self.C['rule'])
+
+    # ─── data ─────────────────────────────────────────────────────────────────
+
     def load_user_data(self):
-        """Load user data from JSON file"""
         try:
             if os.path.exists('fe/user_data.json'):
                 with open('fe/user_data.json', 'r') as f:
                     return json.load(f)
         except:
             pass
-        
-        # Default user data
-        default_pet = {
-            'id': 0,
-            'name': 'Blossom',
-            'type': 'cat',
-            'age': 0,
-            'xp': 0,
-            'hunger': 100,
-            'last_fed': datetime.now().strftime('%Y-%m-%d'),
-            'is_alive': True
-        }
         return {
-            'pets': [],
-            'current_pet_id': 0,
-            'xp': 0,  # Default XP is 0 when not logged in
-            'streak': 0,
-            'tasks': [],
-            'completed_tasks': 0,
-            'focus_sessions': 0,
-            'total_focus_time': 0,
-            'achievements': [],
-            'theme': 'neon_garden'
+            'pets': [], 'current_pet_id': 0, 'xp': 0, 'streak': 0,
+            'tasks': [], 'completed_tasks': 0, 'focus_sessions': 0,
+            'total_focus_time': 0, 'achievements': [], 'theme': 'tendr',
         }
 
+    def save_user_data(self):
+        try:
+            os.makedirs('fe', exist_ok=True)
+            with open('fe/user_data.json', 'w') as f:
+                json.dump(self.user_data, f, indent=2)
+        except Exception as e:
+            print(f"Error saving data: {e}")
+
     def get_current_pet(self):
-        """Get current pet - from backend if logged in, otherwise return None"""
         if not self.is_logged_in or not self.auth_token:
             return None
-        
         pets = self.fetch_pets_from_backend()
-        if pets:
-            # Convert backend format to local format
-            converted_pets = []
-            for p in pets:
-                # Handle last_fed - backend returns datetime, convert to string
-                last_fed = p.get('last_fed')
-                if isinstance(last_fed, str):
-                    last_fed_str = last_fed.split('T')[0]  # Extract date from ISO format
-                elif hasattr(last_fed, 'strftime'):
-                    last_fed_str = last_fed.strftime('%Y-%m-%d')
-                else:
-                    last_fed_str = datetime.now().strftime('%Y-%m-%d')
-                
-                converted_pets.append({
-                    'id': p.get('id'),
-                    'name': p.get('name'),
-                    'type': p.get('type'),
-                    'age': p.get('age', 0),
-                    'xp': 0,  # XP not in backend schema
-                    'hunger': p.get('hunger', 100),
-                    'last_fed': last_fed_str,
-                    'is_alive': p.get('is_alive', True)
-                })
-            # Return first pet (or could use current_pet_id if stored)
-            return converted_pets[0] if converted_pets else None
-        return None
+        if not pets:
+            return None
+        converted = []
+        for p in pets:
+            lf = p.get('last_fed')
+            if isinstance(lf, str):
+                lf = lf.split('T')[0]
+            elif hasattr(lf, 'strftime'):
+                lf = lf.strftime('%Y-%m-%d')
+            else:
+                lf = datetime.now().strftime('%Y-%m-%d')
+            converted.append({
+                'id': p.get('id'), 'name': p.get('name'),
+                'type': p.get('type'), 'age': p.get('age', 0),
+                'xp': 0, 'hunger': p.get('hunger', 100),
+                'last_fed': lf, 'is_alive': p.get('is_alive', True),
+            })
+        return converted[0]
 
     def save_current_pet(self, pet):
         pets = self.user_data.get('pets', [])
@@ -146,7 +207,6 @@ class BlossomFocusApp:
         self.save_user_data()
 
     def update_pet_hunger(self, pet):
-        from datetime import datetime
         last_fed = datetime.strptime(pet['last_fed'], '%Y-%m-%d')
         days_unfed = (datetime.now() - last_fed).days
         if days_unfed > 0:
@@ -154,1733 +214,2013 @@ class BlossomFocusApp:
             if days_unfed >= 7:
                 pet['is_alive'] = False
         return pet
-    
-    def save_user_data(self):
-        """Save user data to JSON file"""
-        try:
-            os.makedirs('fe', exist_ok=True)
-            with open('fe/user_data.json', 'w') as f:
-                json.dump(self.user_data, f, indent=2)
-        except Exception as e:
-            print(f"Error saving data: {e}")
-    
-    def create_main_interface(self):
-        """Create the main application interface"""
-        # Main container
-        self.main_frame = tk.Frame(self.root, bg=self.colors['black'])
+
+    # ─── layout ───────────────────────────────────────────────────────────────
+
+    def _create_main_interface(self):
+        self.main_frame = tk.Frame(self.root, bg=self.C['bg'])
         self.main_frame.pack(fill='both', expand=True)
-        
-        # Navigation sidebar
-        self.create_sidebar()
-        
-        # Content area
-        self.content_frame = tk.Frame(self.main_frame, bg=self.colors['black'])
-        self.content_frame.pack(side='right', fill='both', expand=True, padx=20, pady=20)
-        
-        # Show Task & Focus by default
-        self.show_focus()
-    
-    def create_sidebar(self):
-        """Create navigation sidebar"""
-        sidebar = tk.Frame(self.main_frame, bg=self.colors['dark_gray'], width=250)
-        sidebar.pack(side='left', fill='y', padx=(0, 20))
+        self._create_sidebar()
+        self.content_frame = tk.Frame(self.main_frame, bg=self.C['bg'])
+        self.content_frame.pack(side='right', fill='both', expand=True, padx=32, pady=28)
+        self.show_today()
+
+    def _create_sidebar(self):
+        sidebar = tk.Frame(self.main_frame, bg=self.C['surface'], width=220)
+        sidebar.pack(side='left', fill='y')
         sidebar.pack_propagate(False)
-        
-        # App title
-        title_label = tk.Label(sidebar, text="🌸 BLOSSOM", 
-                              font=('Orbitron', 16, 'bold'),
-                              fg=self.colors['hot_pink'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(30, 40))
-        
-        # User stats
-        stats_frame = tk.Frame(sidebar, bg=self.colors['dark_gray'])
-        stats_frame.pack(fill='x', padx=20, pady=(0, 30))
-        
-        # Fetch XP from backend if logged in, otherwise show 0
+
+        # Brand
+        brand_frame = tk.Frame(sidebar, bg=self.C['surface'])
+        brand_frame.pack(fill='x', padx=22, pady=(28, 6))
+
+        tk.Label(brand_frame, text="Tendr",
+                 font=(*self.FONT_SERIF, 20, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w')
+
+        tk.Label(brand_frame, text=get_edition_label(),
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', pady=(2, 0))
+
+        # Rule
+        tk.Frame(sidebar, bg=self.C['rule'], height=1).pack(fill='x', padx=22, pady=(14, 18))
+
+        # Stats
+        stats_frame = tk.Frame(sidebar, bg=self.C['surface'])
+        stats_frame.pack(fill='x', padx=22, pady=(0, 18))
+
+        tk.Label(stats_frame, text="XP",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w')
+
         if self.is_logged_in and self.auth_token:
-            backend_xp = self.fetch_user_xp_from_backend()
-            self.user_data['xp'] = backend_xp
+            xp = self.fetch_user_xp_from_backend()
+            self.user_data['xp'] = xp
         else:
             self.user_data['xp'] = 0
-        
-        self.xp_label = tk.Label(stats_frame, text=f"XP: {self.user_data['xp']}", 
-                           font=('Montserrat', 10),
-                           fg=self.colors['white'], 
-                           bg=self.colors['dark_gray'])
-        self.xp_label.pack()
-        
-        self.streak_label = tk.Label(stats_frame, text=f"🔥 Streak: {self.user_data['streak']} days", 
-                               font=('Montserrat', 10),
-                               fg=self.colors['neon_purple'], 
-                               bg=self.colors['dark_gray'])
-        self.streak_label.pack()
-        
-        # Navigation buttons
-        nav_buttons = [
-            ("⏰ Task & Focus", "focus"),
-            ("🐾 My Pets", "pet"),
-            ("📊 Analytics", "analytics"),
-            ("⚙️ Settings", "settings")
+
+        self.xp_label = tk.Label(stats_frame,
+                                  text=str(self.user_data['xp']),
+                                  font=(*self.FONT_MONO, 14, 'bold'),
+                                  fg=self.C['amber'], bg=self.C['surface'],
+                                  anchor='w')
+        self.xp_label.pack(anchor='w', pady=(1, 8))
+
+        tk.Label(stats_frame, text="STREAK",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w')
+
+        self.streak_label = tk.Label(stats_frame,
+                                      text=f"{self.user_data['streak']} days",
+                                      font=(*self.FONT_MONO, 12),
+                                      fg=self.C['ink_soft'], bg=self.C['surface'],
+                                      anchor='w')
+        self.streak_label.pack(anchor='w', pady=(1, 0))
+
+        # Rule
+        tk.Frame(sidebar, bg=self.C['rule'], height=1).pack(fill='x', padx=22, pady=(4, 18))
+
+        # Nav
+        tk.Label(sidebar, text="NAVIGATE",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=22, pady=(0, 8))
+
+        self._nav_buttons = {}
+        nav_items = [
+            ("Today",   "today"),
+            ("Pet",     "pet"),
+            ("Ledger",  "ledger"),
+            ("Archive", "archive"),
         ]
-        
-        for text, page in nav_buttons:
-            btn = tk.Button(sidebar, text=text, 
-                           font=('Montserrat', 11, 'bold'),
-                           fg=self.colors['white'],
-                           bg=self.colors['light_gray'],
-                           activebackground=self.colors['hot_pink'],
-                           activeforeground=self.colors['white'],
-                           border=0,
-                           pady=15,
-                           command=lambda p=page: self.switch_page(p))
-            btn.pack(fill='x', padx=20, pady=5)
-    
+        for label, page in nav_items:
+            btn = tk.Button(sidebar, text=label,
+                            font=(*self.FONT_SERIF, 13, 'italic'),
+                            fg=self.C['ink_soft'],
+                            bg=self.C['surface'],
+                            activebackground=self.C['hi'],
+                            activeforeground=self.C['accent'],
+                            border=0, pady=10, anchor='w', padx=22,
+                            cursor='hand2',
+                            command=lambda p=page: self.switch_page(p))
+            btn.pack(fill='x')
+            self._nav_buttons[page] = btn
+
+        self._update_nav_highlight(self.current_page)
+
+    def _update_nav_highlight(self, active):
+        for page, btn in self._nav_buttons.items():
+            if page == active:
+                btn.config(fg=self.C['accent'], bg=self.C['hi'])
+            else:
+                btn.config(fg=self.C['ink_soft'], bg=self.C['surface'])
+
     def update_sidebar_stats(self):
-        """Update the sidebar statistics display"""
-        # If logged in, fetch XP from backend
         if self.is_logged_in and self.auth_token:
-            backend_xp = self.fetch_user_xp_from_backend()
-            self.user_data['xp'] = backend_xp
+            self.user_data['xp'] = self.fetch_user_xp_from_backend()
         else:
-            # If not logged in, XP should be 0
             self.user_data['xp'] = 0
-        
         if hasattr(self, 'xp_label'):
-            self.xp_label.config(text=f"XP: {self.user_data['xp']}")
+            self.xp_label.config(text=str(self.user_data['xp']))
         if hasattr(self, 'streak_label'):
-            self.streak_label.config(text=f"🔥 Streak: {self.user_data['streak']} days")
-    
+            self.streak_label.config(text=f"{self.user_data['streak']} days")
+
     def switch_page(self, page):
-        """Switch between different pages"""
         self.current_page = page
-        # Clear content frame
-        for widget in self.content_frame.winfo_children():
-            widget.destroy()
-        # Show appropriate page
-        if page == "focus":
-            self.show_focus()
-        elif page == "pet":
-            self.show_pet()
-        elif page == "analytics":
-            self.show_analytics()
-        elif page == "settings":
-            self.show_settings()
-    
-    # Removed show_dashboard and related dashboard code
-    
-    def show_focus(self):
-        """Show Task & Focus page: timer and task manager together"""
-        # Page title
-        title = tk.Label(self.content_frame, text="⏰ TASK & FOCUS", 
-                        font=('Orbitron', 24, 'bold'),
-                        fg=self.colors['neon_purple'], 
-                        bg=self.colors['black'])
-        title.pack(pady=(0, 30))
-        
-        # Main container: horizontal split (timer | task manager)
-        main_frame = tk.Frame(self.content_frame, bg=self.colors['black'])
-        main_frame.pack(fill='both', expand=True)
+        for w in self.content_frame.winfo_children():
+            w.destroy()
+        self._update_nav_highlight(page)
+        dispatch = {
+            'today':   self.show_today,
+            'pet':     self.show_pet,
+            'ledger':  self.show_analytics,
+            'archive': self.show_settings,
+            # keep old keys working
+            'focus':    self.show_today,
+            'analytics': self.show_analytics,
+            'settings':  self.show_settings,
+        }
+        dispatch.get(page, self.show_today)()
 
-        # Timer section (left)
-        timer_frame = tk.Frame(main_frame, bg=self.colors['dark_gray'])
-        timer_frame.pack(side='left', fill='y', expand=True, padx=20, pady=20)
+    # ─── helpers ──────────────────────────────────────────────────────────────
 
-        self.timer_display = tk.Label(timer_frame, text="25:00", 
-                                     font=('Orbitron', 48, 'bold'),
-                               fg=self.colors['electric_blue'], 
-                               bg=self.colors['dark_gray'])
-        self.timer_display.pack(padx=50, pady=30)
+    def _page_eyebrow(self, text):
+        tk.Label(self.content_frame, text=text,
+                 font=(*self.FONT_MONO, 9),
+                 fg=self.C['muted'], bg=self.C['bg'],
+                 anchor='w').pack(anchor='w', pady=(0, 4))
 
-        controls_frame = tk.Frame(timer_frame, bg=self.colors['dark_gray'])
-        controls_frame.pack(pady=20)
-        
-        self.start_btn = ttk.Button(controls_frame, text="🎯 Start Focus", style='Neon.TButton', command=self.start_timer)
-        self.start_btn.pack(side='left', padx=10)
-        self.pause_btn = ttk.Button(controls_frame, text="⏸️ Pause", style='Electric.TButton', command=self.pause_timer)
-        self.pause_btn.pack(side='left', padx=10)
-        self.reset_btn = ttk.Button(controls_frame, text="🔄 Reset", style='Purple.TButton', command=self.reset_timer)
-        self.reset_btn.pack(side='left', padx=10)
+    def _page_title(self, text, color=None):
+        tk.Label(self.content_frame, text=text,
+                 font=(*self.FONT_SERIF, 26, 'italic'),
+                 fg=color or self.C['ink'], bg=self.C['bg'],
+                 anchor='w').pack(anchor='w', pady=(0, 6))
 
-        length_frame = tk.Frame(timer_frame, bg=self.colors['dark_gray'])
-        length_frame.pack(pady=30)
-        length_label = tk.Label(length_frame, text="Session Length:", font=('Montserrat', 12, 'bold'), fg=self.colors['white'], bg=self.colors['dark_gray'])
-        length_label.pack()
-        lengths = [("25 min", 25), ("45 min", 45), ("60 min", 60)]
-        for text, minutes in lengths:
-            btn = tk.Button(length_frame, text=text, font=('Montserrat', 10), fg=self.colors['white'], bg=self.colors['light_gray'], command=lambda m=minutes: self.set_timer_length(m))
-            btn.pack(side='left', padx=5)
-        
-        # Task manager section (right)
-        task_frame = tk.Frame(main_frame, bg=self.colors['dark_gray'])
-        task_frame.pack(side='left', fill='both', expand=True, padx=20, pady=20)
-        
-        add_title = tk.Label(task_frame, text="Add New Task", font=('Montserrat', 14, 'bold'), fg=self.colors['white'], bg=self.colors['dark_gray'])
-        add_title.pack(pady=15)
-        input_frame = tk.Frame(task_frame, bg=self.colors['dark_gray'])
-        input_frame.pack(pady=10)
-        self.task_entry = tk.Entry(input_frame, font=('Montserrat', 11), width=30, bg=self.colors['light_gray'], fg=self.colors['white'], insertbackground=self.colors['white'])
-        self.task_entry.pack(side='left', padx=10)
+    def _rule(self, parent=None, padx=0, pady=12):
+        p = parent or self.content_frame
+        tk.Frame(p, bg=self.C['rule'], height=1).pack(fill='x', padx=padx, pady=pady)
+
+    def _card(self, parent=None, padx=0, pady=8):
+        p = parent or self.content_frame
+        f = tk.Frame(p, bg=self.C['surface'], bd=0,
+                     highlightthickness=1,
+                     highlightbackground=self.C['rule'],
+                     highlightcolor=self.C['rule'])
+        f.pack(fill='x', padx=padx, pady=pady)
+        return f
+
+    def _section_label(self, parent, text):
+        tk.Label(parent, text=text,
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=parent.cget('bg'),
+                 anchor='w').pack(anchor='w', padx=16, pady=(14, 4))
+
+    def _primary_btn(self, parent, text, cmd, padx=6, pady=0):
+        return tk.Button(parent, text=text,
+                         font=(*self.FONT_SANS, 10, 'bold'),
+                         fg=self.C['bg'], bg=self.C['accent'],
+                         activebackground='#c9604a',
+                         activeforeground=self.C['bg'],
+                         border=0, padx=14, pady=7,
+                         cursor='hand2', command=cmd)
+
+    def _ghost_btn(self, parent, text, cmd):
+        return tk.Button(parent, text=text,
+                         font=(*self.FONT_SANS, 10),
+                         fg=self.C['ink_soft'], bg=self.C['surface2'],
+                         activebackground=self.C['surface'],
+                         activeforeground=self.C['ink'],
+                         border=0, padx=12, pady=6,
+                         cursor='hand2', command=cmd)
+
+    def _input(self, parent, width=30, show=None):
+        kwargs = dict(font=(*self.FONT_SANS, 11),
+                      bg=self.C['surface2'], fg=self.C['ink'],
+                      insertbackground=self.C['ink'],
+                      relief='flat', bd=0,
+                      highlightthickness=1,
+                      highlightbackground=self.C['rule'],
+                      highlightcolor=self.C['accent'],
+                      width=width)
+        if show:
+            kwargs['show'] = show
+        return tk.Entry(parent, **kwargs)
+
+    # ─── Today (Task & Focus) ─────────────────────────────────────────────────
+
+    def show_today(self):
+        now = datetime.now()
+        days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+        months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+        eyebrow = f"{days[now.weekday()]}  ·  {now.day} {months[now.month-1]}"
+        self._page_eyebrow(eyebrow)
+        self._page_title("Today")
+        self._rule(pady=(4, 16))
+
+        body = tk.Frame(self.content_frame, bg=self.C['bg'])
+        body.pack(fill='both', expand=True)
+
+        # Left — timer
+        left = tk.Frame(body, bg=self.C['surface'],
+                        highlightthickness=1,
+                        highlightbackground=self.C['rule'],
+                        highlightcolor=self.C['rule'],
+                        width=380)
+        left.pack(side='left', fill='y', padx=(0, 16), pady=0)
+        left.pack_propagate(False)
+
+        self._section_label(left, "FOCUS TIMER")
+
+        self.timer_display = tk.Label(left,
+                                      text="25:00",
+                                      font=(*self.FONT_SERIF, 52, 'bold'),
+                                      fg=self.C['ink'], bg=self.C['surface'])
+        self.timer_display.pack(pady=(8, 4))
+
+        timer_sub = tk.Label(left, text="focus session",
+                             font=(*self.FONT_MONO, 9),
+                             fg=self.C['muted'], bg=self.C['surface'])
+        timer_sub.pack()
+
+        tk.Frame(left, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=16)
+
+        controls = tk.Frame(left, bg=self.C['surface'])
+        controls.pack(padx=16, pady=(0, 12))
+
+        self.start_btn = self._primary_btn(controls, "Start", self.start_timer)
+        self.start_btn.pack(side='left', padx=(0, 6))
+        self._ghost_btn(controls, "Pause", self.pause_timer).pack(side='left', padx=6)
+        self._ghost_btn(controls, "Reset", self.reset_timer).pack(side='left', padx=6)
+
+        tk.Frame(left, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(4, 12))
+        self._section_label(left, "SESSION LENGTH")
+
+        length_row = tk.Frame(left, bg=self.C['surface'])
+        length_row.pack(padx=16, pady=(0, 20))
+        for label, mins in [("25 min", 25), ("45 min", 45), ("60 min", 60)]:
+            btn = tk.Button(length_row, text=label,
+                            font=(*self.FONT_MONO, 9),
+                            fg=self.C['muted'], bg=self.C['surface2'],
+                            activebackground=self.C['hi'],
+                            activeforeground=self.C['accent'],
+                            border=0, padx=10, pady=5,
+                            cursor='hand2',
+                            command=lambda m=mins: self.set_timer_length(m))
+            btn.pack(side='left', padx=4)
+
+        # Right — tasks
+        right = tk.Frame(body, bg=self.C['bg'])
+        right.pack(side='left', fill='both', expand=True)
+
+        self._section_label(right, "ADD TASK")
+
+        add_card = tk.Frame(right, bg=self.C['surface'],
+                            highlightthickness=1,
+                            highlightbackground=self.C['rule'],
+                            highlightcolor=self.C['rule'])
+        add_card.pack(fill='x', pady=(4, 16))
+
+        input_row = tk.Frame(add_card, bg=self.C['surface'])
+        input_row.pack(fill='x', padx=16, pady=(12, 6))
+
+        self.task_entry = self._input(input_row, width=38)
+        self.task_entry.pack(side='left', padx=(0, 12), ipady=4)
+
         self.priority_var = tk.StringVar(value="medium")
-        priority_frame = tk.Frame(input_frame, bg=self.colors['dark_gray'])
-        priority_frame.pack(side='left', padx=10)
-        for priority in ['low', 'medium', 'high']:
-            rb = tk.Radiobutton(priority_frame, text=priority.capitalize(), variable=self.priority_var, value=priority, font=('Montserrat', 9), fg=self.colors['white'], bg=self.colors['dark_gray'], selectcolor=self.colors['light_gray'])
-            rb.pack(side='left', padx=5)
-        ttk.Button(input_frame, text="Add Task", style='Neon.TButton', command=self.add_task).pack(side='left', padx=10)
-        
-        # Tasks list
-        tasks_container = tk.Frame(task_frame, bg=self.colors['black'])
-        tasks_container.pack(fill='both', expand=True, padx=10, pady=10)
-        tasks_title = tk.Label(tasks_container, text="Your Tasks", font=('Montserrat', 16, 'bold'), fg=self.colors['white'], bg=self.colors['black'])
-        tasks_title.pack(pady=(0, 15))
-        canvas = tk.Canvas(tasks_container, bg=self.colors['dark_gray'])
-        scrollbar = ttk.Scrollbar(tasks_container, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.colors['dark_gray'])
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        prio_frame = tk.Frame(input_row, bg=self.C['surface'])
+        prio_frame.pack(side='left', padx=(0, 12))
+        tk.Label(prio_frame, text="PRIORITY", font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(anchor='w')
+        prio_btns = tk.Frame(prio_frame, bg=self.C['surface'])
+        prio_btns.pack()
+        for p in ['low', 'medium', 'high']:
+            rb = tk.Radiobutton(prio_btns, text=p,
+                                variable=self.priority_var, value=p,
+                                font=(*self.FONT_MONO, 8),
+                                fg=self.C['muted'], bg=self.C['surface'],
+                                selectcolor=self.C['surface'],
+                                activebackground=self.C['surface'],
+                                activeforeground=self.C['accent'])
+            rb.pack(side='left', padx=3)
+
+        self._primary_btn(input_row, "Add", self.add_task).pack(side='left')
+
+        # Category chips row
+        cat_row = tk.Frame(add_card, bg=self.C['surface'])
+        cat_row.pack(fill='x', padx=16, pady=(0, 12))
+        tk.Label(cat_row, text="CATEGORY",
+                 font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='left', padx=(0, 8))
+
+        self.category_var = tk.StringVar(value="")
+        CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health']
+        self._cat_btns = {}
+        for cat in CATEGORIES:
+            btn = tk.Button(cat_row, text=cat,
+                            font=(*self.FONT_MONO, 8),
+                            fg=self.C['muted'], bg=self.C['surface2'],
+                            activeforeground=self.C['accent'],
+                            activebackground=self.C['hi'],
+                            border=0, padx=9, pady=3, cursor='hand2',
+                            command=lambda c=cat: self._select_category(c))
+            btn.pack(side='left', padx=3)
+            self._cat_btns[cat] = btn
+
+        # Task list
+        self._section_label(right, "TASKS")
+
+        list_wrap = tk.Frame(right, bg=self.C['bg'])
+        list_wrap.pack(fill='both', expand=True)
+
+        canvas = tk.Canvas(list_wrap, bg=self.C['bg'], bd=0,
+                           highlightthickness=0)
+        scrollbar = ttk.Scrollbar(list_wrap, orient="vertical",
+                                   command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg=self.C['bg'])
+        scroll_frame.bind("<Configure>",
+                          lambda e: canvas.configure(
+                              scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        
-        # Load tasks - from backend if logged in, otherwise show empty
+
         tasks = []
         if self.is_logged_in and self.auth_token:
-            backend_tasks = self.fetch_tasks_from_backend()
-            # Convert backend format to local format for display
-            for bt in backend_tasks:
+            for bt in self.fetch_tasks_from_backend():
                 tasks.append({
-                    'id': bt.get('id'),
-                    'text': bt.get('title', ''),
+                    'id':       bt.get('id'),
+                    'text':     bt.get('title', ''),
                     'priority': bt.get('priority', 'medium'),
-                    'completed': bt.get('completed', False)
+                    'category': bt.get('category') or '',
+                    'completed': bt.get('completed', False),
                 })
-        # If not logged in, tasks list stays empty
-        
+
         if not tasks:
-            no_tasks = tk.Label(scrollable_frame, text="No tasks yet! Add your first task above 🎯", font=('Montserrat', 12), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
-            no_tasks.pack(expand=True, pady=50)
+            tk.Label(scroll_frame,
+                     text="No tasks yet — add one above.",
+                     font=(*self.FONT_MONO, 10),
+                     fg=self.C['muted'], bg=self.C['bg']).pack(pady=40)
         else:
-            # Sort tasks: incomplete first, then completed (at bottom)
-            sorted_tasks = sorted(tasks, key=lambda t: t.get('completed', False))
-            for i, task in enumerate(sorted_tasks):
-                self.create_task_widget(scrollable_frame, task, i)
-    
+            for i, task in enumerate(sorted(tasks, key=lambda t: t.get('completed', False))):
+                self.create_task_widget(scroll_frame, task, i)
+
+    def _select_category(self, cat):
+        if self.category_var.get() == cat:
+            self.category_var.set("")
+            self._cat_btns[cat].config(fg=self.C['muted'], bg=self.C['surface2'])
+        else:
+            if self.category_var.get() and self.category_var.get() in self._cat_btns:
+                self._cat_btns[self.category_var.get()].config(
+                    fg=self.C['muted'], bg=self.C['surface2'])
+            self.category_var.set(cat)
+            self._cat_btns[cat].config(fg=self.C['accent'], bg=self.C['hi'])
+
+    # ─── timer logic ──────────────────────────────────────────────────────────
+
     def set_timer_length(self, minutes):
-        """Set focus session length"""
         self.focus_session_length = minutes * 60
         if not self.timer_running:
             self.timer_seconds = self.focus_session_length
             self.update_timer_display()
-    
+
     def start_timer(self):
-        """Start the focus timer"""
-        # Check if logged in
         if not self.is_logged_in or not self.auth_token:
             self.show_login_required_popup("use the focus timer")
             return
-        
         if not self.timer_running:
             self.timer_running = True
-            self.timer_thread = threading.Thread(target=self.run_timer)
-            self.timer_thread.daemon = True
-            self.timer_thread.start()
-    
+            t = threading.Thread(target=self.run_timer)
+            t.daemon = True
+            t.start()
+
     def pause_timer(self):
-        """Pause the focus timer"""
         self.timer_running = False
-    
+
     def reset_timer(self):
-        """Reset the focus timer"""
         self.timer_running = False
         self.timer_seconds = self.focus_session_length
         self.update_timer_display()
-    
+
     def run_timer(self):
-        """Run the timer in a separate thread"""
         while self.timer_running and self.timer_seconds > 0:
             time.sleep(1)
             if self.timer_running:
                 self.timer_seconds -= 1
                 self.root.after(0, self.update_timer_display)
-        
         if self.timer_seconds <= 0:
             self.root.after(0, self.timer_finished)
-    
+
     def update_timer_display(self):
-        """Update the timer display"""
-        minutes = self.timer_seconds // 60
-        seconds = self.timer_seconds % 60
-        time_text = f"{minutes:02d}:{seconds:02d}"
-        self.timer_display.config(text=time_text)
-    
+        m = self.timer_seconds // 60
+        s = self.timer_seconds % 60
+        if hasattr(self, 'timer_display'):
+            self.timer_display.config(text=f"{m:02d}:{s:02d}")
+
     def timer_finished(self):
-        """Handle timer completion"""
         self.timer_running = False
-        
-        # Only update stats if logged in
         if self.is_logged_in and self.auth_token:
             self.user_data['focus_sessions'] += 1
             self.user_data['total_focus_time'] += self.focus_session_length // 60
-            # XP is managed by backend, so we'll fetch it after timer completion
             self.save_user_data()
-            self.update_sidebar_stats()  # This will fetch XP from backend
-            messagebox.showinfo("Focus Session Complete!", 
-                               "🎉 Great focus session! +25 XP earned!")
+            self.update_sidebar_stats()
+            messagebox.showinfo("Session complete",
+                                "Focus session done. +25 XP earned.")
         else:
-            # Should not reach here if login check is in start_timer, but just in case
-            messagebox.showwarning("Not Logged In", "Please log in to track your focus sessions!")
-        
-        # Reset timer
+            messagebox.showwarning("Not logged in",
+                                   "Log in to track your sessions.")
         self.timer_seconds = self.focus_session_length
         self.update_timer_display()
-    
+
+    # ─── tasks ────────────────────────────────────────────────────────────────
+
     def add_task(self):
-        """Add a new task to the task list"""
-        # Check if logged in
         if not self.is_logged_in or not self.auth_token:
             self.show_login_required_popup("add tasks")
             return
-        
-        task_text = self.task_entry.get().strip()
-        
-        if not task_text:
-            messagebox.showwarning("Empty Task", "Please enter a task description!")
+        text = self.task_entry.get().strip()
+        if not text:
+            messagebox.showwarning("Empty task", "Enter a task description.")
             return
-        
-        priority = self.priority_var.get()
-        
-        # Add task to backend
-        task_data = self.add_task_to_backend(task_text, priority)
+        category = self.category_var.get() if hasattr(self, 'category_var') else ''
+        task_data = self.add_task_to_backend(text, self.priority_var.get(), category or None)
         if task_data:
-            messagebox.showinfo("Success", "Task added successfully!")
             self.task_entry.delete(0, tk.END)
-            self.switch_page('focus')
+            if hasattr(self, 'category_var'):
+                self.category_var.set('')
+            self.switch_page('today')
         else:
-            messagebox.showerror("Error", "Failed to add task to backend!")
-    
+            messagebox.showerror("Error", "Failed to add task.")
+
     def create_task_widget(self, parent, task, index):
-        """Create a widget for displaying a single task"""
-        # Determine priority color
-        priority_colors = {
-            'low': self.colors['electric_blue'],
-            'medium': self.colors['neon_purple'],
-            'high': self.colors['hot_pink']
+        prio_colors = {
+            'low':    self.C['accent3'],
+            'medium': self.C['amber'],
+            'high':   self.C['accent'],
         }
-        priority_color = priority_colors.get(task['priority'], self.colors['white'])
-        
-        # Task frame
-        task_frame = tk.Frame(parent, bg=self.colors['light_gray'], relief='raised', bd=1)
-        task_frame.pack(fill='x', padx=10, pady=5)
-        
-        # Checkbox
+        prio_color = prio_colors.get(task['priority'], self.C['muted'])
+
+        row = tk.Frame(parent, bg=self.C['surface'],
+                       highlightthickness=1,
+                       highlightbackground=self.C['rule'],
+                       highlightcolor=self.C['rule'])
+        row.pack(fill='x', pady=4)
+
         var = tk.BooleanVar(value=task['completed'])
-        checkbox = tk.Checkbutton(task_frame, variable=var, 
-                                  bg=self.colors['light_gray'],
-                                  activebackground=self.colors['light_gray'],
-                                  command=lambda task_id=task['id']: self.complete_task(task_id))
-        checkbox.pack(side='left', padx=10, pady=8)
-        
-        # Task text
-        text_color = '#808080' if task['completed'] else self.colors['white']
-        font_style = ('Montserrat', 11, 'overstrike') if task['completed'] else ('Montserrat', 11)
-        
-        task_label = tk.Label(task_frame, text=task['text'], 
-                             font=font_style,
-                             fg=text_color,
-                             bg=self.colors['light_gray'],
-                             anchor='w')
-        task_label.pack(side='left', fill='x', expand=True, padx=10, pady=8)
-        
-        # Priority badge
-        priority_badge = tk.Label(task_frame, 
-                                 text=task['priority'].upper(),
-                                 font=('Montserrat', 8, 'bold'),
-                                 fg=self.colors['white'],
-                                 bg=priority_color,
-                                 padx=8, pady=4)
-        priority_badge.pack(side='left', padx=5)
-        
-        # Delete button
-        delete_btn = tk.Button(task_frame, text="❌", 
-                              font=('Montserrat', 10),
-                              fg=self.colors['hot_pink'],
-                              bg=self.colors['light_gray'],
-                              border=0,
-                              command=lambda task_id=task['id']: self.delete_task(task_id))
-        delete_btn.pack(side='left', padx=10, pady=8)
-    
+        cb = tk.Checkbutton(row, variable=var,
+                            bg=self.C['surface'],
+                            activebackground=self.C['surface'],
+                            selectcolor=self.C['surface2'],
+                            command=lambda tid=task['id']: self.complete_task(tid))
+        cb.pack(side='left', padx=10, pady=10)
+
+        txt_color = self.C['muted'] if task['completed'] else self.C['ink']
+        txt_font = (*self.FONT_SANS, 11, 'overstrike') if task['completed'] else (*self.FONT_SANS, 11)
+        tk.Label(row, text=task['text'],
+                 font=txt_font, fg=txt_color, bg=self.C['surface'],
+                 anchor='w').pack(side='left', fill='x', expand=True, padx=6, pady=10)
+
+        cat = task.get('category', '')
+        if cat:
+            tk.Label(row, text=cat,
+                     font=(*self.FONT_MONO, 8),
+                     fg=self.C['accent2'], bg=self.C['surface'],
+                     padx=6, pady=3).pack(side='left', padx=2)
+
+        tk.Label(row, text=task['priority'].upper(),
+                 font=(*self.FONT_MONO, 8, 'bold'),
+                 fg=prio_color, bg=self.C['surface'],
+                 padx=6, pady=3).pack(side='left', padx=2)
+
+        tk.Button(row, text="×",
+                  font=(*self.FONT_SANS, 14),
+                  fg=self.C['muted'], bg=self.C['surface'],
+                  activeforeground=self.C['accent'],
+                  activebackground=self.C['surface'],
+                  border=0, cursor='hand2',
+                  command=lambda tid=task['id']: self.delete_task(tid)
+                  ).pack(side='left', padx=10)
+
     def complete_task(self, task_id):
-        """Toggle task completion status and award XP"""
-        # If logged in, use backend
         if self.is_logged_in and self.auth_token:
-            # First get current task status
             tasks = self.fetch_tasks_from_backend()
-            task = None
-            for t in tasks:
-                if t.get('id') == task_id:
-                    task = t
-                    break
-            
+            task = next((t for t in tasks if t.get('id') == task_id), None)
             if not task:
-                messagebox.showerror("Error", "Task not found!")
+                messagebox.showerror("Error", "Task not found.")
                 return
-            
-            # Toggle completion status
             new_completed = not task.get('completed', False)
             task_data = self.update_task_completed_backend(task_id, new_completed)
-            
             if task_data:
-                # Get XP from backend response
-                backend_xp = task_data.get('userXP')
-                if backend_xp is not None:
-                    self.user_data['xp'] = backend_xp
-                
-                # Award XP if completing
+                xp = task_data.get('userXP')
+                if xp is not None:
+                    self.user_data['xp'] = xp
                 if new_completed:
                     xp_gained = task_data.get('xpReward', 0)
                     self.user_data['completed_tasks'] += 1
-                    messagebox.showinfo("Task Completed!", 
-                                      f"✅ Great job! +{xp_gained} XP earned!")
+                    messagebox.showinfo("Done", f"+{xp_gained} XP")
                 self.save_user_data()
                 self.update_sidebar_stats()
-                self.switch_page('focus')
+                self.switch_page('today')
             else:
-                messagebox.showerror("Error", "Failed to update task!")
+                messagebox.showerror("Error", "Failed to update task.")
         else:
-            # Local storage (not logged in)
-            task = None
-            for t in self.user_data['tasks']:
-                if t['id'] == task_id:
-                    task = t
-                    break
-            
+            task = next((t for t in self.user_data['tasks'] if t['id'] == task_id), None)
             if not task:
                 return
-            
-            was_completed = task['completed']
-            task['completed'] = not was_completed
-            
-            if task['completed'] and not was_completed:
-                xp_rewards = {'low': 10, 'medium': 15, 'high': 25}
-                xp_gained = xp_rewards.get(task['priority'], 10)
-                self.user_data['xp'] += xp_gained
+            was = task['completed']
+            task['completed'] = not was
+            if task['completed'] and not was:
+                xp = {'low': 10, 'medium': 15, 'high': 25}.get(task['priority'], 10)
+                self.user_data['xp'] += xp
                 self.user_data['completed_tasks'] += 1
-                messagebox.showinfo("Task Completed!", 
-                                  f"✅ Great job! +{xp_gained} XP earned!")
-            
+                messagebox.showinfo("Done", f"+{xp} XP")
             self.save_user_data()
             self.update_sidebar_stats()
-            self.switch_page('focus')
-    
+            self.switch_page('today')
+
     def delete_task(self, task_id):
-        """Delete a task from the list"""
-        # If logged in, use backend
         if self.is_logged_in and self.auth_token:
             if self.delete_task_from_backend(task_id):
-                messagebox.showinfo("Success", "Task deleted successfully!")
-                self.switch_page('focus')
+                self.switch_page('today')
             else:
-                messagebox.showerror("Error", "Failed to delete task from backend!")
+                messagebox.showerror("Error", "Failed to delete task.")
         else:
-            # Local storage (not logged in)
-            self.user_data['tasks'] = [t for t in self.user_data['tasks'] if t['id'] != task_id]
+            self.user_data['tasks'] = [t for t in self.user_data['tasks']
+                                       if t['id'] != task_id]
             self.save_user_data()
-            self.switch_page('focus')
-    
-    def get_pet_emoji(self):
-        pet_type = self.user_data.get('pet_type', 'cat')  # default to cat
-        pet_age = self.user_data.get('pet_age', 0)  # in years
-        is_alive = self.user_data.get('pet_is_alive', True)
+            self.switch_page('today')
 
-        # Determine stage
-        if pet_age < 1:
-            stage = 'baby'
-        elif pet_age < 3:
-            stage = 'young'
-        elif pet_age < 7:
-            stage = 'adult'
-        else:
-            stage = 'elder'
+    # ─── Pet page ─────────────────────────────────────────────────────────────
 
-        if not is_alive:
-            return '💀🐕' if pet_type == 'dog' else '💀🐱'
+    def _pet_stage(self, age):
+        if age < 8:  return 'baby'
+        if age < 22: return 'kid'
+        if age < 41: return 'teen'
+        return 'adult'
 
-        if pet_type == 'dog':
-            return {
-                'baby': '🐶',
-                'young': '🐕',
-                'adult': '🐕‍🦺',
-                'elder': '🦮',
-            }.get(stage, '🐕')
-        else:
-            return {
-                'baby': '🐱',
-                'young': '🐈',
-                'adult': '🐈‍⬛',
-                'elder': '🦁',
-            }.get(stage, '🐱')
+    def _pet_mood(self, belly, bond):
+        if belly >= 80 and bond >= 75: return 'happy'
+        if belly >= 70 and bond < 35:  return 'sleepy'
+        if belly < 30 and bond < 30:   return 'sad'
+        return 'content'
+
+    def _draw_pet_sprite(self, canvas, species, stage, mood, s=1.5):
+        """Draw pet sprite on a canvas. SVG coordinate space is 0-100."""
+        C = self.C
+        ink = C['ink']
+        acc = C['accent']
+        amb = C['amber']
+        sag = C['accent2']
+        BLUSH = '#f4b6b0'
+
+        def ov(cx, cy, rx, ry, fill, ol='', lw=1):
+            canvas.create_oval((cx-rx)*s, (cy-ry)*s, (cx+rx)*s, (cy+ry)*s,
+                               fill=fill, outline=ol, width=lw)
+
+        def ci(cx, cy, r, fill, ol='', lw=1):
+            ov(cx, cy, r, r, fill, ol, lw)
+
+        def pg(pts, fill, ol='', lw=1, smooth=False):
+            sp = [v*s for v in pts]
+            canvas.create_polygon(sp, fill=fill, outline=ol, width=lw, smooth=smooth)
+
+        def ln(x1, y1, x2, y2, fill, lw=1):
+            canvas.create_line(x1*s, y1*s, x2*s, y2*s, fill=fill, width=lw,
+                               capstyle='round')
+
+        def qb(x0, y0, cpx, cpy, x1, y1, fill, lw=1, filled=False):
+            raw = []
+            for i in range(13):
+                t = i/12; mt = 1-t
+                raw.extend([mt*mt*x0+2*mt*t*cpx+t*t*x1,
+                             mt*mt*y0+2*mt*t*cpy+t*t*y1])
+            sp = [v*s for v in raw]
+            if filled:
+                canvas.create_polygon(sp, fill=fill, outline='', smooth=False)
+            else:
+                canvas.create_line(sp, fill=fill, width=lw, capstyle='round',
+                                   joinstyle='round')
+
+        def txt(x, y, text, size, fill):
+            canvas.create_text(x*s, y*s, text=text, fill=fill,
+                               font=(*self.FONT_SERIF, max(6, int(size*s/1.5))))
+
+        def eyes(lEx, lEy, rEx, rEy, color=None):
+            col = color or ink
+            if mood == 'happy':
+                ci(lEx, lEy, 2.4, col); ci(rEx, rEy, 2.4, col)
+                ci(lEx+0.7, lEy-0.7, 0.7, '#ffffff'); ci(rEx+0.7, rEy-0.7, 0.7, '#ffffff')
+            elif mood == 'content':
+                qb(lEx-3, lEy, lEx, lEy-3, lEx+3, lEy, col, 2)
+                qb(rEx-3, rEy, rEx, rEy-3, rEx+3, rEy, col, 2)
+            elif mood == 'sad':
+                ci(lEx, lEy, 2.2, col); ci(rEx, rEy, 2.2, col)
+                qb(rEx+1, rEy+2, rEx+2.5, rEy+5, rEx+1.5, rEy+7, C['accent3'], 2)
+            else:  # sleepy
+                qb(lEx-3, lEy+1, lEx, lEy+3, lEx+3, lEy+1, col, 2)
+                qb(rEx-3, rEy+1, rEx, rEy+3, rEx+3, rEy+1, col, 2)
+
+        def mth(mx, my, w=6, color=None):
+            col = color or ink
+            if mood == 'happy':
+                qb(mx-w, my, mx, my+w, mx+w, my, acc, 2)
+            elif mood == 'content':
+                qb(mx-w/2, my, mx, my+2, mx+w/2, my, col, 2)
+            elif mood == 'sad':
+                qb(mx-w/2, my+2, mx, my-1, mx+w/2, my+2, col, 2)
+            else:  # sleepy
+                ov(mx, my+1, 1.5, 2, col)
+
+        def aura(cx, cy, r):
+            if mood == 'happy':
+                ci(cx+r*0.7, cy-r*0.9, 4, acc); ci(cx-r*0.85, cy-r*0.7, 2.5, acc)
+            elif mood == 'sleepy':
+                txt(cx+r*0.7,  cy-r*0.55,  'z', 9,  C['ink_soft'])
+                txt(cx+r*0.85, cy-r*0.85,  'z', 12, C['ink_soft'])
+                txt(cx+r*1.05, cy-r*1.15,  'Z', 15, C['ink_soft'])
+            elif mood == 'content':
+                txt(cx+r*0.85, cy-r*0.75, '✦', 11, amb)
+
+        # ── DOG BABY ──────────────────────────────────────────────────────────
+        if species == 'dog' and stage == 'baby':
+            fur = '#d9a26a'; furD = '#a87642'
+            ov(50, 68, 22, 14, fur, ink, 2)
+            ov(50, 70, 14, 8,  '#f0d4a6')
+            ov(38, 80, 4,  3,  fur, ink, 1)
+            ov(62, 80, 4,  3,  fur, ink, 1)
+            ci(50, 44, 22, fur, ink, 2)
+            pg([30,38, 24,50, 30,60, 34,56, 36,50], furD, ink, 1)
+            pg([70,38, 76,50, 70,60, 66,56, 64,50], furD, ink, 1)
+            ov(50, 50, 7, 5, '#f0d4a6', ink, 1)
+            ov(50, 48, 2, 1.4, ink)
+            ci(36, 48, 3, BLUSH); ci(64, 48, 3, BLUSH)
+            eyes(42, 42, 58, 42)
+            mth(50, 54, 4)
+            aura(50, 50, 26)
+
+        # ── DOG KID ───────────────────────────────────────────────────────────
+        elif species == 'dog' and stage == 'kid':
+            fur = '#c98e54'; furD = '#8e5e30'
+            ov(32, 82, 8, 6, fur, ink, 1); ov(68, 82, 8, 6, fur, ink, 1)
+            # body as closed bezier path approx
+            pg([30,76, 26,56, 38,50, 50,46, 62,50, 74,56, 70,76], fur, ink, 2, smooth=True)
+            ov(50, 66, 14, 10, '#e8c188')
+            ov(45, 77, 3, 7, fur, ink, 1); ov(55, 77, 3, 7, fur, ink, 1)
+            ci(50, 38, 20, fur, ink, 2)
+            pg([32,30, 26,44, 32,52, 40,44], furD, ink, 1)
+            pg([68,30, 74,44, 68,52, 60,44], furD, ink, 1)
+            ov(50, 44, 7, 5, '#e8c188', ink, 1)
+            ov(50, 42, 2, 1.4, ink)
+            ln(50, 44, 50, 48, ink)
+            ci(36, 42, 2.5, BLUSH); ci(64, 42, 2.5, BLUSH)
+            eyes(42, 36, 58, 36)
+            mth(50, 50, 5)
+            aura(50, 38, 24)
+
+        # ── DOG TEEN ──────────────────────────────────────────────────────────
+        elif species == 'dog' and stage == 'teen':
+            fur = '#e0b878'; furD = '#b8894a'; furL = '#f0d4a0'
+            ov(37.5, 72, 3.5, 10, fur, ink, 1); ov(62.5, 72, 3.5, 10, fur, ink, 1)
+            ov(37.5, 91, 5, 2.5, furD, ink, 1); ov(62.5, 91, 5, 2.5, furD, ink, 1)
+            pg([28,76, 22,56, 36,50, 50,46, 64,50, 78,56, 72,76, 66,82, 50,82, 34,82], fur, ink, 2, smooth=True)
+            pg([40,60, 44,72, 50,78, 56,72, 60,60, 55,64, 50,64, 45,64], furL)
+            if mood in ('happy', 'content'):
+                qb(72, 60, 86, 50, 84, 36, fur, 6)
+                qb(72, 60, 86, 50, 84, 36, ink, 2)
+            else:
+                qb(72, 64, 86, 70, 82, 80, fur, 6)
+                qb(72, 64, 86, 70, 82, 80, ink, 2)
+            ov(50, 34, 19, 18, fur, ink, 2)
+            pg([32,26, 22,32, 24,46, 28,52, 34,50, 34,38, 36,30], furD, ink, 1)
+            pg([68,26, 78,32, 76,46, 72,52, 66,50, 66,38, 64,30], furD, ink, 1)
+            ov(50, 42, 9, 6, furL, ink, 1)
+            ov(50, 40, 2.5, 1.6, ink)
+            ln(50, 42, 50, 46, ink)
+            ci(38, 38, 2.5, BLUSH); ci(62, 38, 2.5, BLUSH)
+            eyes(42, 32, 58, 32)
+            mth(50, 48, 4)
+            aura(50, 34, 22)
+
+        # ── DOG ADULT ─────────────────────────────────────────────────────────
+        elif species == 'dog' and stage == 'adult':
+            fur = '#9a663a'; furD = '#5e3d20'
+            pg([22,88, 14,70, 24,58, 38,64, 34,88], fur, ink, 2)
+            pg([78,88, 86,70, 76,58, 62,64, 66,88], fur, ink, 2)
+            pg([28,70, 22,48, 40,40, 60,40, 78,48, 72,70, 66,80, 50,80, 34,80], fur, ink, 2, smooth=True)
+            ov(50, 62, 18, 10, '#c08a55')
+            ov(43.5, 79, 3.5, 11, fur, ink, 1); ov(56.5, 79, 3.5, 11, fur, ink, 1)
+            if mood in ('happy', 'content'):
+                qb(74, 56, 90, 40, 86, 24, fur, 6)
+                qb(74, 56, 90, 40, 86, 24, ink, 2)
+            else:
+                qb(74, 60, 90, 70, 86, 84, fur, 6)
+                qb(74, 60, 90, 70, 86, 84, ink, 2)
+            ci(50, 30, 20, fur, ink, 2)
+            pg([30,22, 22,38, 30,50, 36,44, 38,36], furD, ink, 1)
+            pg([70,22, 78,38, 70,50, 64,44, 62,36], furD, ink, 1)
+            ov(50, 38, 9, 6, '#c08a55', ink, 1)
+            ov(50, 35, 2.5, 1.6, ink)
+            ln(50, 38, 50, 44, ink)
+            qb(34, 50, 50, 56, 66, 50, acc, 3)
+            ci(50, 54, 2, amb, ink, 1)
+            ci(36, 34, 2.5, BLUSH); ci(64, 34, 2.5, BLUSH)
+            eyes(42, 28, 58, 28)
+            mth(50, 44, 5)
+            aura(50, 30, 24)
+
+        # ── CAT BABY ──────────────────────────────────────────────────────────
+        elif species == 'cat' and stage == 'baby':
+            fur = '#e8d5b8'; stripe = '#a87642'
+            ov(50, 68, 24, 14, fur, ink, 2)
+            ov(50, 70, 16, 8,  '#f7eadb')
+            qb(40,58, 42,64, 38,70, stripe, 1)
+            qb(52,58, 54,64, 50,70, stripe, 1)
+            qb(64,58, 66,64, 62,70, stripe, 1)
+            qb(28, 72, 22, 60, 30, 54, fur, 8); qb(28, 72, 22, 60, 30, 54, ink, 2)
+            pg([34,28, 40,14, 46,26], fur, ink, 1)
+            pg([66,28, 60,14, 54,26], fur, ink, 1)
+            ci(50, 42, 22, fur, ink, 2)
+            pg([37,26, 40,18, 43,26], BLUSH)
+            pg([63,26, 60,18, 57,26], BLUSH)
+            pg([48,48, 52,48, 50,50], acc)
+            ln(38,50, 28,48, ink); ln(38,52, 28,53, ink)
+            ln(62,50, 72,48, ink); ln(62,52, 72,53, ink)
+            ci(36, 46, 3, BLUSH); ci(64, 46, 3, BLUSH)
+            eyes(42, 42, 58, 42)
+            mth(50, 54, 4)
+            aura(50, 42, 26)
+
+        # ── CAT KID ───────────────────────────────────────────────────────────
+        elif species == 'cat' and stage == 'kid':
+            fur = '#dcb37d'; stripe = '#8e5e30'
+            pg([32,88, 26,60, 38,48, 50,44, 62,48, 74,60, 68,88], fur, ink, 2, smooth=True)
+            ov(50, 70, 14, 14, '#f0d4a6')
+            qb(36,56, 34,62, 38,68, stripe, 2); qb(64,56, 66,62, 62,68, stripe, 2)
+            qb(68, 84, 86, 80, 82, 64, fur, 8); qb(68, 84, 86, 80, 82, 64, ink, 2)
+            ov(40, 84, 5, 4, fur, ink, 1); ov(58, 84, 5, 4, fur, ink, 1)
+            pg([34,22, 40,6, 46,20], fur, ink, 1)
+            pg([66,22, 60,6, 54,20], fur, ink, 1)
+            ci(50, 34, 20, fur, ink, 2)
+            pg([37,20, 40,10, 43,20], BLUSH)
+            pg([63,20, 60,10, 57,20], BLUSH)
+            pg([48,40, 52,40, 50,42], acc)
+            ln(38,42, 26,40, ink); ln(38,44, 26,46, ink)
+            ln(62,42, 74,40, ink); ln(62,44, 74,46, ink)
+            ci(36, 38, 2.5, BLUSH); ci(64, 38, 2.5, BLUSH)
+            eyes(42, 34, 58, 34)
+            mth(50, 46, 5)
+            aura(50, 34, 22)
+
+        # ── CAT TEEN (viewBox 0 -8 100 108 → shift y+8) ──────────────────────
+        elif species == 'cat' and stage == 'teen':
+            # All y coords shifted +8 from SVG source
+            fur = '#c9924d'; furL = '#e8c188'; stripe = '#7c5128'
+            ov(32, 88, 10, 12, fur, ink, 2); ov(68, 88, 10, 12, fur, ink, 2)
+            pg([28,90, 20,66, 36,56, 50,52, 64,56, 80,66, 72,90, 66,96, 50,96, 34,96], fur, ink, 2, smooth=True)
+            pg([34,64, 40,78, 50,82, 60,78, 66,64, 60,68, 54,68, 50,70, 46,68, 40,68], furL)
+            qb(40,70, 38,78, 42,84, stripe, 2); qb(60,70, 62,78, 58,84, stripe, 2)
+            ov(40, 94, 5, 3, fur, ink, 1); ov(60, 94, 5, 3, fur, ink, 1)
+            if mood == 'sad':
+                qb(72,78, 88,86, 86,98, fur, 10); qb(72,78, 88,86, 86,98, ink, 2)
+            else:
+                qb(72,64, 90,46, 84,26, fur, 10); qb(72,64, 90,46, 84,26, ink, 2)
+            pg([30,30, 36,10, 46,28], fur, ink, 1)
+            pg([70,30, 64,10, 54,28], fur, ink, 1)
+            ov(50, 40, 18, 17, fur, ink, 2)
+            pg([34,28, 36,16, 42,26], BLUSH)
+            pg([66,28, 64,16, 58,26], BLUSH)
+            pg([47,46, 53,46, 50,49], acc)
+            ln(50, 49, 50, 52, ink)
+            ln(38,48, 22,46, ink); ln(38,50, 22,52, ink)
+            ln(62,48, 78,46, ink); ln(62,50, 78,52, ink)
+            ci(38, 46, 2.5, BLUSH); ci(62, 46, 2.5, BLUSH)
+            eyes(42, 38, 58, 38)
+            mth(50, 54, 4)
+            aura(50, 40, 24)
+
+        # ── CAT ADULT (viewBox 0 -8 100 108 → shift y+8) ─────────────────────
+        elif species == 'cat' and stage == 'adult':
+            fur = '#a87236'; stripe = '#5e3d20'
+            ov(32, 86, 12, 14, fur, ink, 2); ov(68, 86, 12, 14, fur, ink, 2)
+            pg([30,88, 22,58, 38,46, 62,46, 78,58, 70,88, 66,96, 50,96, 34,96], fur, ink, 2, smooth=True)
+            ov(50, 70, 16, 14, '#bd8c50')
+            qb(34,60, 32,70, 36,80, stripe, 2)
+            qb(50,58, 48,70, 52,84, stripe, 2)
+            qb(66,60, 68,70, 64,80, stripe, 2)
+            ov(40, 94, 6, 4, fur, ink, 1); ov(60, 94, 6, 4, fur, ink, 1)
+            qb(44,96, 26,92, 28,78, fur, 7); qb(44,96, 26,92, 28,78, ink, 2)
+            pg([32,26, 40,8, 48,24], fur, ink, 1)
+            pg([68,26, 60,8, 52,24], fur, ink, 1)
+            ci(50, 38, 20, fur, ink, 2)
+            pg([37,24, 40,14, 43,24], BLUSH)
+            pg([63,24, 60,14, 57,24], BLUSH)
+            pg([47,44, 53,44, 50,47], acc)
+            ln(50, 47, 50, 50, ink)
+            ln(38,46, 22,44, ink); ln(38,48, 22,50, ink)
+            ln(62,46, 78,44, ink); ln(62,48, 78,50, ink)
+            qb(34, 58, 50, 64, 66, 58, acc, 3)
+            ci(50, 62, 2, sag, ink, 1)
+            ci(36, 44, 2.5, BLUSH); ci(64, 44, 2.5, BLUSH)
+            eyes(42, 38, 58, 38)
+            mth(50, 52, 4)
+            aura(50, 38, 24)
+
+    def _pet_stat_bar(self, parent, label, pct, color):
+        """Compact labeled progress bar for pet stats."""
+        row = tk.Frame(parent, bg=self.C['bg'])
+        row.pack(fill='x', pady=(0, 8))
+        hdr = tk.Frame(row, bg=self.C['bg'])
+        hdr.pack(fill='x')
+        tk.Label(hdr, text=label, font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['bg']).pack(side='left')
+        tk.Label(hdr, text=f"{int(pct)}%", font=(*self.FONT_MONO, 8),
+                 fg=self.C['ink_soft'], bg=self.C['bg']).pack(side='right')
+        track = tk.Frame(row, bg=self.C['surface2'], height=5)
+        track.pack(fill='x', pady=(3, 0))
+        track.pack_propagate(False)
+        fill_w = max(0.0, min(1.0, pct / 100))
+        tk.Frame(track, bg=color, height=5).place(relx=0, rely=0,
+                                                   relwidth=fill_w, relheight=1.0)
 
     def show_pet(self):
-        """Show virtual pet page"""
-        # If not logged in, show no pets
+        self._page_eyebrow("PET")
+        self._page_title("Companions")
+        self._rule(pady=(4, 16))
+
         if not self.is_logged_in or not self.auth_token:
-            label = tk.Label(self.content_frame, text="Please log in to view your pets!", font=('Montserrat', 16, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['black'])
-            label.pack(pady=50)
+            tk.Label(self.content_frame,
+                     text="Log in to see your pet.",
+                     font=(*self.FONT_MONO, 11),
+                     fg=self.C['muted'], bg=self.C['bg']).pack(pady=60)
             return
-        
-        pet = self.get_current_pet()
-        if not pet:
-            label = tk.Label(self.content_frame, text="No pet found! Adopt a new pet.", font=('Montserrat', 16, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['black'])
-            label.pack(pady=50)
-            ttk.Button(self.content_frame, text="➕ Adopt New Pet", style='Neon.TButton', command=self.adopt_pet).pack(pady=10)
+
+        all_raw = self.fetch_pets_from_backend()
+        pets = []
+        for p in all_raw:
+            lf = p.get('last_fed') or ''
+            if isinstance(lf, str): lf = lf.split('T')[0]
+            else: lf = datetime.now().strftime('%Y-%m-%d')
+            try:
+                last_fed_dt = datetime.strptime(lf, '%Y-%m-%d')
+                days_unfed = max(0, (datetime.now() - last_fed_dt).days)
+            except Exception:
+                days_unfed = 0
+            belly = max(0, (p.get('hunger') or 100) - days_unfed * 15)
+            bond  = max(0, int(p.get('bond') or 50))
+            pets.append({
+                'id': p.get('id'), 'name': p.get('name'),
+                'type': (p.get('type') or 'cat').lower(),
+                'age': p.get('age') or 0,
+                'is_alive': p.get('is_alive', True),
+                'belly': belly, 'bond': bond,
+                'last_fed': lf,
+            })
+
+        if not pets:
+            tk.Label(self.content_frame,
+                     text="No companions yet.",
+                     font=(*self.FONT_MONO, 11),
+                     fg=self.C['muted'], bg=self.C['bg']).pack(pady=(40, 16))
+            self._render_adopt_form(self.content_frame)
             return
-        pet = self.update_pet_hunger(pet)
-        self.save_current_pet(pet)
-        title = tk.Label(self.content_frame, text="🐾 YOUR PET", 
-                        font=('Orbitron', 24, 'bold'),
-                        fg=self.colors['hot_pink'], 
-                        bg=self.colors['black'])
-        title.pack(pady=(0, 30))
-        
-        pet_frame = tk.Frame(self.content_frame, bg=self.colors['dark_gray'], relief='raised', bd=2)
-        pet_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Pet avatar (emoji)
-        avatar = self.get_pet_emoji_pet(pet)
-        pet_avatar = tk.Label(pet_frame, text=avatar, font=('Montserrat', 64), fg=self.colors['hot_pink'], bg=self.colors['dark_gray'])
-        pet_avatar.pack(pady=20)
-        
-        # Pet name
-        name_label = tk.Label(pet_frame, text=f"Name: {pet['name']}", font=('Montserrat', 16, 'bold'), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
-        name_label.pack(pady=10)
-        
-        # Pet type and age
-        type_label = tk.Label(pet_frame, text=f"Type: {pet['type'].title()}  |  Age: {pet['age']} yrs", font=('Montserrat', 14), fg=self.colors['neon_purple'], bg=self.colors['dark_gray'])
-        type_label.pack(pady=5)
 
-        # Pet XP
-        xp_label = tk.Label(pet_frame, text=f"XP: {pet['xp']}", font=('Montserrat', 14), fg=self.colors['neon_purple'], bg=self.colors['dark_gray'])
-        xp_label.pack(pady=5)
+        pet = pets[0]
+        species = 'dog' if 'dog' in pet['type'] else 'cat'
+        stage   = self._pet_stage(pet['age'])
+        belly   = pet['belly']
+        bond    = pet['bond']
+        mood    = self._pet_mood(belly, bond) if pet['is_alive'] else 'sad'
 
-        # Pet hunger bar
-        hunger_label = tk.Label(pet_frame, text=f"Hunger: {pet['hunger']}%", font=('Montserrat', 14, 'bold'), fg=self.colors['electric_blue'], bg=self.colors['dark_gray'])
-        hunger_label.pack(pady=10)
-        hunger_bar = ttk.Progressbar(pet_frame, length=400, value=pet['hunger'], maximum=100)
-        hunger_bar.pack(pady=5)
-        if pet['hunger'] < 30 and pet['is_alive']:
-            warning = tk.Label(pet_frame, text="Feed your pet soon!", font=('Montserrat', 12, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['dark_gray'])
-            warning.pack(pady=5)
+        MOOD_QUOTE = {
+            'happy':   'thriving today.',
+            'content': 'doing alright.',
+            'sleepy':  'needs more time together.',
+            'sad':     'feeling a little lonely.',
+        }
+
+        # ── layout ────────────────────────────────────────────────────────────
+        outer = tk.Frame(self.content_frame, bg=self.C['bg'])
+        outer.pack(fill='both', expand=True)
+
+        left = tk.Frame(outer, bg=self.C['bg'], width=260)
+        left.pack(side='left', fill='y', padx=(0, 28))
+        left.pack_propagate(False)
+
+        right = tk.Frame(outer, bg=self.C['bg'])
+        right.pack(side='left', fill='both', expand=True)
+
+        # ── left: sprite ──────────────────────────────────────────────────────
+        sprite_bg = self.C['surface'] if pet['is_alive'] else self.C['bg']
+        canvas = tk.Canvas(left, width=160, height=160,
+                           bg=sprite_bg, highlightthickness=0)
+        canvas.pack(pady=(0, 8))
+        self._draw_pet_sprite(canvas, species, stage, mood, s=1.5)
+
+        tk.Label(left, text=pet['name'],
+                 font=(*self.FONT_SERIF, 18, 'italic'),
+                 fg=self.C['ink'], bg=self.C['bg']).pack()
+
+        age_days = int(pet['age'])
+        tk.Label(left,
+                 text=f"DAY {str(age_days).zfill(3)}  ·  {species}  ·  {stage}",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['bg']).pack(pady=(2, 10))
+
+        tk.Label(left, text=f'"{MOOD_QUOTE[mood]}"',
+                 font=(*self.FONT_SERIF, 10, 'italic'),
+                 fg=self.C['ink_soft'], bg=self.C['bg']).pack(pady=(0, 14))
+
+        # progress bars
+        bars_frame = tk.Frame(left, bg=self.C['bg'])
+        bars_frame.pack(fill='x')
+        self._pet_stat_bar(bars_frame, "MOOD",  (belly+bond)//2,  self.C['accent'])
+        self._pet_stat_bar(bars_frame, "BELLY", belly, self.C['accent2'])
+        self._pet_stat_bar(bars_frame, "BOND",  bond,  self.C['amber'])
+
         if not pet['is_alive']:
-            dead_label = tk.Label(pet_frame, text="Your pet has died from hunger...", font=('Montserrat', 14, 'bold'), fg=self.colors['hot_pink'], bg=self.colors['dark_gray'])
-            dead_label.pack(pady=10)
+            tk.Label(left, text="has passed on.",
+                     font=(*self.FONT_SERIF, 10, 'italic'),
+                     fg=self.C['muted'], bg=self.C['bg']).pack(pady=(10, 0))
 
-        # Actions (Feed, Adopt)
-        actions_frame = tk.Frame(pet_frame, bg=self.colors['dark_gray'])
-        actions_frame.pack(pady=20)
-        ttk.Button(actions_frame, text="🍖 Feed", style='Neon.TButton', command=lambda: self.feed_pet(pet)).pack(side='left', padx=10)
-        ttk.Button(actions_frame, text="➕ Adopt New Pet", style='Neon.TButton', command=self.adopt_pet).pack(side='left', padx=10)
+        # action buttons
+        acts = tk.Frame(left, bg=self.C['bg'])
+        acts.pack(pady=(14, 0), anchor='w')
+        xp = self.user_data.get('xp', 0)
+        feed_state = 'normal' if pet['is_alive'] and xp >= 35 else 'disabled'
+        feed_btn = self._primary_btn(acts, "Offer a treat  ·  35 xp",
+                                     lambda: self.feed_pet(pet))
+        feed_btn.config(state=feed_state)
+        feed_btn.pack(side='left', padx=(0, 8))
 
-        # Switch pets if more than one
-        pets_list = []
-        if self.is_logged_in and self.auth_token:
-            backend_pets = self.fetch_pets_from_backend()
-            for p in backend_pets:
-                pets_list.append({
-                    'id': p.get('id'),
-                    'name': p.get('name')
-                })
-        else:
-            pets_list = self.user_data.get('pets', [])
-        
-        if len(pets_list) > 1:
-            switch_frame = tk.Frame(pet_frame, bg=self.colors['dark_gray'])
-            switch_frame.pack(pady=10)
-            tk.Label(switch_frame, text="Switch Pet:", font=('Montserrat', 12), fg=self.colors['white'], bg=self.colors['dark_gray']).pack(side='left')
-            current_id = pet.get('id') if pet else None
-            for p in pets_list:
-                btn = tk.Button(switch_frame, text=p['name'], font=('Montserrat', 10), 
-                              fg=self.colors['hot_pink'] if p['id']==current_id else self.colors['white'], 
-                              bg=self.colors['light_gray'], 
-                              command=lambda pid=p['id']: self.switch_pet(pid))
-                btn.pack(side='left', padx=5)
+        # ── right: adopt form ─────────────────────────────────────────────────
+        self._section_label(right, "Meet a new companion")
+        self._render_adopt_form(right)
 
-    def get_pet_emoji_pet(self, pet):
-        pet_type = pet.get('type', 'cat')
-        pet_age = pet.get('age', 0)
-        is_alive = pet.get('is_alive', True)
-        if pet_age < 1:
-            stage = 'baby'
-        elif pet_age < 3:
-            stage = 'young'
-        elif pet_age < 7:
-            stage = 'adult'
-        else:
-            stage = 'elder'
-        if not is_alive:
-            return '💀🐕' if pet_type == 'dog' else '💀🐱'
-        if pet_type == 'dog':
-            return {'baby': '🐶','young': '🐕','adult': '🐕‍🦺','elder': '🦮'}.get(stage, '🐕')
-        else:
-            return {'baby': '🐱','young': '🐈','adult': '🐈‍⬛','elder': '🦁'}.get(stage, '🐱')
+        # past companions (other pets)
+        others = [p for p in pets if p['id'] != pet['id']]
+        if others:
+            tk.Frame(right, bg=self.C['rule'], height=1).pack(fill='x', pady=(16, 0))
+            self._section_label(right, "Other companions")
+            for op in others:
+                row = tk.Frame(right, bg=self.C['surface2'])
+                row.pack(fill='x', pady=3)
+                sp2 = 'dog' if 'dog' in op['type'] else 'cat'
+                st2 = self._pet_stage(op['age'])
+                mini = tk.Canvas(row, width=32, height=32,
+                                 bg=self.C['surface2'], highlightthickness=0)
+                mini.pack(side='left', padx=(8, 6), pady=4)
+                self._draw_pet_sprite(mini, sp2, st2, 'content', s=0.30)
+                tk.Label(row, text=f"{op['name']}  ·  {sp2}  ·  DAY {str(int(op['age'])).zfill(3)}",
+                         font=(*self.FONT_MONO, 9),
+                         fg=self.C['ink_soft'], bg=self.C['surface2']).pack(side='left', padx=4)
+
+    def _render_adopt_form(self, parent):
+        """Inline adopt form: name + Dog/Cat toggle + Adopt button."""
+        form = tk.Frame(parent, bg=self.C['bg'])
+        form.pack(anchor='w', pady=(4, 0))
+
+        name_var    = tk.StringVar(value='')
+        species_var = tk.StringVar(value='cat')
+
+        name_entry = tk.Entry(form,
+                              textvariable=name_var,
+                              font=(*self.FONT_SANS, 11),
+                              bg=self.C['surface2'], fg=self.C['ink'],
+                              insertbackground=self.C['ink'],
+                              relief='flat', bd=0,
+                              highlightthickness=1,
+                              highlightbackground=self.C['rule'],
+                              highlightcolor=self.C['accent'],
+                              width=22)
+        name_entry.pack(fill='x', pady=(0, 8))
+
+        # Dog / Cat toggle row
+        toggle_row = tk.Frame(form, bg=self.C['bg'])
+        toggle_row.pack(anchor='w', pady=(0, 12))
+
+        def _pick(sp):
+            species_var.set(sp)
+            dog_btn.config(fg=self.C['accent'] if sp=='dog' else self.C['muted'],
+                           bg=self.C['hi']       if sp=='dog' else self.C['surface2'])
+            cat_btn.config(fg=self.C['accent'] if sp=='cat' else self.C['muted'],
+                           bg=self.C['hi']       if sp=='cat' else self.C['surface2'])
+
+        dog_btn = tk.Button(toggle_row, text="Dog",
+                            font=(*self.FONT_MONO, 9),
+                            fg=self.C['muted'], bg=self.C['surface2'],
+                            border=0, padx=12, pady=5, cursor='hand2',
+                            command=lambda: _pick('dog'))
+        dog_btn.pack(side='left', padx=(0, 6))
+        cat_btn = tk.Button(toggle_row, text="Cat",
+                            font=(*self.FONT_MONO, 9),
+                            fg=self.C['accent'], bg=self.C['hi'],
+                            border=0, padx=12, pady=5, cursor='hand2',
+                            command=lambda: _pick('cat'))
+        cat_btn.pack(side='left')
+
+        def _do_adopt():
+            nm = name_var.get().strip()
+            if not nm:
+                messagebox.showinfo("Name needed", "Give your companion a name first.")
+                return
+            sp = species_var.get()
+            result = self.create_pet_in_backend(nm, sp)
+            if result:
+                self.switch_page("pet")
+            else:
+                messagebox.showerror("Error", "Could not adopt pet right now.")
+
+        self._primary_btn(form, "Adopt  →", _do_adopt).pack(anchor='w')
 
     def feed_pet(self, pet):
         if not pet['is_alive']:
-            messagebox.showinfo("Pet is Dead", "You can't feed a dead pet. Adopt a new one!")
+            messagebox.showinfo("Pet passed", "Adopt a new companion.")
             return
-        
-        # If logged in, use backend
         if self.is_logged_in and self.auth_token:
-            pet_data = self.feed_pet_in_backend(pet['id'])
-            if pet_data:
-                messagebox.showinfo("Success", "Pet fed successfully!")
+            result = self.feed_pet_in_backend(pet['id'])
+            if result:
                 self.switch_page("pet")
             else:
-                messagebox.showerror("Error", "Failed to feed pet via backend!")
+                messagebox.showerror("Error", "Could not feed pet right now.")
         else:
-            # Local storage
-            pet['hunger'] = 100
+            pet['belly'] = 100
             pet['last_fed'] = datetime.now().strftime('%Y-%m-%d')
             self.save_current_pet(pet)
             self.switch_page("pet")
 
     def adopt_pet(self):
-        # Check if logged in
         if not self.is_logged_in or not self.auth_token:
             self.show_login_required_popup("adopt pets")
             return
-        
-        import os
-        pet_type = tk.simpledialog.askstring("Adopt Pet", "Enter pet type (cat/dog):")
-        if pet_type not in ['cat', 'dog']:
-            messagebox.showinfo("Invalid Type", "Please enter 'cat' or 'dog'.")
-            return
-        pet_name = tk.simpledialog.askstring("Adopt Pet", "Enter pet name:")
-        if not pet_name:
-            pet_name = 'Blossom'
-        
-        # Create pet in backend
-        pet_data = self.create_pet_in_backend(pet_name, pet_type)
-        if pet_data:
-            messagebox.showinfo("Success", f"Pet {pet_name} adopted successfully!")
-            self.switch_page("pet")
-        else:
-            messagebox.showerror("Error", "Failed to create pet in backend!")
+        self.switch_page("pet")
 
     def switch_pet(self, pet_id):
-        """Switch to a different pet"""
-        if self.is_logged_in and self.auth_token:
-            # For backend, we'll just refresh and show the first pet
-            # (could be enhanced to store current_pet_id in backend)
-            self.switch_page("pet")
-        else:
-            # Local storage
+        if not (self.is_logged_in and self.auth_token):
             self.user_data['current_pet_id'] = pet_id
             self.save_user_data()
-            self.switch_page("pet")
-    
+        self.switch_page("pet")
+
+    # ─── Ledger (Analytics) ───────────────────────────────────────────────────
+
     def show_analytics(self):
-        """Show analytics page"""
-        # Page title
-        title = tk.Label(self.content_frame, text="📊 ANALYTICS", 
-                        font=('Orbitron', 24, 'bold'),
-                        fg=self.colors['electric_blue'], 
-                        bg=self.colors['black'])
-        title.pack(pady=(0, 30))
-        
-        # Stats grid
-        stats_frame = tk.Frame(self.content_frame, bg=self.colors['black'])
-        stats_frame.pack(fill='x', padx=20, pady=20)
-        
-        # If not logged in, show zeros
+        self._page_eyebrow("LEDGER")
+        self._page_title("Your record")
+        self._rule(pady=(4, 20))
+
         if not self.is_logged_in or not self.auth_token:
-            tasks_completed = 0
+            tasks_done = 0
             streak = 0
         else:
-            
-            tasks_completed = self.user_data.get('completed_tasks', 0)
+            tasks_done = self.user_data.get('completed_tasks', 0)
             streak = self.user_data.get('streak', 0)
-        
-        # Create analytics cards
-        
-        self.create_analytics_card(stats_frame, "Tasks Completed", 
-                                  str(tasks_completed), 
-                                  self.colors['neon_purple'], 0, 1)
-        
-        self.create_analytics_card(stats_frame, "Current Streak", 
-                                  f"{streak} days", 
-                                  self.colors['neon_purple'], 1, 1)
-    
+
+        grid = tk.Frame(self.content_frame, bg=self.C['bg'])
+        grid.pack(fill='x')
+
+        for col, (label, value) in enumerate([
+            ("TASKS COMPLETED", str(tasks_done)),
+            ("CURRENT STREAK",  f"{streak} days"),
+            ("FOCUS SESSIONS",  str(self.user_data.get('focus_sessions', 0))),
+        ]):
+            card = tk.Frame(grid, bg=self.C['surface'],
+                            highlightthickness=1,
+                            highlightbackground=self.C['rule'],
+                            highlightcolor=self.C['rule'])
+            card.grid(row=0, column=col, padx=10, pady=8, sticky='nsew')
+            grid.grid_columnconfigure(col, weight=1)
+
+            tk.Label(card, text=value,
+                     font=(*self.FONT_SERIF, 34, 'italic'),
+                     fg=self.C['amber'], bg=self.C['surface']).pack(pady=(24, 4))
+            tk.Label(card, text=label,
+                     font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 24))
+
     def create_analytics_card(self, parent, title, value, color, row, col):
-        """Create an analytics card"""
-        card = tk.Frame(parent, bg=self.colors['dark_gray'], relief='raised', bd=2)
-        card.grid(row=row, column=col, padx=20, pady=20, sticky='nsew')
+        card = tk.Frame(parent, bg=self.C['surface'],
+                        highlightthickness=1,
+                        highlightbackground=self.C['rule'])
+        card.grid(row=row, column=col, padx=10, pady=8, sticky='nsew')
         parent.grid_columnconfigure(col, weight=1)
-        parent.grid_rowconfigure(row, weight=1)
-        card.config(width=300, height=200)
-        
-        value_label = tk.Label(card, text=value, 
-                              font=('Orbitron', 32, 'bold'),
-                              fg=color, 
-                              bg=self.colors['dark_gray'])
-        value_label.pack(pady=(30, 10))
-        
-        title_label = tk.Label(card, text=title, 
-                              font=('Montserrat', 14, 'bold'),
-                              fg=self.colors['white'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 30))
-    
+        tk.Label(card, text=value,
+                 font=(*self.FONT_SERIF, 32, 'italic'),
+                 fg=color, bg=self.C['surface']).pack(pady=(24, 8))
+        tk.Label(card, text=title,
+                 font=(*self.FONT_MONO, 9),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 24))
+
+    # ─── Archive (Settings) ───────────────────────────────────────────────────
+
     def show_settings(self):
-        """Show settings page"""
-        # Page title
-        title = tk.Label(self.content_frame, text="⚙️ SETTINGS", 
-                        font=('Orbitron', 24, 'bold'),
-                        fg=self.colors['neon_purple'], 
-                        bg=self.colors['black'])
-        title.pack(pady=(0, 30))
-        
-        # Settings sections
-        settings_frame = tk.Frame(self.content_frame, bg=self.colors['dark_gray'])
-        settings_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Authentication section
-        auth_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
-        auth_frame.pack(fill='x', padx=20, pady=20)
-        
-        auth_title = tk.Label(auth_frame, text="🔐 Authentication", 
-                             font=('Montserrat', 16, 'bold'),
-                             fg=self.colors['white'], 
-                             bg=self.colors['dark_gray'])
-        auth_title.pack(pady=(0, 15))
-        
-        # Auth status
+        self._page_eyebrow("ARCHIVE")
+        self._page_title("Settings")
+        self._rule(pady=(4, 20))
+
+        wrap = tk.Frame(self.content_frame, bg=self.C['bg'])
+        wrap.pack(fill='both', expand=True)
+
+        # Auth card
+        auth_card = tk.Frame(wrap, bg=self.C['surface'],
+                             highlightthickness=1,
+                             highlightbackground=self.C['rule'])
+        auth_card.pack(fill='x', pady=(0, 12))
+
+        tk.Label(auth_card, text="ACCOUNT",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20, pady=(16, 8))
+
         if self.is_logged_in:
-            auth_status = tk.Label(auth_frame, text=f"✅ Logged in as:\nUsername: {self.current_username}\nEmail: {self.current_email}",
-                                  font=('Montserrat', 12),
-                                  fg=self.colors['electric_blue'], 
-                                  bg=self.colors['dark_gray'])
-            auth_status.pack(pady=(0, 10))
-            
-            # Logout and Delete Account buttons
-            auth_buttons_frame = tk.Frame(auth_frame, bg=self.colors['dark_gray'])
-            auth_buttons_frame.pack(pady=5)
-            
-            logout_btn = ttk.Button(auth_buttons_frame, text="🚪 Logout", 
-                                   style='Neon.TButton',
-                                   command=self.logout)
-            logout_btn.pack(side='left', padx=5)
-            reset_password_btn = tk.Button(
-                            auth_buttons_frame,
-                            text="Reset Password?",
-                            font=('Montserrat', 10),
-                            fg=self.colors['electric_blue'],
-                            bg=self.colors['dark_gray'],
-                            border=0,
-                            command=self.show_forgot_password_form)
-            reset_password_btn.pack(side='left', padx=5)
-            delete_account_btn = ttk.Button(auth_buttons_frame, text="🗑️ Delete Account", 
-                                            style='Neon.TButton',
-                                            command=self.show_delete_account_warning)
-            delete_account_btn.pack(side='left', padx=5)
+            tk.Label(auth_card,
+                     text=f"{self.current_username}  ·  {self.current_email}",
+                     font=(*self.FONT_SANS, 12),
+                     fg=self.C['ink'], bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=20, pady=(0, 12))
+
+            btn_row = tk.Frame(auth_card, bg=self.C['surface'])
+            btn_row.pack(anchor='w', padx=20, pady=(0, 16))
+
+            self._primary_btn(btn_row, "Log out", self.logout).pack(side='left', padx=(0, 8))
+
+            tk.Button(btn_row, text="Reset password",
+                      font=(*self.FONT_MONO, 9),
+                      fg=self.C['muted'], bg=self.C['surface'],
+                      activeforeground=self.C['accent3'],
+                      border=0, cursor='hand2',
+                      command=self.show_forgot_password_form).pack(side='left', padx=8)
+
+            tk.Button(btn_row, text="Delete account",
+                      font=(*self.FONT_MONO, 9),
+                      fg=self.C['accent'], bg=self.C['surface'],
+                      activeforeground='#c9604a',
+                      border=0, cursor='hand2',
+                      command=self.show_delete_account_warning).pack(side='left', padx=8)
         else:
-            auth_status = tk.Label(auth_frame, text="❌ Not logged in", 
-                                  font=('Montserrat', 12),
-                                  fg=self.colors['hot_pink'], 
-                                  bg=self.colors['dark_gray'])
-            auth_status.pack(pady=(0, 35))
-            
-            # Auth buttons
-            auth_buttons_frame = tk.Frame(auth_frame, bg=self.colors['dark_gray'])
-            auth_buttons_frame.pack(pady=10)
-            
-            login_btn = ttk.Button(auth_buttons_frame, text="🔑 Login", 
-                                  style='Electric.TButton',
-                                  command=self.show_login_form)
-            login_btn.pack(side='left', padx=10)
-            
-            signup_btn = ttk.Button(auth_buttons_frame, text="📝 Sign Up", 
-                                   style='Purple.TButton',
-                                   command=self.show_signup_form)
-            signup_btn.pack(side='left', padx=10)
-        
-        # Theme section
-        theme_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
-        theme_frame.pack(fill='x', padx=20, pady=20)
-        
-        theme_title = tk.Label(theme_frame, text="🎨 Theme", 
-                              font=('Montserrat', 16, 'bold'),
-                              fg=self.colors['white'], 
-                              bg=self.colors['dark_gray'])
-        theme_title.pack(pady=(0, 10))
-        
-        theme_desc = tk.Label(theme_frame, text="Current: Neon Garden (Default)", 
-                             font=('Montserrat', 11),
-                             fg=self.colors['electric_blue'], 
-                             bg=self.colors['dark_gray'])
-        theme_desc.pack()
-        # Data section
-        data_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
-        data_frame.pack(fill='x', padx=20, pady=20)
-        
-        data_title = tk.Label(data_frame, text="💾 Data Management", 
-                             font=('Montserrat', 16, 'bold'),
-                             fg=self.colors['white'], 
-                             bg=self.colors['dark_gray'])
-        data_title.pack(pady=(0, 10))
-        
-        # Data buttons
-        buttons_frame = tk.Frame(data_frame, bg=self.colors['dark_gray'])
-        buttons_frame.pack()
-        
-        ttk.Button(buttons_frame, text="📤 Export Data", 
-                  style='Electric.TButton',
-                  command=self.export_data).pack(side='left', padx=10)
-        
-        ttk.Button(buttons_frame, text="🔄 Reset Progress", 
-                  style='Neon.TButton',
-                  command=self.reset_progress).pack(side='left', padx=10)
-        
-        # About section
-        about_frame = tk.Frame(settings_frame, bg=self.colors['dark_gray'])
-        about_frame.pack(fill='x', padx=20, pady=20)
-        
-        about_title = tk.Label(about_frame, text="ℹ️ About", 
-                              font=('Montserrat', 16, 'bold'),
-                              fg=self.colors['white'], 
-                              bg=self.colors['dark_gray'])
-        about_title.pack(pady=(0, 10))
-        
-        about_text = tk.Label(about_frame, 
-                             text="Blossom Focus: Tech-Girly Edition v1.0\nA productivity app with style! 🌸✨", 
-                             font=('Montserrat', 11),
-                             fg=self.colors['electric_blue'], 
-                             bg=self.colors['dark_gray'],
-                             justify='center')
-        about_text.pack()
-    
+            tk.Label(auth_card, text="Not logged in",
+                     font=(*self.FONT_SANS, 12),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=20, pady=(0, 12))
+
+            btn_row = tk.Frame(auth_card, bg=self.C['surface'])
+            btn_row.pack(anchor='w', padx=20, pady=(0, 16))
+
+            self._primary_btn(btn_row, "Log in",
+                              self.show_login_form).pack(side='left', padx=(0, 8))
+            self._ghost_btn(btn_row, "Sign up",
+                            self.show_signup_form).pack(side='left')
+
+        # Data card
+        data_card = tk.Frame(wrap, bg=self.C['surface'],
+                             highlightthickness=1,
+                             highlightbackground=self.C['rule'])
+        data_card.pack(fill='x', pady=(0, 12))
+
+        tk.Label(data_card, text="DATA",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20, pady=(16, 8))
+
+        data_row = tk.Frame(data_card, bg=self.C['surface'])
+        data_row.pack(anchor='w', padx=20, pady=(0, 16))
+
+        self._ghost_btn(data_row, "Export data",
+                        self.export_data).pack(side='left', padx=(0, 8))
+        tk.Button(data_row, text="Reset progress",
+                  font=(*self.FONT_MONO, 9),
+                  fg=self.C['accent'], bg=self.C['surface'],
+                  activeforeground='#c9604a',
+                  border=0, cursor='hand2',
+                  command=self.reset_progress).pack(side='left')
+
+        # About card
+        about_card = tk.Frame(wrap, bg=self.C['surface'],
+                              highlightthickness=1,
+                              highlightbackground=self.C['rule'])
+        about_card.pack(fill='x')
+
+        tk.Label(about_card, text="ABOUT",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20, pady=(16, 8))
+
+        tk.Label(about_card,
+                 text="Tendr v1.0  ·  A focused life, one day at a time.",
+                 font=(*self.FONT_SERIF, 12, 'italic'),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20, pady=(0, 16))
+
+    # ─── data actions ─────────────────────────────────────────────────────────
+
     def export_data(self):
-        """Export user data"""
         try:
-            import json
             from tkinter import filedialog
-            
-            filename = filedialog.asksaveasfilename(
+            fn = filedialog.asksaveasfilename(
                 defaultextension=".json",
-                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-            )
-            
-            if filename:
-                with open(filename, 'w') as f:
+                filetypes=[("JSON", "*.json"), ("All files", "*.*")])
+            if fn:
+                with open(fn, 'w') as f:
                     json.dump(self.user_data, f, indent=2)
-                messagebox.showinfo("Success", "Data exported successfully! 📤")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to export data: {e}")
-    
-    def reset_progress(self):
-        """Reset all progress"""
-        if messagebox.askyesno("Reset Progress", 
-                              "Are you sure you want to reset ALL progress?\nThis cannot be undone!"):
-            # Reset pets to default
-            default_pet = {
-                'id': 0,
-                'name': 'Blossom',
-                'type': 'cat',
-                'age': 0,
-                'xp': 0,
-                'hunger': 100,
-                'last_fed': datetime.now().strftime('%Y-%m-%d'),
-                'is_alive': True
-            }
-            self.user_data = {
-                'pets': [],
-                'current_pet_id': 0,
-                'xp': 0,  # Default XP is 0 when not logged in
-                'streak': 0,
-                'tasks': [],
-                'completed_tasks': 0,
-                'focus_sessions': 0,
-                'total_focus_time': 0,
-                'achievements': [],
-                'theme': 'neon_garden'
-            }
-            self.save_user_data()
-            self.update_sidebar_stats()  # Update sidebar stats
-            messagebox.showinfo("Reset Complete", "All progress has been reset! 🔄")
-            self.switch_page("focus") # Changed to "focus"
-    
-    def show_login_required_popup(self, action):
-        """Show popup asking user to login or signup with custom buttons"""
-
-        popup = tk.Toplevel()
-        popup.overrideredirect(True)   # Remove OS title bar
-        popup.config(bg="#1e1e1e")     # Background theme
-        popup.geometry("360x200")
-
-        # Center popup relative to main window
-        popup.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 180
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 100
-        popup.geometry(f"+{x}+{y}")
-
-        # Outer frame
-        frame = tk.Frame(popup, bg="#2b2b2b")
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Title row with X button
-        title_frame = tk.Frame(frame, bg="#2b2b2b")
-        title_frame.pack(fill="x")
-
-        title_label = tk.Label(
-            title_frame, text="Login Required",
-            bg="#2b2b2b", fg="white", font=("Segoe UI", 12, "bold")
-        )
-        title_label.pack(side="left", padx=5, pady=5)
-
-        close_btn = tk.Button(
-            title_frame, text="✖", bg="#2b2b2b", fg="white",
-            bd=0, relief="flat", font=("Segoe UI", 10, "bold"),
-            command=popup.destroy, cursor="hand2"
-        )
-        close_btn.pack(side="right", padx=5)
-
-        # Message text
-        msg = tk.Label(
-            frame,
-            text=f"⚠️ You need to be logged in to {action}!\n\nChoose an option below:",
-            bg="#2b2b2b", fg="#d0d0d0", justify="center",
-            font=("Segoe UI", 10)
-        )
-        msg.pack(pady=10)
-
-        # Buttons frame
-        btn_frame = tk.Frame(frame, bg="#2b2b2b")
-        btn_frame.pack(pady=10)
-
-        btn_style = {"width": 14, "bg": "#3a3a3a", "fg": "white", "relief": "flat", "bd": 0}
-
-        # Login button
-        login_btn = tk.Button(
-            btn_frame, text="Login", **btn_style,
-            command=lambda: [popup.destroy(), self.show_login_form()]
-        )
-        login_btn.grid(row=0, column=0, padx=8)
-
-        # Create Account button
-        signup_btn = tk.Button(
-            btn_frame, text="Create Account", **btn_style,
-            command=lambda: [popup.destroy(), self.show_signup_form()]
-        )
-        signup_btn.grid(row=0, column=1, padx=8)
-
-
-
-    
-    def show_login_form(self):
-        """Show login form dialog"""
-        login_window = tk.Toplevel(self.root)
-        login_window.title("🔑 Login")
-        login_window.geometry("450x500")
-        login_window.configure(bg=self.colors['black'])
-        login_window.resizable(False, False)
-        
-        # Center the window
-        login_window.transient(self.root)
-        login_window.grab_set()
-        
-        # Login form
-        login_frame = tk.Frame(login_window, bg=self.colors['dark_gray'])
-        login_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = tk.Label(login_frame, text="🔑 Login to Blossom", 
-                              font=('Orbitron', 18, 'bold'),
-                              fg=self.colors['electric_blue'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 20))
-        
-        # Username/Email field
-        tk.Label(login_frame, text="Username or Email:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        username_entry = tk.Entry(login_frame, font=('Montserrat', 11), 
-                                 bg=self.colors['light_gray'], 
-                                 fg=self.colors['white'], 
-                                 insertbackground=self.colors['white'])
-        username_entry.pack(pady=(0, 15), ipadx=10, ipady=5)
-        
-        # Password field
-        tk.Label(login_frame, text="Password:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        password_entry = tk.Entry(login_frame, font=('Montserrat', 11), 
-                                 bg=self.colors['light_gray'], 
-                                 fg=self.colors['white'], 
-                                 insertbackground=self.colors['white'],
-                                 show="*")
-        password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
-        
-        # Buttons
-        button_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
-        button_frame.pack(pady=10)
-        
-        login_btn = tk.Button(button_frame, text="🔑 Login", 
-                             font=('Montserrat', 12, 'bold'),
-                             fg=self.colors['white'],
-                             bg=self.colors['hot_pink'],
-                             activebackground=self.colors['electric_blue'],
-                             command=lambda: self.login_user(username_entry.get(), password_entry.get(), login_window))
-        login_btn.pack(side='left', padx=10)
-        
-        forgot_btn = tk.Button(button_frame, text="Forgot Password ?", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['light_gray'],
-                              activebackground=self.colors['dark_gray'],
-                              command=self.show_forgot_password_form)
-        forgot_btn.pack(side='left', padx=10)
-        
-        # Divider line
-        divider_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
-        divider_frame.pack(pady=20)
-        
-        # Divider line
-        divider = tk.Frame(divider_frame, height=1, bg=self.colors['light_gray'])
-        divider.pack(fill='x')
-        
-        # OR text
-        or_label = tk.Label(divider_frame, text="OR", 
-                           font=('Montserrat', 10, 'bold'),
-                           fg=self.colors['white'], 
-                           bg=self.colors['dark_gray'])
-        or_label.pack(pady=5)
-        
-        # Google login button
-        google_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
-        google_frame.pack(pady=10)
-        
-        google_btn = tk.Button(google_frame, text="🔍 Login with Google", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg='#4285F4',  # Google blue
-                              activebackground='#3367D6',
-                              activeforeground=self.colors['white'],
-                              border=0,
-                              pady=10,
-                              command=self.google_login)
-        google_btn.pack(fill='x', ipadx=20)
-        
-        # Forgot password link
-        forgot_frame = tk.Frame(login_frame, bg=self.colors['dark_gray'])
-        forgot_frame.pack(pady=10)
-        
-        forgot_btn = tk.Button(
-                            forgot_frame,
-                            text="🔓 Forgot Password?",
-                            font=('Montserrat', 10),
-                            fg=self.colors['electric_blue'],
-                            bg=self.colors['dark_gray'],
-                            border=0,
-                            command=self.show_password_forgot_form)
-
-        forgot_btn.pack()
-        
-        # Focus on username field
-        username_entry.focus()
-        
-        # Bind Enter key to login
-        login_window.bind('<Return>', lambda e: self.login_user(username_entry.get(), password_entry.get(), login_window))
-    
-    def show_signup_form(self):
-        """Show signup form dialog"""
-        signup_window = tk.Toplevel(self.root)
-        signup_window.title("📝 Sign Up")
-        signup_window.geometry("450x500")
-        signup_window.configure(bg=self.colors['black'])
-        signup_window.resizable(False, False)
-        
-        # Center the window
-        signup_window.transient(self.root)
-        signup_window.grab_set()
-        
-        # Signup form
-        signup_frame = tk.Frame(signup_window, bg=self.colors['dark_gray'])
-        signup_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = tk.Label(signup_frame, text="📝 Join Blossom", 
-                              font=('Orbitron', 18, 'bold'),
-                              fg=self.colors['neon_purple'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 20))
-        
-        # Username field
-        tk.Label(signup_frame, text="Username:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        username_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
-                                 bg=self.colors['light_gray'], 
-                                 fg=self.colors['white'], 
-                                 insertbackground=self.colors['white'])
-        username_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
-        
-        # Email field
-        tk.Label(signup_frame, text="Email:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        email_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
-                              bg=self.colors['light_gray'], 
-                              fg=self.colors['white'], 
-                              insertbackground=self.colors['white'])
-        email_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
-        
-        # Password field
-        tk.Label(signup_frame, text="Password:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        password_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
-                                 bg=self.colors['light_gray'], 
-                                 fg=self.colors['white'], 
-                                 insertbackground=self.colors['white'],
-                                 show="*")
-        password_entry.pack(pady=(0, 10), ipadx=10, ipady=5)
-        
-        # Confirm Password field
-        tk.Label(signup_frame, text="Confirm Password:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        confirm_password_entry = tk.Entry(signup_frame, font=('Montserrat', 11), 
-                                         bg=self.colors['light_gray'], 
-                                         fg=self.colors['white'], 
-                                         insertbackground=self.colors['white'],
-                                         show="*")
-        confirm_password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
-        
-        # Buttons
-        button_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
-        button_frame.pack(pady=10)
-        
-        signup_btn = tk.Button(button_frame, text="📝 Sign Up", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['neon_purple'],
-                              activebackground=self.colors['hot_pink'],
-                              command=lambda: self.register_user(username_entry.get(), email_entry.get(), password_entry.get(), confirm_password_entry.get(), signup_window))
-        signup_btn.pack(side='left', padx=10)
-        
-        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['light_gray'],
-                              activebackground=self.colors['dark_gray'],
-                              command=signup_window.destroy)
-        cancel_btn.pack(side='left', padx=10)
-        
-        # Divider line
-        divider_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
-        divider_frame.pack(pady=20)
-        
-        # Divider line
-        divider = tk.Frame(divider_frame, height=1, bg=self.colors['light_gray'])
-        divider.pack(fill='x')
-        
-        # OR text
-        or_label = tk.Label(divider_frame, text="OR", 
-                           font=('Montserrat', 10, 'bold'),
-                           fg=self.colors['white'], 
-                           bg=self.colors['dark_gray'])
-        or_label.pack(pady=5)
-        
-        # Google signup button
-        google_frame = tk.Frame(signup_frame, bg=self.colors['dark_gray'])
-        google_frame.pack(pady=10)
-        
-        google_btn = tk.Button(google_frame, text="🔍 Sign up with Google", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg='#4285F4',  # Google blue
-                              activebackground='#3367D6',
-                              activeforeground=self.colors['white'],
-                              border=0,
-                              pady=10,
-                              command=self.google_signup)
-        google_btn.pack(fill='x', ipadx=20)
-        
-        # Focus on username field
-        username_entry.focus()
-        
-        # Bind Enter key to signup
-        signup_window.bind('<Return>', lambda e: self.register_user(username_entry.get(), email_entry.get(), password_entry.get(), confirm_password_entry.get(), signup_window))
-    
-    def login_user(self, username, password, window):
-        """Handle user login using backend API"""
-        if not username or not password:
-            messagebox.showerror("Error", "Please fill in all fields!")
-            return
-        try:
-            login_data = {"username": username, "password": password}
-            response = requests.post(f"{self.backend_url}/token", data=login_data, timeout=10)
-            if response.status_code == 200:
-                token_data = response.json()
-                print("TOKEN DATA:", token_data)
-                self.auth_token = token_data.get("access_token")
-                self.current_username = token_data.get("username")
-                self.current_email = token_data.get("email")
-                self.is_logged_in = True
-
-                # Fetch XP from backend after login
-                backend_xp = self.fetch_user_xp_from_backend()
-                self.user_data['xp'] = backend_xp
-                self.save_user_data()
-                self.update_sidebar_stats()  # Update sidebar with XP from backend
-                messagebox.showinfo("Success", f"🎉 Welcome back, {username}!")
-                window.destroy()
-                self.switch_page("settings")
-            else:
-                messagebox.showerror("Login Failed", "Invalid username or password!")
-        except requests.exceptions.ConnectionError:
-            messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Login failed: {str(e)}")
-
-    def register_user(self, username, email, password, confirm_password, window):
-        """Handle user registration using backend API"""
-        if not all([username, email, password, confirm_password]):
-            messagebox.showerror("Error", "Please fill in all fields!")
-            return
-        if password != confirm_password:
-            messagebox.showerror("Error", "Passwords do not match!")
-            return
-        if len(password) < 6:
-            messagebox.showerror("Error", "Password must be at least 6 characters long!")
-            return
-        try:
-            register_data = {"username": username, "password": password, "email": email}
-            response = requests.post(f"{self.backend_url}/register", json=register_data, timeout=10)
-            if response.ok:
-                result = response.json()
-                if result.get("message"):
-                    messagebox.showinfo("Success", "🎉 Account created successfully! Please verify your email.")
-                    window.destroy()
-                    self.temp_email = email
-                    self.show_email_verification_form(username, email)
-                else:
-                    error_detail = response.json().get("detail", "Registration failed!")
-                    messagebox.showerror("Registration Failed", result.get("message", "Registration failed!"))
-            else:
-                result = response.json()
-                error_detail = result.get("detail", "Registration failed!")
-                
-                # Show friendly pop-up for existing username/email
-                if "already exists" in error_detail.lower() or "already taken" in error_detail.lower():
-                    messagebox.showwarning("Already Exists", 
-                                         f"⚠️ {error_detail}\n\n"
-                                         f"Please try a different {'username' if 'username' in error_detail.lower() else 'email address'}.")
-                else:
-                    messagebox.showerror("Registration Failed", error_detail)
-        except requests.exceptions.ConnectionError:
-            messagebox.showerror("Connection Error", "Could not connect to server. Please try again later.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Registration failed: {str(e)}")
-    
-    def show_email_verification_form(self, username, email):
-        """Show email verification form"""
-        verify_window = tk.Toplevel(self.root)
-        verify_window.title("📧 Email Verification")
-        verify_window.geometry("400x400")
-        verify_window.configure(bg=self.colors['black'])
-        verify_window.resizable(True, True)
-
-        
-        # Center the window
-        verify_window.transient(self.root)
-        verify_window.grab_set()
-        
-        # Verification form
-        verify_frame = tk.Frame(verify_window, bg=self.colors['dark_gray'])
-        verify_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = tk.Label(verify_frame, text="📧 Email Verification", 
-                              font=('Orbitron', 16, 'bold'),
-                              fg=self.colors['electric_blue'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 15))
-        
-        # Info text
-        info_text = tk.Label(verify_frame, 
-                            text=f"We've sent a verification code to:\n{email}\n\nPlease check your email and enter the code below:",
-                            font=('Montserrat', 11),
-                            fg=self.colors['white'], 
-                            bg=self.colors['dark_gray'],
-                            justify='center')
-        info_text.pack(pady=(0, 15))
-        
-        # Verification code field
-        code_entry = tk.Entry(verify_frame, font=('Montserrat', 12, 'bold'), 
-                             bg=self.colors['light_gray'], 
-                             fg=self.colors['white'], 
-                             insertbackground=self.colors['white'],
-                             justify='center')
-        code_entry.pack(pady=(0, 15), ipadx=20, ipady=8)
-        
-        # Buttons
-        button_frame = tk.Frame(verify_frame, bg=self.colors['dark_gray'])
-        button_frame.pack(pady=10)
-        
-        verify_btn = tk.Button(button_frame, text="✅ Verify", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['electric_blue'],
-                              activebackground=self.colors['hot_pink'],
-                              command=lambda: self.verify_email(code_entry.get(), verify_window))
-        verify_btn.pack(side='left', padx=10)
-        
-        resend_btn = tk.Button(button_frame, text="🔄 Resend", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['neon_purple'],
-                              activebackground=self.colors['electric_blue'],
-                              command=lambda: self.resend_verification_code(email))
-        resend_btn.pack(side='left', padx=10)
-        
-        # Focus on code field
-        code_entry.focus()
-        
-        # Bind Enter key to verify
-        verify_window.bind('<Return>', lambda e: self.verify_email(code_entry.get(), verify_window))
-    
-    def verify_email(self, code, window):
-        if not code:
-            messagebox.showerror("Error", "Please enter the verification code!")
-            return
-        # ♥ the simple version
-        url = f"{self.backend_url}/verify_email?email={self.temp_email}&verification_token={code}"
-        try:
-            response = requests.post(url)
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "🎉 Email verified!")
-                window.destroy()
-                self.switch_page("settings")
-            else:
-                messagebox.showerror("Verification Failed", "Invalid or expired code!")
+                messagebox.showinfo("Exported", "Data saved.")
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-    def resend_verification_code(self, email):
-        """Resend verification code"""
-        messagebox.showinfo("Code Sent", f"📧 Verification code resent to {email}")
-    
+    def reset_progress(self):
+        if messagebox.askyesno("Reset", "Reset all progress? This cannot be undone."):
+            self.user_data = {
+                'pets': [], 'current_pet_id': 0, 'xp': 0, 'streak': 0,
+                'tasks': [], 'completed_tasks': 0, 'focus_sessions': 0,
+                'total_focus_time': 0, 'achievements': [], 'theme': 'tendr',
+            }
+            self.save_user_data()
+            self.update_sidebar_stats()
+            messagebox.showinfo("Reset", "Progress cleared.")
+            self.switch_page("today")
+
+    # ─── popups / dialogs ─────────────────────────────────────────────────────
+
+    def _dialog_base(self, title, w=440, h=480):
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.geometry(f"{w}x{h}")
+        win.configure(bg=self.C['bg'])
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+
+        # center
+        win.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+        win.geometry(f"{w}x{h}+{x}+{y}")
+
+        body = tk.Frame(win, bg=self.C['surface'],
+                        highlightthickness=1,
+                        highlightbackground=self.C['rule'])
+        body.pack(fill='both', expand=True, padx=20, pady=20)
+        return win, body
+
+    def show_login_required_popup(self, action):
+        popup = tk.Toplevel()
+        popup.overrideredirect(True)
+        popup.configure(bg=self.C['bg'])
+        popup.geometry("360x180")
+        popup.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - 360) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 180) // 2
+        popup.geometry(f"+{x}+{y}")
+
+        frame = tk.Frame(popup, bg=self.C['surface'],
+                         highlightthickness=1,
+                         highlightbackground=self.C['rule'])
+        frame.pack(fill='both', expand=True, padx=2, pady=2)
+
+        top = tk.Frame(frame, bg=self.C['surface'])
+        top.pack(fill='x')
+
+        tk.Label(top, text="Login required",
+                 font=(*self.FONT_SERIF, 13, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(side='left', padx=16, pady=12)
+
+        tk.Button(top, text="×", font=(*self.FONT_SANS, 14),
+                  fg=self.C['muted'], bg=self.C['surface'],
+                  activeforeground=self.C['accent'],
+                  border=0, cursor='hand2',
+                  command=popup.destroy).pack(side='right', padx=12)
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16)
+
+        tk.Label(frame,
+                 text=f"You need to be logged in to {action}.",
+                 font=(*self.FONT_SANS, 10),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 justify='center').pack(pady=12)
+
+        btns = tk.Frame(frame, bg=self.C['surface'])
+        btns.pack(pady=4)
+
+        self._primary_btn(btns, "Log in",
+                          lambda: [popup.destroy(), self.show_login_form()]
+                          ).pack(side='left', padx=6)
+        self._ghost_btn(btns, "Sign up",
+                        lambda: [popup.destroy(), self.show_signup_form()]
+                        ).pack(side='left', padx=6)
+
+    def show_login_form(self):
+        win, frame = self._dialog_base("Login", 420, 480)
+
+        tk.Label(frame, text="Log in to Tendr",
+                 font=(*self.FONT_SERIF, 18, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(20, 16))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
+
+        tk.Label(frame, text="USERNAME OR EMAIL",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20)
+        u_entry = self._input(frame, width=32)
+        u_entry.pack(padx=20, pady=(4, 12), ipady=5)
+
+        tk.Label(frame, text="PASSWORD",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=20)
+        p_entry = self._input(frame, width=32, show='*')
+        p_entry.pack(padx=20, pady=(4, 20), ipady=5)
+
+        btn_row = tk.Frame(frame, bg=self.C['surface'])
+        btn_row.pack(padx=20, pady=(0, 12))
+
+        self._primary_btn(btn_row, "Log in",
+                          lambda: self.login_user(u_entry.get(), p_entry.get(), win)
+                          ).pack(side='left', padx=(0, 8))
+
+        tk.Button(btn_row, text="Forgot password?",
+                  font=(*self.FONT_MONO, 9),
+                  fg=self.C['muted'], bg=self.C['surface'],
+                  activeforeground=self.C['accent3'],
+                  border=0, cursor='hand2',
+                  command=self.show_forgot_password_form).pack(side='left')
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(4, 12))
+
+        google_row = tk.Frame(frame, bg=self.C['surface'])
+        google_row.pack(padx=20)
+
+        tk.Button(google_row, text="Continue with Google",
+                  font=(*self.FONT_SANS, 11),
+                  fg=self.C['ink'], bg='#4285F4',
+                  activebackground='#3367D6',
+                  activeforeground=self.C['ink'],
+                  border=0, pady=9, padx=16, cursor='hand2',
+                  command=lambda: [win.destroy(), self.google_login()]).pack(fill='x')
+
+        u_entry.focus()
+        win.bind('<Return>',
+                 lambda e: self.login_user(u_entry.get(), p_entry.get(), win))
+
+    def show_signup_form(self):
+        win, frame = self._dialog_base("Sign up", 420, 540)
+
+        tk.Label(frame, text="Join Tendr",
+                 font=(*self.FONT_SERIF, 18, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(20, 16))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
+
+        entries = {}
+        for key, label, show in [
+            ('username', 'USERNAME', None),
+            ('email',    'EMAIL',    None),
+            ('password', 'PASSWORD', '*'),
+            ('confirm',  'CONFIRM PASSWORD', '*'),
+        ]:
+            tk.Label(frame, text=label,
+                     font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=20)
+            e = self._input(frame, width=32, show=show)
+            e.pack(padx=20, pady=(4, 10), ipady=5)
+            entries[key] = e
+
+        btn_row = tk.Frame(frame, bg=self.C['surface'])
+        btn_row.pack(padx=20, pady=(8, 8))
+
+        self._primary_btn(btn_row, "Create account",
+                          lambda: self.register_user(
+                              entries['username'].get(),
+                              entries['email'].get(),
+                              entries['password'].get(),
+                              entries['confirm'].get(), win)
+                          ).pack(side='left', padx=(0, 8))
+
+        self._ghost_btn(btn_row, "Cancel", win.destroy).pack(side='left')
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(4, 12))
+
+        google_row = tk.Frame(frame, bg=self.C['surface'])
+        google_row.pack(padx=20)
+
+        tk.Button(google_row, text="Sign up with Google",
+                  font=(*self.FONT_SANS, 11),
+                  fg=self.C['ink'], bg='#4285F4',
+                  activebackground='#3367D6',
+                  border=0, pady=9, padx=16, cursor='hand2',
+                  command=lambda: [win.destroy(), self.google_signup()]).pack(fill='x')
+
+        entries['username'].focus()
+        win.bind('<Return>',
+                 lambda e: self.register_user(
+                     entries['username'].get(), entries['email'].get(),
+                     entries['password'].get(), entries['confirm'].get(), win))
+
+    def show_email_verification_form(self, username, email):
+        win, frame = self._dialog_base("Verify email", 400, 360)
+
+        tk.Label(frame, text="Verify your email",
+                 font=(*self.FONT_SERIF, 16, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(20, 10))
+
+        tk.Label(frame,
+                 text=f"We sent a code to:\n{email}",
+                 font=(*self.FONT_SANS, 11),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 justify='center').pack(pady=(0, 16))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
+
+        tk.Label(frame, text="VERIFICATION CODE",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface']).pack()
+
+        code_entry = self._input(frame, width=20)
+        code_entry.pack(pady=(4, 20), ipady=6)
+
+        btn_row = tk.Frame(frame, bg=self.C['surface'])
+        btn_row.pack()
+
+        self._primary_btn(btn_row, "Verify",
+                          lambda: self.verify_email(code_entry.get(), win)
+                          ).pack(side='left', padx=6)
+        self._ghost_btn(btn_row, "Resend",
+                        lambda: self.resend_verification_code(email)
+                        ).pack(side='left', padx=6)
+
+        code_entry.focus()
+        win.bind('<Return>',
+                 lambda e: self.verify_email(code_entry.get(), win))
+
     def show_forgot_password_form(self):
-        window = tk.Toplevel(self.root)
-        window.title("🔑 Forgot Password")
-        window.geometry("380x220")
-        window.configure(bg=self.colors['black'])
-        window.resizable(False, False)
-        window.grab_set()
+        win, frame = self._dialog_base("Reset password", 380, 260)
 
-        frame = tk.Frame(window, bg=self.colors['dark_gray'])
-        frame.pack(fill='both', expand=True, padx=20, pady=20)
+        tk.Label(frame, text="Reset password",
+                 font=(*self.FONT_SERIF, 16, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(20, 10))
 
-        tk.Label(frame, text="Enter your Email:",
-                font=('Montserrat', 12),
-                fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
 
-        email_entry = tk.Entry(frame, font=('Montserrat', 11),
-                            bg=self.colors['light_gray'], fg=self.colors['white'])
-        email_entry.pack(pady=10)
+        tk.Label(frame, text="YOUR EMAIL",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface']).pack()
+
+        email_entry = self._input(frame, width=30)
+        email_entry.pack(pady=(4, 20), ipady=5)
 
         def send_otp():
             email = email_entry.get().strip()
             if not email:
-                messagebox.showerror("Error", "Email is required!")
+                messagebox.showerror("Error", "Email is required.")
                 return
-
             try:
-                response = requests.post(
-                    f"{self.backend_url}/send_forgot_password_otp",
-                    params={"email": email},
-                    timeout=10
-                )
-
-                if response.status_code == 200:
-                    messagebox.showinfo("Success", "OTP sent to your email.")
-                    window.destroy()
+                r = requests.post(f"{self.backend_url}/send_forgot_password_otp",
+                                  params={"email": email}, timeout=10)
+                if r.status_code == 200:
+                    messagebox.showinfo("Sent", "OTP sent to your email.")
+                    win.destroy()
                     self.show_reset_password_form(email)
                 else:
-                    messagebox.showerror("Error", response.json().get("detail"))
+                    messagebox.showerror("Error", r.json().get("detail", "Failed."))
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        tk.Button(frame, text="📧 Send OTP", bg=self.colors['electric_blue'],
-                    fg="black", font=('Montserrat', 12, 'bold'),
-                    command=send_otp).pack(pady=10)
+        btn_row = tk.Frame(frame, bg=self.C['surface'])
+        btn_row.pack()
 
-        tk.Button(frame, text="Cancel", bg=self.colors['light_gray'], fg="white",
-                    command=window.destroy).pack()
+        self._primary_btn(btn_row, "Send OTP", send_otp).pack(side='left', padx=6)
+        self._ghost_btn(btn_row, "Cancel", win.destroy).pack(side='left', padx=6)
 
+    # kept for backwards compat (login form references this name)
+    def show_password_forgot_form(self):
+        self.show_forgot_password_form()
 
-    def handle_forgot_password(self, username, otp, new_pass, confirm_pass, window):
-        if not username or not otp or not new_pass or not confirm_pass:
-            messagebox.showerror("Error", "Please fill all fields!")
+    def show_reset_password_form(self, email):
+        win, frame = self._dialog_base("Reset password", 400, 460)
+
+        tk.Label(frame, text="Choose a new password",
+                 font=(*self.FONT_SERIF, 16, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(20, 6))
+
+        tk.Label(frame, text=f"OTP sent to: {email}",
+                 font=(*self.FONT_MONO, 9),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 12))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
+
+        fields = {}
+        for key, label, show in [
+            ('otp',      'ONE-TIME CODE', None),
+            ('username', 'USERNAME',      None),
+            ('pass1',    'NEW PASSWORD',  '*'),
+            ('pass2',    'CONFIRM',       '*'),
+        ]:
+            tk.Label(frame, text=label,
+                     font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface']).pack()
+            e = self._input(frame, width=28, show=show)
+            e.pack(pady=(4, 10), ipady=5)
+            fields[key] = e
+
+        def reset():
+            otp = fields['otp'].get().strip()
+            uname = fields['username'].get().strip()
+            pw1 = fields['pass1'].get().strip()
+            pw2 = fields['pass2'].get().strip()
+            if not all([otp, uname, pw1, pw2]):
+                messagebox.showerror("Error", "Fill all fields.")
+                return
+            if pw1 != pw2:
+                messagebox.showerror("Error", "Passwords do not match.")
+                return
+            self.reset_password_backend(uname, otp, pw1, pw2, win)
+
+        self._primary_btn(frame, "Reset password", reset).pack(pady=(4, 0))
+
+    def show_delete_account_warning(self):
+        msg = ("This action is permanent and cannot be undone.\n\n"
+               "Deleting your account removes all tasks, pets, and progress.\n\n"
+               "Proceed?")
+        if messagebox.askyesno("Delete account", msg, icon='warning'):
+            self.show_delete_account_password_form()
+
+    def show_delete_account_password_form(self):
+        win, frame = self._dialog_base("Delete account", 420, 320)
+
+        tk.Label(frame, text="Confirm deletion",
+                 font=(*self.FONT_SERIF, 16, 'italic'),
+                 fg=self.C['accent'], bg=self.C['surface']).pack(pady=(20, 8))
+
+        tk.Label(frame, text="Enter your password to confirm.",
+                 font=(*self.FONT_SANS, 11),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 justify='center').pack(pady=(0, 16))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 16))
+
+        tk.Label(frame, text="PASSWORD",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface']).pack()
+        pw = self._input(frame, width=28, show='*')
+        pw.pack(pady=(4, 20), ipady=5)
+
+        btn_row = tk.Frame(frame, bg=self.C['surface'])
+        btn_row.pack()
+
+        tk.Button(btn_row, text="Delete account",
+                  font=(*self.FONT_SANS, 10, 'bold'),
+                  fg=self.C['bg'], bg=self.C['accent'],
+                  activebackground='#c9604a',
+                  border=0, padx=14, pady=7, cursor='hand2',
+                  command=lambda: self.delete_account(pw.get(), win)
+                  ).pack(side='left', padx=6)
+        self._ghost_btn(btn_row, "Cancel", win.destroy).pack(side='left', padx=6)
+
+        pw.focus()
+        win.bind('<Return>', lambda e: self.delete_account(pw.get(), win))
+
+    # ─── auth actions ─────────────────────────────────────────────────────────
+
+    def login_user(self, username, password, window):
+        if not username or not password:
+            messagebox.showerror("Error", "Fill all fields.")
             return
-
         try:
-            # Make request to backend
-            response = requests.patch(
-                f"{self.backend_url}/forgot_password",
-                params={
-                    "username": username,
-                    "entered_verify_code": otp,
-                    "new_password": new_pass,
-                    "new_password_confirm": confirm_pass
-                },
-                timeout=10
-            )
-
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "Password reset successfully!")
+            r = requests.post(f"{self.backend_url}/token",
+                              data={"username": username, "password": password},
+                              timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                self.auth_token = data.get("access_token")
+                self.current_username = data.get("username")
+                self.current_email = data.get("email")
+                self.is_logged_in = True
+                self.user_data['xp'] = self.fetch_user_xp_from_backend()
+                self.save_user_data()
+                self.update_sidebar_stats()
+                messagebox.showinfo("Welcome", f"Good to have you back, {username}.")
                 window.destroy()
-
+                self.switch_page("archive")
             else:
-                error = response.json().get("detail", "Reset failed.")
-                messagebox.showerror("Error", error)
-
+                messagebox.showerror("Login failed", "Invalid username or password.")
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Connection error",
+                                 "Could not reach the server. Try again later.")
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+    def register_user(self, username, email, password, confirm, window):
+        if not all([username, email, password, confirm]):
+            messagebox.showerror("Error", "Fill all fields.")
+            return
+        if password != confirm:
+            messagebox.showerror("Error", "Passwords do not match.")
+            return
+        if len(password) < 6:
+            messagebox.showerror("Error", "Password must be at least 6 characters.")
+            return
+        try:
+            r = requests.post(f"{self.backend_url}/register",
+                              json={"username": username, "password": password,
+                                    "email": email},
+                              timeout=10)
+            if r.ok:
+                result = r.json()
+                if result.get("message"):
+                    messagebox.showinfo("Account created",
+                                       "Check your email for a verification code.")
+                    window.destroy()
+                    self.temp_email = email
+                    self.show_email_verification_form(username, email)
+                else:
+                    messagebox.showerror("Failed", result.get("message", "Registration failed."))
+            else:
+                detail = r.json().get("detail", "Registration failed.")
+                if "already exists" in detail.lower() or "already taken" in detail.lower():
+                    messagebox.showwarning("Already registered", detail)
+                else:
+                    messagebox.showerror("Failed", detail)
+        except requests.exceptions.ConnectionError:
+            messagebox.showerror("Connection error",
+                                 "Could not reach the server. Try again later.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-    def show_reset_password_form(self, email):
-        window = tk.Toplevel(self.root)
-        window.title("🔐 Reset Password")
-        window.geometry("400x400")
-        window.configure(bg=self.colors['black'])
-        window.resizable(True, True)
-        window.grab_set()
+    def verify_email(self, code, window):
+        if not code:
+            messagebox.showerror("Error", "Enter the verification code.")
+            return
+        url = (f"{self.backend_url}/verify_email"
+               f"?email={self.temp_email}&verification_token={code}")
+        try:
+            r = requests.post(url)
+            if r.status_code == 200:
+                messagebox.showinfo("Verified", "Email verified. You can now log in.")
+                window.destroy()
+                self.switch_page("archive")
+            else:
+                messagebox.showerror("Failed", "Invalid or expired code.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-        frame = tk.Frame(window, bg=self.colors['dark_gray'])
-        frame.pack(fill='both', expand=True, padx=20, pady=20)
+    def resend_verification_code(self, email):
+        messagebox.showinfo("Sent", f"Verification code resent to {email}.")
 
-        tk.Label(frame, text=f"OTP sent to: {email}",
-                font=('Montserrat', 11),
-                fg=self.colors['white'], bg=self.colors['dark_gray']).pack(pady=5)
+    def handle_forgot_password(self, username, otp, new_pass, confirm_pass, window):
+        if not all([username, otp, new_pass, confirm_pass]):
+            messagebox.showerror("Error", "Fill all fields.")
+            return
+        try:
+            r = requests.patch(f"{self.backend_url}/forgot_password",
+                               params={"username": username,
+                                       "entered_verify_code": otp,
+                                       "new_password": new_pass,
+                                       "new_password_confirm": confirm_pass},
+                               timeout=10)
+            if r.status_code == 200:
+                messagebox.showinfo("Done", "Password reset successfully.")
+                window.destroy()
+            else:
+                messagebox.showerror("Error", r.json().get("detail", "Reset failed."))
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-        tk.Label(frame, text="Enter OTP:",
-                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
-        otp_entry = tk.Entry(frame, font=('Montserrat', 11),
-                            bg=self.colors['light_gray'], fg=self.colors['white'])
-        otp_entry.pack(pady=5)
-
-        tk.Label(frame, text="Enter Username (for identity):",
-                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
-        username_entry = tk.Entry(frame, font=('Montserrat', 11),
-                                bg=self.colors['light_gray'], fg=self.colors['white'])
-        username_entry.pack(pady=5)
-
-        tk.Label(frame, text="New Password:",
-                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
-        pass1 = tk.Entry(frame, show="*", font=('Montserrat', 11),
-                        bg=self.colors['light_gray'], fg=self.colors['white'])
-        pass1.pack(pady=5)
-
-        tk.Label(frame, text="Confirm Password:",
-                font=('Montserrat', 11), fg=self.colors['white'], bg=self.colors['dark_gray']).pack()
-        pass2 = tk.Entry(frame, show="*", font=('Montserrat', 11),
-                        bg=self.colors['light_gray'], fg=self.colors['white'])
-        pass2.pack(pady=5)
-
-        def reset_password():
-            otp = otp_entry.get().strip()
-            username = username_entry.get().strip()
-            new_pass = pass1.get().strip()
-            new_pass2 = pass2.get().strip()
-
-            if not otp or not username or not new_pass or not new_pass2:
-                messagebox.showerror("Error", "Please fill all fields!")
-                return
-
-            if new_pass != new_pass2:
-                messagebox.showerror("Error", "Passwords do not match!")
-                return
-    
     def logout(self):
-        """Handle user logout"""
         self.is_logged_in = False
         self.current_user = None
         self.auth_token = None
-        messagebox.showinfo("Logged Out", "👋 You have been logged out successfully!")
-        self.switch_page("settings")  # Refresh settings page
-    
-    def show_delete_account_warning(self):
-        """Show initial warning before account deletion"""
-        warning_msg = (
-            "⚠️ WARNING: Account Deletion\n\n"
-            "This action is PERMANENT and cannot be undone!\n\n"
-            "Deleting your account will:\n"
-            "• Remove all your tasks\n"
-            "• Remove all your pets\n"
-            "• Delete all your progress and data\n"
-            "• Permanently delete your account\n\n"
-            "Are you absolutely sure you want to proceed?"
-        )
-        
-        if messagebox.askyesno("⚠️ Delete Account Warning", warning_msg, icon='warning'):
-            self.show_delete_account_password_form()
-    
-    def show_delete_account_password_form(self):
-        """Show password confirmation form for account deletion"""
-        password_window = tk.Toplevel(self.root)
-        password_window.title("🗑️ Delete Account - Password Confirmation")
-        password_window.geometry("450x350")
-        password_window.configure(bg=self.colors['black'])
-        password_window.resizable(False, False)
-        
-        # Center the window
-        password_window.transient(self.root)
-        password_window.grab_set()
-        
-        # Password form
-        password_frame = tk.Frame(password_window, bg=self.colors['dark_gray'])
-        password_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = tk.Label(password_frame, text="🗑️ Confirm Account Deletion", 
-                              font=('Orbitron', 18, 'bold'),
-                              fg=self.colors['hot_pink'], 
-                              bg=self.colors['dark_gray'])
-        title_label.pack(pady=(0, 20))
-        
-        # Warning text
-        warning_text = tk.Label(password_frame, 
-                               text="⚠️ Enter your password to confirm account deletion.\nThis action cannot be undone!",
-                               font=('Montserrat', 11),
-                               fg=self.colors['hot_pink'], 
-                               bg=self.colors['dark_gray'],
-                               justify='center')
-        warning_text.pack(pady=(0, 20))
-        
-        # Password field
-        tk.Label(password_frame, text="Password:", 
-                font=('Montserrat', 12, 'bold'),
-                fg=self.colors['white'], 
-                bg=self.colors['dark_gray']).pack(pady=(0, 5))
-        password_entry = tk.Entry(password_frame, font=('Montserrat', 11), 
-                                 bg=self.colors['light_gray'], 
-                                 fg=self.colors['white'], 
-                                 insertbackground=self.colors['white'],
-                                 show="*")
-        password_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
-        
-        # Buttons
-        button_frame = tk.Frame(password_frame, bg=self.colors['dark_gray'])
-        button_frame.pack(pady=10)
-        
-        delete_btn = tk.Button(button_frame, text="🗑️ Delete Account", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['hot_pink'],
-                              activebackground=self.colors['electric_blue'],
-                              command=lambda: self.delete_account(password_entry.get(), password_window))
-        delete_btn.pack(side='left', padx=10)
-        
-        cancel_btn = tk.Button(button_frame, text="❌ Cancel", 
-                              font=('Montserrat', 12, 'bold'),
-                              fg=self.colors['white'],
-                              bg=self.colors['light_gray'],
-                              activebackground=self.colors['dark_gray'],
-                              command=password_window.destroy)
-        cancel_btn.pack(side='left', padx=10)
-        
-        # Focus on password field
-        password_entry.focus()
-        
-        # Bind Enter key to delete
-        password_window.bind('<Return>', lambda e: self.delete_account(password_entry.get(), password_window))
-    
+        messagebox.showinfo("Logged out", "You have been logged out.")
+        self.switch_page("archive")
+
     def delete_account(self, password, window):
-        """Delete user account after password verification"""
         if not password:
-            messagebox.showerror("Error", "Please enter your password!")
+            messagebox.showerror("Error", "Enter your password.")
             return
-        
         if not self.is_logged_in or not self.auth_token:
-            messagebox.showerror("Error", "You must be logged in to delete your account!")
+            messagebox.showerror("Error", "You must be logged in.")
             window.destroy()
             return
-        
         try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"}
-            response = requests.delete(f"{self.backend_url}/delete_account", 
-                                     json={"password": password}, 
-                                     headers=headers,
-                                     timeout=10)
-            
-            if response.status_code == 200:
+            headers = {"Authorization": f"Bearer {self.auth_token}",
+                       "Content-Type": "application/json"}
+            r = requests.delete(f"{self.backend_url}/delete_account",
+                                json={"password": password},
+                                headers=headers, timeout=10)
+            if r.status_code == 200:
                 window.destroy()
-                messagebox.showinfo("Account Deleted", 
-                                  "🗑️ Your account has been permanently deleted.\n\n"
-                                  "All your data has been removed from our system.")
-                # Logout and reset
+                messagebox.showinfo("Deleted",
+                                    "Your account has been permanently deleted.")
                 self.is_logged_in = False
                 self.current_user = None
                 self.auth_token = None
-                self.switch_page("settings")
-            elif response.status_code == 401:
-                messagebox.showerror("Incorrect Password", 
-                                   "❌ The password you entered is incorrect!\n\n"
-                                   "Please try again with the correct password.")
+                self.switch_page("archive")
+            elif r.status_code == 401:
+                messagebox.showerror("Wrong password",
+                                     "The password you entered is incorrect.")
             else:
-                error_msg = response.json().get("detail", "Failed to delete account")
-                messagebox.showerror("Error", f"Failed to delete account: {error_msg}")
+                detail = r.json().get("detail", "Failed.")
+                messagebox.showerror("Error", detail)
         except requests.exceptions.ConnectionError:
-            messagebox.showerror("Connection Error", 
-                               "Could not connect to server. Please try again later.")
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
-    
-    def fetch_tasks_from_backend(self):
-        """Fetch tasks from backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
-            response = requests.get(f"{self.backend_url}/tasks", headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return []
-        except Exception as e:
-            print(f"Error fetching tasks: {e}")
-            return []
-    
-    def fetch_user_xp_from_backend(self):
-        """Fetch user XP from backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
-            response = requests.get(f"{self.backend_url}/user/xp", headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('xp', 100)  # Default to 100 if not found
-            return 100
-        except Exception as e:
-            print(f"Error fetching XP: {e}")
-            return 100
-
-    def add_task_to_backend(self, title, priority):
-        """Add a new task to backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
-            response = requests.post(f"{self.backend_url}/tasks", json={"title": title, "priority": priority}, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except Exception as e:
-            print(f"Error adding task: {e}")
-            return None
-
-    def update_task_completed_backend(self, task_id, completed):
-        """Update task completion status in backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
-            response = requests.patch(f"{self.backend_url}/tasks/{task_id}", json={"completed": completed}, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except Exception as e:
-            print(f"Error updating task: {e}")
-            return None
-
-    def delete_task_from_backend(self, task_id):
-        """Delete a task from backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
-            response = requests.delete(f"{self.backend_url}/tasks/{task_id}", headers=headers)
-            return response.status_code == 200
-        except Exception as e:
-            print(f"Error deleting task: {e}")
-            return False
-
-    def fetch_pets_from_backend(self):
-        """Fetch pets from backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
-            response = requests.get(f"{self.backend_url}/pet", headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return []
-        except Exception as e:
-            print(f"Error fetching pets: {e}")
-            return []
-
-    def create_pet_in_backend(self, name, pet_type, age=0, hunger=100):
-        """Create a new pet in backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"} if self.auth_token else {}
-            response = requests.post(f"{self.backend_url}/pets", json={"name": name, "type": pet_type, "age": age, "hunger": hunger}, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except Exception as e:
-            print(f"Error creating pet: {e}")
-            return None
-    
-    def feed_pet_in_backend(self, pet_id):
-        """Feed a pet via backend API"""
-        try:
-            headers = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
-            response = requests.patch(f"{self.backend_url}/pet/feed/{pet_id}", headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            return None
-        except Exception as e:
-            print(f"Error feeding pet: {e}")
-            return None
-
-    def run(self):
-        """Start the application"""
-        self.root.mainloop()
-
-    def reset_password_backend(self, username, otp, new_pass, new_pass2, window):
-        if not otp or not new_pass or not new_pass2:
-            messagebox.showerror("Error", "Please fill all fields!")
-            return
-
-        try:
-            response = requests.patch(
-            f"{self.backend_url}/forgot_password",
-            params={
-                "username": username,
-                "entered_verify_code": otp,
-                "new_password": new_pass,
-                "new_password_confirm": new_pass2
-            },
-            timeout=10
-        )
-
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "Password reset successfully!")
-                window.destroy()
-            else:
-                error = response.json().get("detail", "Reset failed.")
-                messagebox.showerror("Error", error)
-
+            messagebox.showerror("Connection error", "Could not reach the server.")
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+    # ─── google oauth ─────────────────────────────────────────────────────────
+
+    def google_login(self):
+        port = self._find_free_port()
+        self._oauth_raw_params = None
+        self._start_oauth_server(port)
+        webbrowser.open(f"{self.backend_url}/auth/google/login?desktop_port={port}")
+        self._show_google_waiting_dialog(port)
+
+    def google_signup(self):
+        self.google_login()
+
+    def _find_free_port(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))
+            return s.getsockname()[1]
+
+    def _start_oauth_server(self, port):
+        app_ref = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+                app_ref._oauth_raw_params = {k: v[0] for k, v in params.items()}
+
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(
+                    b'<!DOCTYPE html><html><head><meta charset="utf-8">'
+                    b'<style>*{margin:0;padding:0;box-sizing:border-box}'
+                    b'body{font-family:Georgia,serif;background:#1a1410;color:#f0e8d8;'
+                    b'display:flex;align-items:center;justify-content:center;height:100vh}'
+                    b'.card{text-align:center;padding:40px}'
+                    b'h2{font-style:italic;font-weight:400;font-size:24px;margin-bottom:12px}'
+                    b'p{color:#8a7e6a;font-family:monospace;font-size:13px}</style></head>'
+                    b'<body><div class="card"><h2>Signed in.</h2>'
+                    b'<p>You can close this window and return to Tendr.</p></div>'
+                    b'<script>setTimeout(()=>window.close(),1500)</script>'
+                    b'</body></html>'
+                )
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+            def log_message(self, *args):
+                pass
+
+        self._oauth_server = socketserver.TCPServer(('localhost', port), Handler)
+        self._oauth_server.allow_reuse_address = True
+        t = threading.Thread(target=self._oauth_server.serve_forever, daemon=True)
+        t.start()
+
+    def _show_google_waiting_dialog(self, port):
+        win = tk.Toplevel(self.root)
+        win.title("Google Sign In")
+        win.geometry("400x230")
+        win.configure(bg=self.C['bg'])
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+
+        win.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 230) // 2
+        win.geometry(f"400x230+{x}+{y}")
+
+        frame = tk.Frame(win, bg=self.C['surface'],
+                         highlightthickness=1, highlightbackground=self.C['rule'])
+        frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        tk.Label(frame, text="Continue in your browser",
+                 font=(*self.FONT_SERIF, 15, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(24, 8))
+
+        self._google_status = tk.Label(frame,
+                 text="Waiting for Google sign-in...",
+                 font=(*self.FONT_MONO, 9),
+                 fg=self.C['muted'], bg=self.C['surface'])
+        self._google_status.pack(pady=6)
+
+        def cancel():
+            if self._oauth_server:
+                threading.Thread(target=self._oauth_server.shutdown, daemon=True).start()
+                self._oauth_server = None
+            self._oauth_raw_params = None
+            win.destroy()
+
+        self._ghost_btn(frame, "Cancel", cancel).pack(pady=10)
+
+        self._poll_oauth_result(win)
+
+    def _poll_oauth_result(self, win):
+        if not win.winfo_exists():
+            return
+        if self._oauth_raw_params is not None:
+            params = self._oauth_raw_params
+            self._oauth_raw_params = None
+            win.destroy()
+            self._handle_google_oauth_result(params)
+            return
+        self.root.after(400, lambda: self._poll_oauth_result(win))
+
+    def _handle_google_oauth_result(self, params):
+        token     = params.get('token')
+        username  = params.get('username')
+        email     = params.get('email')
+        pending   = params.get('pending_token')
+
+        if token and username and email:
+            self.auth_token        = token
+            self.current_username  = unquote(username)
+            self.current_email     = unquote(email)
+            self.is_logged_in      = True
+            self.user_data['xp']   = self.fetch_user_xp_from_backend()
+            self.save_user_data()
+            self.update_sidebar_stats()
+            messagebox.showinfo("Welcome", f"Signed in as {self.current_username}.")
+            self.switch_page("archive")
+        elif pending:
+            email_decoded = unquote(email or '')
+            self._show_google_choose_username(pending, email_decoded)
+        else:
+            messagebox.showerror("Sign-in failed",
+                                 "Google sign-in did not complete. Try again.")
+
+    def _show_google_choose_username(self, pending_token, email):
+        win, frame = self._dialog_base("Choose username", 420, 310)
+
+        tk.Label(frame, text="One last step",
+                 font=(*self.FONT_SERIF, 16, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(pady=(22, 6))
+
+        tk.Label(frame, text=f"Creating account for  {email}",
+                 font=(*self.FONT_MONO, 9),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 12))
+
+        tk.Frame(frame, bg=self.C['rule'], height=1).pack(fill='x', padx=16, pady=(0, 14))
+
+        tk.Label(frame, text="CHOOSE A USERNAME",
+                 font=(*self.FONT_MONO, 8),
+                 fg=self.C['muted'], bg=self.C['surface']).pack()
+
+        uname_entry = self._input(frame, width=28)
+        uname_entry.pack(pady=(4, 16), ipady=5)
+
+        def create():
+            uname = uname_entry.get().strip()
+            if len(uname) < 3:
+                messagebox.showerror("Error", "Username must be at least 3 characters.")
+                return
+            try:
+                r = requests.post(
+                    f"{self.backend_url}/auth/google/complete-registration",
+                    json={"pending_token": pending_token, "username": uname},
+                    timeout=10,
+                )
+                if r.ok:
+                    data = r.json()
+                    self.auth_token       = data.get("token") or data.get("access_token")
+                    self.current_username = data.get("username")
+                    self.current_email    = data.get("email")
+                    self.is_logged_in     = True
+                    self.user_data['xp']  = self.fetch_user_xp_from_backend()
+                    self.save_user_data()
+                    self.update_sidebar_stats()
+                    win.destroy()
+                    messagebox.showinfo("Welcome", f"Account created. Welcome, {uname}!")
+                    self.switch_page("archive")
+                else:
+                    detail = r.json().get("detail", "Registration failed.")
+                    messagebox.showerror("Error", detail)
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        self._primary_btn(frame, "Create account", create).pack()
+        uname_entry.focus()
+        win.bind('<Return>', lambda e: create())
+
+    # ─── backend API helpers ──────────────────────────────────────────────────
+
+    def fetch_tasks_from_backend(self):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.get(f"{self.backend_url}/tasks", headers=h)
+            return r.json() if r.status_code == 200 else []
+        except Exception as e:
+            print(f"fetch tasks: {e}")
+            return []
+
+    def fetch_user_xp_from_backend(self):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.get(f"{self.backend_url}/user/xp", headers=h)
+            return r.json().get('xp', 0) if r.status_code == 200 else 0
+        except Exception as e:
+            print(f"fetch xp: {e}")
+            return 0
+
+    def add_task_to_backend(self, title, priority, category=None):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}",
+                 "Content-Type": "application/json"} if self.auth_token else {}
+            body = {"title": title, "priority": priority}
+            if category:
+                body["category"] = category
+            r = requests.post(f"{self.backend_url}/tasks", json=body, headers=h)
+            return r.json() if r.status_code == 200 else None
+        except Exception as e:
+            print(f"add task: {e}")
+            return None
+
+    def update_task_completed_backend(self, task_id, completed):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}",
+                 "Content-Type": "application/json"} if self.auth_token else {}
+            r = requests.patch(f"{self.backend_url}/tasks/{task_id}",
+                               json={"completed": completed}, headers=h)
+            return r.json() if r.status_code == 200 else None
+        except Exception as e:
+            print(f"update task: {e}")
+            return None
+
+    def delete_task_from_backend(self, task_id):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.delete(f"{self.backend_url}/tasks/{task_id}", headers=h)
+            return r.status_code == 200
+        except Exception as e:
+            print(f"delete task: {e}")
+            return False
+
+    def fetch_pets_from_backend(self):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.get(f"{self.backend_url}/pet", headers=h)
+            return r.json() if r.status_code == 200 else []
+        except Exception as e:
+            print(f"fetch pets: {e}")
+            return []
+
+    def create_pet_in_backend(self, name, pet_type, age=0, hunger=100):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}",
+                 "Content-Type": "application/json"} if self.auth_token else {}
+            r = requests.post(f"{self.backend_url}/pets",
+                              json={"name": name, "type": pet_type,
+                                    "age": age, "hunger": hunger},
+                              headers=h)
+            return r.json() if r.status_code == 200 else None
+        except Exception as e:
+            print(f"create pet: {e}")
+            return None
+
+    def feed_pet_in_backend(self, pet_id):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.patch(f"{self.backend_url}/pet/feed/{pet_id}", headers=h)
+            return r.json() if r.status_code == 200 else None
+        except Exception as e:
+            print(f"feed pet: {e}")
+            return None
+
+    def reset_password_backend(self, username, otp, new_pass, new_pass2, window):
+        if not all([otp, new_pass, new_pass2]):
+            messagebox.showerror("Error", "Fill all fields.")
+            return
+        try:
+            r = requests.patch(f"{self.backend_url}/forgot_password",
+                               params={"username": username,
+                                       "entered_verify_code": otp,
+                                       "new_password": new_pass,
+                                       "new_password_confirm": new_pass2},
+                               timeout=10)
+            if r.status_code == 200:
+                messagebox.showinfo("Done", "Password reset successfully.")
+                window.destroy()
+            else:
+                messagebox.showerror("Error",
+                                     r.json().get("detail", "Reset failed."))
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    # ─── run ──────────────────────────────────────────────────────────────────
+
+    def run(self):
+        self.root.mainloop()
+
 
 if __name__ == "__main__":
-    # Import required modules
     try:
         import tkinter.simpledialog
         import tkinter.filedialog
     except ImportError:
         pass
-    
-    app = BlossomFocusApp()
-    app.run()
 
+    app = TendrApp()
+    app.run()
