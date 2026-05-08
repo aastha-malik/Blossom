@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
+import calendar
 from datetime import datetime, timedelta
 import threading
 import time
@@ -1266,52 +1267,319 @@ class TendrApp:
 
     # ─── Ledger (Analytics) ───────────────────────────────────────────────────
 
+    def _blend_hex(self, c1, c2, t):
+        """Blend two #rrggbb hex colors: t=0 → c1, t=1 → c2."""
+        r1,g1,b1 = int(c1[1:3],16), int(c1[3:5],16), int(c1[5:7],16)
+        r2,g2,b2 = int(c2[1:3],16), int(c2[3:5],16), int(c2[5:7],16)
+        r = int(r1 + (r2-r1)*t); g = int(g1 + (g2-g1)*t); b = int(b1 + (b2-b1)*t)
+        return f'#{r:02x}{g:02x}{b:02x}'
+
     def show_analytics(self):
         self._page_eyebrow("LEDGER")
-        self._page_title("Your record")
-        self._rule(pady=(4, 20))
+        self._page_title("The record.")
+        tk.Label(self.content_frame,
+                 text="Everything you have done, quietly counted.",
+                 font=(*self.FONT_SERIF, 11, 'italic'),
+                 fg=self.C['ink_soft'], bg=self.C['bg'],
+                 anchor='w').pack(anchor='w', pady=(2, 0))
+        self._rule(pady=(10, 16))
 
         if not self.is_logged_in or not self.auth_token:
-            tasks_done = 0
-            streak = 0
+            tk.Label(self.content_frame,
+                     text="Log in to see your record.",
+                     font=(*self.FONT_MONO, 11),
+                     fg=self.C['muted'], bg=self.C['bg']).pack(pady=60)
+            return
+
+        # ── fetch data ────────────────────────────────────────────────────────
+        tasks = self.fetch_tasks_from_backend()
+        user_id = next((t.get('user_id') for t in tasks if t.get('user_id')), None)
+        stats   = self.fetch_stats_from_backend(user_id) if user_id else {}
+        focus   = self.fetch_focus_total_from_backend()
+
+        streak       = stats.get('streaks', 0) or 0
+        tasks_done   = stats.get('num_task_completed') or len([t for t in tasks if t.get('completed')])
+        focus_secs   = focus.get('total_seconds', 0) or 0
+        focus_hrs    = focus_secs // 3600
+        focus_mins   = (focus_secs % 3600) // 60
+        if focus_hrs == 0:
+            focus_disp = f"{focus_mins} min"
+        elif focus_mins == 0:
+            focus_disp = f"{focus_hrs} hr{'s' if focus_hrs != 1 else ''}"
         else:
-            tasks_done = self.user_data.get('completed_tasks', 0)
-            streak = self.user_data.get('streak', 0)
+            focus_disp = f"{focus_hrs} hr{'s' if focus_hrs != 1 else ''} {focus_mins} min"
 
-        grid = tk.Frame(self.content_frame, bg=self.C['bg'])
-        grid.pack(fill='x')
+        # ── 3 top stat cards ──────────────────────────────────────────────────
+        top = tk.Frame(self.content_frame, bg=self.C['bg'])
+        top.pack(fill='x', pady=(0, 16))
 
-        for col, (label, value) in enumerate([
-            ("TASKS COMPLETED", str(tasks_done)),
-            ("CURRENT STREAK",  f"{streak} days"),
-            ("FOCUS SESSIONS",  str(self.user_data.get('focus_sessions', 0))),
+        for col, (label, value, color) in enumerate([
+            ("TASKS FINISHED",  str(tasks_done), self.C['accent']),
+            ("TIME TOGETHER",   focus_disp,       self.C['accent3']),
+            ("STREAK",          f"{streak} days", self.C['amber']),
         ]):
-            card = tk.Frame(grid, bg=self.C['surface'],
+            c = tk.Frame(top, bg=self.C['surface'],
+                         highlightthickness=1,
+                         highlightbackground=self.C['rule'])
+            c.grid(row=0, column=col, padx=(0 if col==0 else 10, 0), sticky='nsew')
+            top.grid_columnconfigure(col, weight=1)
+            tk.Label(c, text=label, font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=16, pady=(14, 2))
+            tk.Label(c, text=value,
+                     font=(*self.FONT_SERIF, 30, 'italic'),
+                     fg=color, bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=16, pady=(0, 14))
+
+        # ── 21-day heatmap ─────────────────────────────────────────────────────
+        today = datetime.now().date()
+        day_counts_21 = []
+        for i in range(20, -1, -1):
+            d = today - timedelta(days=i)
+            cnt = sum(
+                1 for t in tasks
+                if t.get('completed') and t.get('created_at', '')[:10] == d.strftime('%Y-%m-%d')
+            )
+            day_counts_21.append(cnt)
+        max21 = max(max(day_counts_21), 1)
+
+        hm21_card = tk.Frame(self.content_frame, bg=self.C['surface'],
+                             highlightthickness=1, highlightbackground=self.C['rule'])
+        hm21_card.pack(fill='x', pady=(0, 14))
+
+        tk.Label(hm21_card, text="LAST 21 DAYS",
+                 font=(*self.FONT_MONO, 8), fg=self.C['muted'],
+                 bg=self.C['surface'], anchor='w').pack(anchor='w', padx=16, pady=(12, 6))
+
+        row_21 = tk.Frame(hm21_card, bg=self.C['surface'])
+        row_21.pack(fill='x', padx=16, pady=(0, 4))
+        for cnt in day_counts_21:
+            t = 0.0 if cnt == 0 else max(0.15, 0.15 + 0.85 * cnt / max21)
+            bg = self._blend_hex(self.C['surface2'], self.C['accent'], t)
+            cell = tk.Frame(row_21, bg=bg, height=20,
                             highlightthickness=1,
-                            highlightbackground=self.C['rule'],
-                            highlightcolor=self.C['rule'])
-            card.grid(row=0, column=col, padx=10, pady=8, sticky='nsew')
-            grid.grid_columnconfigure(col, weight=1)
+                            highlightbackground=self.C['rule'])
+            cell.pack(side='left', fill='x', expand=True, padx=1)
 
-            tk.Label(card, text=value,
-                     font=(*self.FONT_SERIF, 34, 'italic'),
-                     fg=self.C['amber'], bg=self.C['surface']).pack(pady=(24, 4))
-            tk.Label(card, text=label,
-                     font=(*self.FONT_MONO, 8),
-                     fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 24))
+        leg21 = tk.Frame(hm21_card, bg=self.C['surface'])
+        leg21.pack(fill='x', padx=16, pady=(2, 10))
+        tk.Label(leg21, text="21 D AGO", font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='left')
+        tk.Label(leg21, text="each square, a day",
+                 font=(*self.FONT_SERIF, 9, 'italic'),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='left', expand=True)
+        tk.Label(leg21, text="TODAY", font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='right')
 
-    def create_analytics_card(self, parent, title, value, color, row, col):
-        card = tk.Frame(parent, bg=self.C['surface'],
-                        highlightthickness=1,
-                        highlightbackground=self.C['rule'])
-        card.grid(row=row, column=col, padx=10, pady=8, sticky='nsew')
-        parent.grid_columnconfigure(col, weight=1)
-        tk.Label(card, text=value,
-                 font=(*self.FONT_SERIF, 32, 'italic'),
-                 fg=color, bg=self.C['surface']).pack(pady=(24, 8))
-        tk.Label(card, text=title,
-                 font=(*self.FONT_MONO, 9),
-                 fg=self.C['muted'], bg=self.C['surface']).pack(pady=(0, 24))
+        # ── monthly calendar heatmap ──────────────────────────────────────────
+        if not hasattr(self, '_ldg_month'):
+            self._ldg_month = today.month   # 1-indexed
+            self._ldg_year  = today.year
+
+        vm, vy = self._ldg_month, self._ldg_year
+        _, days_in_month = calendar.monthrange(vy, vm)
+        first_weekday    = calendar.monthrange(vy, vm)[0]  # 0=Mon
+        month_name       = datetime(vy, vm, 1).strftime('%B')
+
+        month_counts = [0] * days_in_month
+        for t in tasks:
+            if not t.get('completed'): continue
+            ds = (t.get('created_at') or '')[:10]
+            try:
+                d = datetime.strptime(ds, '%Y-%m-%d')
+                if d.year == vy and d.month == vm:
+                    month_counts[d.day - 1] += 1
+            except Exception:
+                pass
+        max_month = max(max(month_counts), 1)
+        total_month = sum(month_counts)
+
+        cal_card = tk.Frame(self.content_frame, bg=self.C['surface'],
+                            highlightthickness=1, highlightbackground=self.C['rule'])
+        cal_card.pack(fill='x', pady=(0, 14))
+
+        # calendar header
+        cal_hdr = tk.Frame(cal_card, bg=self.C['surface'])
+        cal_hdr.pack(fill='x', padx=16, pady=(12, 8))
+
+        tk.Label(cal_hdr, text="MONTHLY VIEW",
+                 font=(*self.FONT_MONO, 8), fg=self.C['muted'],
+                 bg=self.C['surface']).pack(anchor='w')
+        tk.Label(cal_hdr,
+                 text=f"{month_name} {vy}.",
+                 font=(*self.FONT_SERIF, 18, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface']).pack(anchor='w')
+        tk.Label(cal_hdr,
+                 text=f"{total_month} task{'s' if total_month != 1 else ''} completed",
+                 font=(*self.FONT_MONO, 8), fg=self.C['muted'],
+                 bg=self.C['surface']).pack(anchor='w', pady=(2, 0))
+
+        is_current = (vm == today.month and vy == today.year)
+
+        nav_row = tk.Frame(cal_card, bg=self.C['surface'])
+        nav_row.pack(anchor='e', padx=16, pady=(0, 8))
+
+        def _go_back():
+            if self._ldg_month == 1:
+                self._ldg_month = 12; self._ldg_year -= 1
+            else:
+                self._ldg_month -= 1
+            self.switch_page('ledger')
+
+        def _go_fwd():
+            if is_current: return
+            if self._ldg_month == 12:
+                self._ldg_month = 1; self._ldg_year += 1
+            else:
+                self._ldg_month += 1
+            self.switch_page('ledger')
+
+        tk.Button(nav_row, text=" ‹ ", font=(*self.FONT_MONO, 11),
+                  fg=self.C['ink_soft'], bg=self.C['surface2'],
+                  border=0, padx=8, pady=4, cursor='hand2',
+                  command=_go_back).pack(side='left', padx=(0, 4))
+        tk.Button(nav_row, text=" › ", font=(*self.FONT_MONO, 11),
+                  fg=self.C['muted'] if is_current else self.C['ink_soft'],
+                  bg=self.C['surface2'],
+                  border=0, padx=8, pady=4,
+                  cursor='arrow' if is_current else 'hand2',
+                  command=_go_fwd).pack(side='left')
+
+        # day-of-week labels
+        dow_row = tk.Frame(cal_card, bg=self.C['surface'])
+        dow_row.pack(fill='x', padx=16, pady=(0, 3))
+        for d in ['M', 'T', 'W', 'T', 'F', 'S', 'S']:
+            tk.Label(dow_row, text=d, font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     width=3, anchor='center').pack(side='left', expand=True, fill='x')
+
+        # calendar grid
+        grid_frame = tk.Frame(cal_card, bg=self.C['surface'])
+        grid_frame.pack(fill='x', padx=16, pady=(0, 4))
+
+        cell_col = 0; cell_row = 0
+        for _ in range(7): grid_frame.grid_columnconfigure(_, weight=1)
+
+        # empty offset cells
+        for _ in range(first_weekday):
+            tk.Frame(grid_frame, bg=self.C['surface'], height=28).grid(
+                row=0, column=cell_col, padx=1, pady=1, sticky='nsew')
+            cell_col += 1
+
+        for day_idx, cnt in enumerate(month_counts):
+            day_num = day_idx + 1
+            is_today_cell = is_current and day_num == today.day
+            t = 0.0 if cnt == 0 else max(0.2, 0.2 + 0.8 * cnt / max_month)
+            bg = self._blend_hex(self.C['surface2'], self.C['accent'], t)
+            hl = self.C['accent'] if is_today_cell else self.C['rule']
+
+            cell = tk.Frame(grid_frame, bg=bg, height=28,
+                            highlightthickness=1, highlightbackground=hl)
+            cell.grid(row=cell_row, column=cell_col, padx=1, pady=1, sticky='nsew')
+            tk.Label(cell, text=str(day_num), font=(*self.FONT_MONO, 7),
+                     fg=self.C['ink'] if cnt > 0 else self.C['muted'],
+                     bg=bg).pack(expand=True)
+
+            cell_col += 1
+            if cell_col == 7: cell_col = 0; cell_row += 1
+
+        cal_leg = tk.Frame(cal_card, bg=self.C['surface'])
+        cal_leg.pack(fill='x', padx=16, pady=(2, 12))
+        tk.Label(cal_leg, text="NO ACTIVITY", font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='left')
+        tk.Label(cal_leg, text="each square, a day",
+                 font=(*self.FONT_SERIF, 9, 'italic'),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='left', expand=True)
+        tk.Label(cal_leg, text="MOST ACTIVE", font=(*self.FONT_MONO, 7),
+                 fg=self.C['muted'], bg=self.C['surface']).pack(side='right')
+
+        # ── bottom two columns ────────────────────────────────────────────────
+        bot = tk.Frame(self.content_frame, bg=self.C['bg'])
+        bot.pack(fill='x')
+        bot.grid_columnconfigure(0, weight=1)
+        bot.grid_columnconfigure(1, weight=1)
+
+        # Priority breakdown (left)
+        prio_card = tk.Frame(bot, bg=self.C['surface'],
+                             highlightthickness=1, highlightbackground=self.C['rule'])
+        prio_card.grid(row=0, column=0, padx=(0, 8), sticky='nsew')
+
+        tk.Label(prio_card, text="BY PRIORITY",
+                 font=(*self.FONT_MONO, 8), fg=self.C['muted'],
+                 bg=self.C['surface'], anchor='w').pack(anchor='w', padx=16, pady=(14, 4))
+        tk.Label(prio_card, text="Where your effort went.",
+                 font=(*self.FONT_SERIF, 13, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=16, pady=(0, 12))
+
+        prio_counts = {}
+        for t in tasks:
+            if not t.get('completed'): continue
+            p = (t.get('priority') or 'low').upper()
+            prio_counts[p] = prio_counts.get(p, 0) + 1
+
+        prio_colors = {'HIGH': self.C['accent'], 'MEDIUM': self.C['accent3'], 'LOW': self.C['accent2']}
+        pmax = max(max(prio_counts.values()) if prio_counts else 1, 1)
+
+        if not prio_counts:
+            tk.Label(prio_card, text="no completed tasks yet.",
+                     font=(*self.FONT_SERIF, 11, 'italic'),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     anchor='w').pack(anchor='w', padx=16, pady=(0, 16))
+        else:
+            for p in ['HIGH', 'MEDIUM', 'LOW']:
+                if p not in prio_counts: continue
+                cnt = prio_counts[p]
+                pr = tk.Frame(prio_card, bg=self.C['surface'])
+                pr.pack(fill='x', padx=16, pady=(0, 10))
+                lrow = tk.Frame(pr, bg=self.C['surface'])
+                lrow.pack(fill='x')
+                tk.Label(lrow, text=p, font=(*self.FONT_MONO, 8),
+                         fg=self.C['muted'], bg=self.C['surface']).pack(side='left')
+                tk.Label(lrow, text=str(cnt), font=(*self.FONT_MONO, 9),
+                         fg=self.C['ink_soft'], bg=self.C['surface']).pack(side='right')
+                track = tk.Frame(pr, bg=self.C['surface2'], height=5)
+                track.pack(fill='x', pady=(3, 0))
+                track.pack_propagate(False)
+                tk.Frame(track, bg=prio_colors.get(p, self.C['accent']),
+                         height=5).place(relx=0, rely=0, relwidth=cnt/pmax, relheight=1.0)
+            tk.Frame(prio_card, bg=self.C['surface'], height=4).pack()
+
+        # Streak card (right)
+        streak_card = tk.Frame(bot, bg=self.C['surface'],
+                               highlightthickness=1, highlightbackground=self.C['rule'])
+        streak_card.grid(row=0, column=1, padx=(8, 0), sticky='nsew')
+
+        tk.Label(streak_card, text="STREAK",
+                 font=(*self.FONT_MONO, 8), fg=self.C['muted'],
+                 bg=self.C['surface'], anchor='w').pack(anchor='w', padx=16, pady=(14, 4))
+        tk.Label(streak_card, text="Continuity is the point.",
+                 font=(*self.FONT_SERIF, 13, 'italic'),
+                 fg=self.C['ink'], bg=self.C['surface'],
+                 anchor='w').pack(anchor='w', padx=16, pady=(0, 8))
+
+        streak_row = tk.Frame(streak_card, bg=self.C['surface'])
+        streak_row.pack(anchor='w', padx=16, pady=(0, 10))
+        tk.Label(streak_row, text=str(streak),
+                 font=(*self.FONT_SERIF, 48, 'italic'),
+                 fg=self.C['amber'], bg=self.C['surface']).pack(side='left')
+        tk.Label(streak_row, text="  days\nrunning",
+                 font=(*self.FONT_SERIF, 13, 'italic'),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 justify='left').pack(side='left', anchor='s', pady=(0, 6))
+
+        tk.Frame(streak_card, bg=self.C['rule'], height=1).pack(fill='x', padx=16)
+        streak_msg = (
+            'A proper run. Keep the thread.' if streak >= 7 else
+            'Three days in. Keep going.'     if streak >= 3 else
+            'Started. The hardest part.'     if streak >= 1 else
+            'Not yet. Tomorrow is fine.'
+        )
+        tk.Label(streak_card, text=streak_msg,
+                 font=(*self.FONT_SERIF, 11, 'italic'),
+                 fg=self.C['ink_soft'], bg=self.C['surface'],
+                 anchor='w', wraplength=280, justify='left').pack(
+                     anchor='w', padx=16, pady=(10, 16))
 
     # ─── Archive (Settings) ───────────────────────────────────────────────────
 
@@ -2124,6 +2392,24 @@ class TendrApp:
         except Exception as e:
             print(f"fetch xp: {e}")
             return 0
+
+    def fetch_stats_from_backend(self, user_id):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.get(f"{self.backend_url}/analysis/{user_id}", headers=h)
+            return r.json() if r.status_code == 200 else {}
+        except Exception as e:
+            print(f"fetch stats: {e}")
+            return {}
+
+    def fetch_focus_total_from_backend(self):
+        try:
+            h = {"Authorization": f"Bearer {self.auth_token}"} if self.auth_token else {}
+            r = requests.get(f"{self.backend_url}/focus/total", headers=h)
+            return r.json() if r.status_code == 200 else {}
+        except Exception as e:
+            print(f"fetch focus total: {e}")
+            return {}
 
     def add_task_to_backend(self, title, priority, category=None):
         try:
