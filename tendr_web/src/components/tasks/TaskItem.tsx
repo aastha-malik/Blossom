@@ -34,10 +34,15 @@ export default function TaskItem({ task, onDelete, onError, isLocal = false, onU
 
   const xp = task.xpReward ?? XP_BY_PRIORITY[task.priority ?? ''] ?? 2;
 
+  const rawDate = task.completed ? task.completed_at : task.created_at;
+  const dateLabel = rawDate
+    ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : null;
+
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '24px 1fr auto auto auto',
+      gridTemplateColumns: '24px 1fr auto auto auto auto',
       alignItems: 'center',
       gap: 14,
       padding: '11px 0',
@@ -102,6 +107,17 @@ export default function TaskItem({ task, onDelete, onError, isLocal = false, onU
         whiteSpace: 'nowrap',
       }}>
         {task.category ?? '·'}
+      </div>
+
+      {/* Date */}
+      <div style={{
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 9,
+        letterSpacing: '1px',
+        color: 'var(--muted)',
+        whiteSpace: 'nowrap',
+      }}>
+        {dateLabel ?? ''}
       </div>
 
       {/* XP + delete */}
