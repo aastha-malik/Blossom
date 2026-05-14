@@ -90,7 +90,6 @@ export default function Ledger() {
   const catMax = Math.max(...Object.values(catCounts), 1);
   const maxInMonth = Math.max(...monthCounts, 1);
 
-  const streak = stats?.streaks ?? 0;
   const tasksCompleted = stats?.num_task_completed ?? tasks.filter(t => t.completed).length;
 
   const totalFocusSecs = focusTotal?.total_seconds ?? 0;
@@ -140,11 +139,10 @@ export default function Ledger() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
             ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
-            ['STREAK', `${streak} days`, 'var(--amber)'],
           ] as [string, string, string][]).map(([label, value, color]) => (
             <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
               <div style={{ ...monoStyle, marginBottom: 4 }}>{label}</div>
@@ -242,59 +240,29 @@ export default function Ledger() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
-
-          {/* Category breakdown */}
-          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
-            <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
-              Where your effort went.
-            </div>
-            {Object.entries(catCounts).length === 0 ? (
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)' }}>
-                no completed tasks yet.
-              </div>
-            ) : Object.entries(catCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([cat, count]) => (
-              <div key={cat} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ ...monoStyle, fontSize: 9 }}>{cat.toUpperCase()}</div>
-                  <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: 'var(--ink-soft)', fontFeatureSettings: '"tnum"' }}>{count}</div>
-                </div>
-                <div style={{ height: 6, background: 'var(--paper-deep)' }}>
-                  <div style={{ width: `${(count / catMax) * 100}%`, height: '100%', background: catColors[cat] ?? 'var(--accent)' }} />
-                </div>
-              </div>
-            ))}
+        {/* Category breakdown */}
+        <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
+          <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
+          <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
+            Where your effort went.
           </div>
-
-          {/* Streak */}
-          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
-            <div style={{ ...monoStyle, marginBottom: 6 }}>STREAK</div>
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
-              Continuity is the point.
+          {Object.entries(catCounts).length === 0 ? (
+            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)' }}>
+              no completed tasks yet.
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 14 }}>
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 56, fontWeight: 500, color: 'var(--amber)', letterSpacing: -2, lineHeight: 1, fontFeatureSettings: '"tnum"' }}>
-                {streak}
+          ) : Object.entries(catCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([cat, count]) => (
+            <div key={cat} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ ...monoStyle, fontSize: 9 }}>{cat.toUpperCase()}</div>
+                <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: 'var(--ink-soft)', fontFeatureSettings: '"tnum"' }}>{count}</div>
               </div>
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink-soft)' }}>
-                days running
-              </div>
-            </div>
-            <div style={{ borderTop: '1px dashed var(--rule)', paddingTop: 14 }}>
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-                {streak >= 7
-                  ? 'A proper run. Keep the thread.'
-                  : streak >= 3
-                  ? 'Three days in. Keep going.'
-                  : streak >= 1
-                  ? 'Started. The hardest part.'
-                  : 'Not yet. Tomorrow is fine.'}
+              <div style={{ height: 6, background: 'var(--paper-deep)' }}>
+                <div style={{ width: `${(count / catMax) * 100}%`, height: '100%', background: catColors[cat] ?? 'var(--accent)' }} />
               </div>
             </div>
-          </div>
+          ))}
         </div>
 
       </div>
