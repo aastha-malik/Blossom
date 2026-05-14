@@ -139,7 +139,7 @@ export default function Ledger() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
             ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
