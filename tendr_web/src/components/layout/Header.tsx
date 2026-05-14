@@ -93,13 +93,12 @@ export default function Header() {
             onClick={toggleTheme}
             style={{
               cursor: 'pointer',
-              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-              fontSize: 11,
-              color: 'var(--muted)',
-              letterSpacing: 1,
+              fontSize: 18,
+              color: 'var(--ink-soft)',
               background: 'none',
               border: 'none',
-              padding: 0,
+              padding: '4px 6px',
+              lineHeight: 1,
             }}
           >
             {theme === 'dark' ? '☀' : '☾'}
@@ -145,14 +144,13 @@ export default function Header() {
             onClick={toggleTheme}
             style={{
               cursor: 'pointer',
-              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-              fontSize: 11,
-              color: 'var(--muted)',
-              letterSpacing: 1,
+              fontSize: 18,
+              color: 'var(--ink-soft)',
               background: 'none',
               border: 'none',
-              padding: 0,
-              marginLeft: 8,
+              padding: '4px 6px',
+              lineHeight: 1,
+              marginLeft: 4,
             }}
           >
             {theme === 'dark' ? '☀' : '☾'}
