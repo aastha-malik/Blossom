@@ -106,7 +106,9 @@ export default function Today() {
     refetchInterval: 30000,
   });
 
-  const pet = pets.find(p => p.is_alive) ?? pets[0];
+  const alivePet = pets.find(p => p.is_alive);
+  const pet = alivePet ?? pets[0];
+  const petIsDead = !alivePet && !!pet;
   const completedToday = tasks.filter(t => {
     if (!t.completed) return false;
     const d = new Date(t.created_at);
@@ -152,7 +154,7 @@ export default function Today() {
         <div>
           {/* Eyebrow */}
           <div style={{ ...monoStyle, marginBottom: 4 }}>
-            {getDateEyebrow()} · {dayCounter} WITH {petName.toUpperCase()}
+            {getDateEyebrow()}{!petIsDead && pet ? ` · ${dayCounter} WITH ${petName.toUpperCase()}` : ''}
           </div>
 
           {/* H1 */}
@@ -236,10 +238,10 @@ export default function Today() {
         <div>
           {/* Pet eyebrow */}
           <div style={{ ...monoStyle, marginBottom: 6 }}>
-            {pet ? `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}` : 'NO COMPANION YET'}
+            {!pet ? 'NO COMPANION YET' : petIsDead ? `${petName.toUpperCase()} · PASSED AWAY · ${dayCounter}` : `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}`}
           </div>
 
-          {/* Pet card — empty state if no pet */}
+          {/* Pet card — empty / dead / alive states */}
           {!pet ? (
             <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 40, textAlign: 'center' }}>
               <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 52, marginBottom: 16, opacity: 0.18 }}>
@@ -251,21 +253,23 @@ export default function Today() {
               <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginBottom: 24, lineHeight: 1.6 }}>
                 A pet will live here once you adopt one.<br />They grow with every focus session and every task.
               </div>
-              <a
-                href="/pet"
-                style={{
-                  display: 'inline-block',
-                  padding: '10px 24px',
-                  background: 'var(--ink)',
-                  color: 'var(--paper)',
-                  fontFamily: '"Inter", system-ui, sans-serif',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  letterSpacing: 0.2,
-                }}
-              >
+              <a href="/pet" style={{ display: 'inline-block', padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', fontFamily: '"Inter", system-ui, sans-serif', fontSize: 13, fontWeight: 500, textDecoration: 'none', letterSpacing: 0.2 }}>
                 Adopt a companion →
+              </a>
+            </div>
+          ) : petIsDead ? (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', opacity: 0.3, filter: 'grayscale(1)' }}>
+                <PetSprite species={petSpecies} stage={petStage} mood="sad" size={210} />
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 24, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 8, color: 'var(--ink)' }}>
+                "{petName} has passed away."
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--ink-soft)', marginTop: 6, lineHeight: 1.6 }}>
+                They made it to {dayCounter.toLowerCase()}.<br />Thank you for the time together.
+              </div>
+              <a href="/pet" style={{ display: 'inline-block', marginTop: 20, padding: '10px 24px', background: 'var(--ink)', color: 'var(--paper)', fontFamily: '"Inter", system-ui, sans-serif', fontSize: 13, fontWeight: 500, textDecoration: 'none', letterSpacing: 0.2 }}>
+                Adopt a new companion →
               </a>
             </div>
           ) : (
