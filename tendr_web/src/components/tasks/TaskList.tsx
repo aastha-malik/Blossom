@@ -36,12 +36,16 @@ export default function TaskList({ onError, activeCategory }: TaskListProps) {
   // Backend now returns all tasks (completed and incomplete)
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
-  // Hide completed tasks more than 24 hours after completion
-  const visibleTasks = (tasks || []).filter(t => {
-    if (!t.completed) return true;
-    if (!t.completed_at) return true; // no timestamp yet — keep visible
-    return (Date.now() - new Date(t.completed_at).getTime()) < 86400000;
-  });
+  const isToday = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  };
+
+  // Only show tasks created today — past completed tasks vanish, past incomplete go to the "late" card
+  const visibleTasks = (tasks || []).filter(t => isToday(t.created_at));
 
   // Apply category filter if active
   const categoryFiltered = activeCategory

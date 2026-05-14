@@ -106,6 +106,15 @@ export default function Today() {
     refetchInterval: 30000,
   });
 
+  const isToday = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth() === now.getMonth() &&
+           d.getDate() === now.getDate();
+  };
+  const lateTasks = tasks.filter(t => !t.completed && !isToday(t.created_at));
+
   const alivePet = pets.find(p => p.is_alive);
   const pet = alivePet ?? pets[0];
   const petIsDead = !alivePet && !!pet;
@@ -329,6 +338,28 @@ export default function Today() {
               </button>
             </div>
           </div>
+          )}
+
+          {/* Late tasks card */}
+          {lateTasks.length > 0 && (
+            <div style={{ marginTop: 14, border: '1px solid var(--accent)', background: 'var(--card)', padding: '14px 18px' }}>
+              <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: '2px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 10 }}>
+                LATE · {lateTasks.length} UNFINISHED
+              </div>
+              {lateTasks.map(t => {
+                const dateLabel = new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                return (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderBottom: '1px dashed var(--rule)' }}>
+                    <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, color: 'var(--ink)', flex: 1 }}>
+                      {t.title}
+                    </div>
+                    <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, color: 'var(--muted)', marginLeft: 12, whiteSpace: 'nowrap' }}>
+                      {dateLabel}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
 
         </div>
