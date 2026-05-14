@@ -24,6 +24,7 @@ class Task(Base):
     completed_at = Column(DateTime, nullable=True, default=None)
     priority = Column(String(50), default="Low")
     category = Column(String(50), nullable=True)
+    due_date = Column(Date, nullable=True)
     user_id = Column(String, ForeignKey("user.id"))
     user = relationship("User", back_populates="tasks")
 

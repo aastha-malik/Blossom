@@ -34,7 +34,7 @@ export default function TaskItem({ task, onDelete, onError, isLocal = false, onU
 
   const xp = task.xpReward ?? XP_BY_PRIORITY[task.priority ?? ''] ?? 2;
 
-  const rawDate = task.completed ? task.completed_at : task.created_at;
+  const rawDate = task.completed ? task.completed_at : (task.due_date ?? task.created_at);
   const dateLabel = rawDate
     ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : null;

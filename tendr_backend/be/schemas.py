@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Union
-from datetime import datetime
+from datetime import datetime, date
 
 
 # --------------------------------------
@@ -32,6 +32,7 @@ class TaskBase(BaseModel):
     description: Optional[str] = None
     priority: Optional[Union[str, int]] = None
     category: Optional[str] = None
+    due_date: Optional[date] = None
 
 
 class TaskCreate(TaskBase):
@@ -47,6 +48,7 @@ class TaskResponse(BaseModel):
     completed: Optional[bool] = False
     created_at: datetime
     completed_at: Optional[datetime] = None
+    due_date: Optional[date] = None
     user_id: str
     xpReward: Optional[int] = None
     userXP: Optional[int] = None

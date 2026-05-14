@@ -17,7 +17,17 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<string>(TASK_PRIORITIES.MEDIUM);
   const [category, setCategory] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('today');
+  const [customDate, setCustomDate] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
+
+  const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+  const todayStr = toDateStr(new Date());
+  const tomorrowStr = toDateStr(new Date(Date.now() + 86400000));
+
+  const resolvedDueDate = dueDate === 'today' ? todayStr
+    : dueDate === 'tomorrow' ? tomorrowStr
+    : customDate || null;
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { addTask: addLocalTask } = useLocalTasksContext();
@@ -29,6 +39,8 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
       setTitle('');
       setPriority(TASK_PRIORITIES.MEDIUM);
       setCategory('');
+      setDueDate('today');
+      setCustomDate('');
       setIsOpen(false);
       onSuccess?.();
     },
@@ -39,7 +51,7 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
     e.preventDefault();
     if (!title.trim()) return;
     if (isAuthenticated) {
-      createTaskMutation.mutate({ title: title.trim(), priority, ...(category ? { category } : {}) });
+      createTaskMutation.mutate({ title: title.trim(), priority, ...(category ? { category } : {}), due_date: resolvedDueDate });
     } else {
       try {
         addLocalTask({ title: title.trim(), priority: priority || TASK_PRIORITIES.MEDIUM });
@@ -117,6 +129,65 @@ export default function TaskForm({ onSuccess, onError }: TaskFormProps) {
             {c}
           </button>
         ))}
+      </div>
+
+      {/* Due date row */}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: '1.5px', color: 'var(--muted)', textTransform: 'uppercase', marginRight: 2 }}>Due</span>
+        {(['today', 'tomorrow'] as const).map(opt => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => setDueDate(opt)}
+            style={{
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 9,
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              background: dueDate === opt ? 'var(--amber)' : 'transparent',
+              color: dueDate === opt ? 'var(--paper)' : 'var(--muted)',
+              border: `1px solid ${dueDate === opt ? 'var(--amber)' : 'var(--rule)'}`,
+              cursor: 'pointer',
+            }}
+          >
+            {opt}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setDueDate('custom')}
+          style={{
+            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+            fontSize: 9,
+            letterSpacing: '1.5px',
+            textTransform: 'uppercase',
+            padding: '3px 8px',
+            background: dueDate === 'custom' ? 'var(--amber)' : 'transparent',
+            color: dueDate === 'custom' ? 'var(--paper)' : 'var(--muted)',
+            border: `1px solid ${dueDate === 'custom' ? 'var(--amber)' : 'var(--rule)'}`,
+            cursor: 'pointer',
+          }}
+        >
+          custom
+        </button>
+        {dueDate === 'custom' && (
+          <input
+            type="date"
+            value={customDate}
+            min={todayStr}
+            onChange={e => setCustomDate(e.target.value)}
+            style={{
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontSize: 9,
+              padding: '3px 6px',
+              background: 'transparent',
+              color: 'var(--ink)',
+              border: '1px solid var(--rule)',
+              outline: 'none',
+            }}
+          />
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

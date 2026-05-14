@@ -27,6 +27,7 @@ export interface Task {
   completed: boolean;
   created_at: string;
   completed_at?: string | null;
+  due_date?: string | null;
   user_id: string;
   xpReward?: number | null;
   userXP?: number | null;
@@ -36,6 +37,7 @@ export interface TaskCreate {
   title: string;
   priority?: string;
   category?: string;
+  due_date?: string | null;
 }
 
 export interface TaskCompletionUpdate {

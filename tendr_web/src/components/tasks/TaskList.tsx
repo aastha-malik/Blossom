@@ -3,6 +3,7 @@ import { tasksAPI } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocalTasksContext } from '../../contexts/LocalTasksContext';
 import TaskItem from './TaskItem';
+import type { Task } from '../../api/types';
 
 interface TaskListProps {
   onError?: (error: Error) => void;
@@ -36,16 +37,23 @@ export default function TaskList({ onError, activeCategory }: TaskListProps) {
   // Backend now returns all tasks (completed and incomplete)
   const tasks = isAuthenticated ? backendTasks : localTasks;
 
-  const isToday = (dateStr: string) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isPast = (dateStr: string) => {
     const d = new Date(dateStr);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() &&
-           d.getMonth() === now.getMonth() &&
-           d.getDate() === now.getDate();
+    d.setHours(0, 0, 0, 0);
+    return d < today;
   };
 
-  // Only show tasks created today — past completed tasks vanish, past incomplete go to the "late" card
-  const visibleTasks = (tasks || []).filter(t => isToday(t.created_at));
+  // A task is "late" if it's incomplete and its due_date (or created_at fallback) is before today
+  const isLate = (t: Task) =>
+    !t.completed && isPast(t.due_date ?? t.created_at);
+
+  const visibleTasks = (tasks || []).filter(t => {
+    if (t.completed) return !isPast(t.completed_at ?? t.created_at);
+    return !isLate(t);
+  });
 
   // Apply category filter if active
   const categoryFiltered = activeCategory

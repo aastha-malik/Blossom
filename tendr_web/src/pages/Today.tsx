@@ -106,14 +106,14 @@ export default function Today() {
     refetchInterval: 30000,
   });
 
-  const isToday = (dateStr: string) => {
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const isPast = (dateStr: string) => {
     const d = new Date(dateStr);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() &&
-           d.getMonth() === now.getMonth() &&
-           d.getDate() === now.getDate();
+    d.setHours(0, 0, 0, 0);
+    return d < todayMidnight;
   };
-  const lateTasks = tasks.filter(t => !t.completed && !isToday(t.created_at));
+  const lateTasks = tasks.filter(t => !t.completed && isPast(t.due_date ?? t.created_at));
 
   const alivePet = pets.find(p => p.is_alive);
   const pet = alivePet ?? pets[0];

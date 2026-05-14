@@ -77,6 +77,14 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# Add due_date to tasks
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE tasks ADD COLUMN due_date DATE DEFAULT NULL'))
+        conn.commit()
+    except Exception:
+        pass
+
 # Add bond + last_focused_at to pets
 with engine.connect() as conn:
     try:
@@ -187,7 +195,7 @@ def get_user_xp(current_user = Depends(get_current_user), db: Session = Depends(
 
 @app.post("/tasks", response_model=None)
 def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user),db: Session = Depends(get_db)):
-    task = task_crud.create_task(db, task.title, task.priority, current_user, task.category)
+    task = task_crud.create_task(db, task.title, task.priority, current_user, task.category, task.due_date)
     if not task:
         raise HTTPException(status_code=400, detail="Task creation failed")
     return TaskResponse.model_validate(task)

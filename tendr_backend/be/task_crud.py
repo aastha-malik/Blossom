@@ -5,10 +5,9 @@ from auth_dependencies import get_current_user
 from fastapi import Depends
 
 #adding task to db
-def create_task(db: Session, title: str, priority: str, current_user, category: str = None):
-    # Normalize priority to capitalized format for consistency
+def create_task(db: Session, title: str, priority: str, current_user, category: str = None, due_date=None):
     priority_normalized = priority.capitalize() if priority else "Medium"
-    new_task = Task(title=title, user_id=current_user.id, completed=False, priority=priority_normalized, category=category)
+    new_task = Task(title=title, user_id=current_user.id, completed=False, priority=priority_normalized, category=category, due_date=due_date)
     db.add(new_task)
     db.commit()
     db.refresh(new_task)     # This updates the object with data from the database (like the new id)
