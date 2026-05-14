@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { tasksAPI, statsAPI, petsAPI, focusAPI } from '../api/client';
 import type { Task } from '../api/types';
 
@@ -54,6 +55,7 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export default function Ledger() {
   const { isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -126,11 +128,11 @@ export default function Ledger() {
   const totalMonthTasks = monthCounts.reduce((a, b) => a + b, 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: '24px 36px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: isMobile ? '16px' : '24px 36px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
         <div style={{ ...monoStyle, marginBottom: 4 }}>THE LEDGER · YOUR RECORD</div>
-        <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 4px' }}>
+        <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 30 : 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 4px' }}>
           The record.
         </h1>
         <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', marginBottom: 30 }}>
@@ -138,7 +140,7 @@ export default function Ledger() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
             ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
@@ -146,7 +148,7 @@ export default function Ledger() {
           ] as [string, string, string][]).map(([label, value, color]) => (
             <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
               <div style={{ ...monoStyle, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, fontWeight: 500, color, letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 32 : 44, fontWeight: 500, color, letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
                 {value}
               </div>
             </div>
@@ -240,7 +242,7 @@ export default function Ledger() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
 
           {/* Category breakdown */}
           <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>

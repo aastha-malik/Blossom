@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { petsAPI, userAPI } from '../api/client';
 import { PetSprite, getStage, deriveMood } from '../components/PetSprite';
 import type { Species } from '../components/PetSprite';
@@ -36,6 +37,7 @@ const PET_TYPES = ['Dog', 'Cat'];
 
 export default function Pet() {
   const { isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { toasts, showToast, removeToast } = useToast();
 
@@ -98,7 +100,7 @@ export default function Pet() {
   const xp = userXP?.xp ?? 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: '24px 36px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: isMobile ? '16px' : '24px 36px' }}>
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         <div style={{ ...monoStyle, marginBottom: 6 }}>
@@ -107,11 +109,11 @@ export default function Pet() {
             : 'YOUR COMPANIONS'}
         </div>
 
-        <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 28px' }}>
+        <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 30 : 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 28px' }}>
           {pet?.is_alive ? `${petName}.` : 'Adopt a pet.'}
         </h1>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 28, alignItems: 'start' }}>
 
           {/* Pet card — or empty state */}
           {!pet?.is_alive ? (

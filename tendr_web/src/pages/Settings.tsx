@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { authAPI, userAPI } from '../api/client';
 import { API_URL } from '../utils/constants';
 
@@ -74,6 +75,7 @@ function FeedbackLine({ msg, isError }: { msg: string; isError?: boolean }) {
 export default function Settings() {
   const navigate = useNavigate();
   const { isAuthenticated, username, email, logout } = useAuth();
+  const isMobile = useIsMobile();
 
   const [isGoogleUser, setIsGoogleUser] = useState<boolean | null>(null);
 
@@ -256,13 +258,13 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: '36px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: isMobile ? '16px' : '36px' }}>
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
         {/* Page heading */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '3px', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 6 }}>ARCHIVE · SETTINGS</div>
-          <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, fontWeight: 400, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: 0 }}>Account.</h1>
+          <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 30 : 44, fontWeight: 400, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: 0 }}>Account.</h1>
         </div>
 
         {/* Account info / auth */}

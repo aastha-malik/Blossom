@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
+import BottomNav from './components/layout/BottomNav';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { useIsMobile } from './hooks/useIsMobile';
 import Today from './pages/Today';
 import Pet from './pages/Pet';
 import Ledger from './pages/Ledger';
@@ -15,10 +17,11 @@ import ChooseUsername from './pages/ChooseUsername';
 
 function AppContent() {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const hideHeader = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/auth/callback', '/choose-username'].includes(location.pathname);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', paddingBottom: (!hideHeader && isMobile) ? 64 : 0, overflowX: 'hidden', maxWidth: '100%' }}>
       {!hideHeader && <Header />}
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -34,6 +37,7 @@ function AppContent() {
         <Route path="/ledger" element={<ProtectedRoute><Ledger /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       </Routes>
+      {!hideHeader && <BottomNav />}
     </div>
   );
 }

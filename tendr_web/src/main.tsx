@@ -24,7 +24,9 @@ createRoot(document.getElementById('root')!).render(
         <ThemeProvider>
           <LocalTasksProvider>
             <LocalPetsProvider>
-              <App />
+              <div style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden', position: 'relative' }}>
+                <App />
+              </div>
             </LocalPetsProvider>
           </LocalTasksProvider>
         </ThemeProvider>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { tasksAPI, petsAPI, statsAPI, userAPI, focusAPI } from '../api/client';
 import TaskList from '../components/tasks/TaskList';
 import TaskForm from '../components/tasks/TaskForm';
@@ -60,6 +61,7 @@ function buildHeatmapData(tasks: Task[]): number[] {
 export default function Today() {
   const { isAuthenticated } = useAuth();
   const { toasts, showToast, removeToast } = useToast();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const feedMutation = useMutation({
     mutationFn: (petId: string) => petsAPI.feed(petId),
@@ -170,8 +172,8 @@ export default function Today() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: '24px 36px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 30, maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', padding: isMobile ? '16px' : '24px 36px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: isMobile ? 20 : 30, maxWidth: 1200, margin: '0 auto' }}>
 
         {/* ── LEFT COLUMN ── */}
         <div>
@@ -181,7 +183,7 @@ export default function Today() {
           </div>
 
           {/* H1 */}
-          <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 6px' }}>
+          <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 30 : 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 6px' }}>
             Today's page.
           </h1>
 
@@ -238,7 +240,7 @@ export default function Today() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18, marginBottom: 16, paddingBottom: 14, borderBottom: '1px dashed var(--rule)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 18, marginBottom: 16, paddingBottom: 14, borderBottom: '1px dashed var(--rule)' }}>
               {[
                 ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
                 ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { userAPI } from '../../api/client';
 import { LogoSvg } from '../ui/LogoSvg';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 function getEditionInfo(): { number: string; season: string; year: string } {
   const now = new Date();
@@ -37,6 +38,7 @@ export default function Header() {
   const location = useLocation();
   const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const { data: userXP } = useQuery({
     queryKey: ['userXP'],
@@ -49,7 +51,7 @@ export default function Header() {
   const isLanding = !isAuthenticated;
 
   const headerStyle: React.CSSProperties = {
-    padding: '20px 36px',
+    padding: isMobile ? '14px 16px' : '20px 36px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -120,7 +122,7 @@ export default function Header() {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-          {NAV_ITEMS.map(({ label, path }) => {
+          {!isMobile && NAV_ITEMS.map(({ label, path }) => {
             const active = location.pathname === path;
             return (
               <Link
@@ -150,35 +152,39 @@ export default function Header() {
               border: 'none',
               padding: '4px 6px',
               lineHeight: 1,
-              marginLeft: 4,
+              marginLeft: isMobile ? 0 : 4,
             }}
           >
             {theme === 'dark' ? '☀' : '☾'}
           </button>
-          <div style={{
-            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-            fontSize: 11,
-            color: 'var(--muted)',
-            letterSpacing: 1,
-          }}>
-            xp {isAuthenticated ? (userXP?.xp ?? 0) : 0}
-          </div>
-          <button
-            onClick={logout}
-            style={{
+          {!isMobile && (
+            <div style={{
               fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-              fontSize: 10,
+              fontSize: 11,
               color: 'var(--muted)',
               letterSpacing: 1,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              textTransform: 'uppercase',
-            }}
-          >
-            OUT
-          </button>
+            }}>
+              xp {isAuthenticated ? (userXP?.xp ?? 0) : 0}
+            </div>
+          )}
+          {!isMobile && (
+            <button
+              onClick={logout}
+              style={{
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                fontSize: 10,
+                color: 'var(--muted)',
+                letterSpacing: 1,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                textTransform: 'uppercase',
+              }}
+            >
+              OUT
+            </button>
+          )}
         </div>
       )}
     </header>
