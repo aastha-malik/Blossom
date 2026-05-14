@@ -114,11 +114,12 @@ app = FastAPI()
 
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
+_is_production = not (os.getenv("RENDER") is None and os.getenv("ENV") != "production")
 app.add_middleware(
     SessionMiddleware,
-    secret_key="dev-secret",
-    same_site="lax",
-    https_only=False
+    secret_key=os.getenv("SECRET_KEY", "dev-secret"),
+    same_site="none" if _is_production else "lax",
+    https_only=_is_production,
 )
 
 app.add_middleware(

@@ -12,7 +12,7 @@ from forget_password import forget_password
 # JWT has  => header | payload | SIGNATURE
 
 # below part is SIGNATURE
-SECRET_KEY = os.getenv("SECRET_KEY", "blossom_fallback_secret_77777")
+SECRET_KEY = os.getenv("SECRET_KEY", "tendr_fallback_secret_12345")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "1"))
 

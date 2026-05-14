@@ -554,11 +554,13 @@ class TendrApp:
         if self.is_logged_in and self.auth_token:
             for bt in self.fetch_tasks_from_backend():
                 tasks.append({
-                    'id':       bt.get('id'),
-                    'text':     bt.get('title', ''),
-                    'priority': bt.get('priority', 'medium'),
-                    'category': bt.get('category') or '',
-                    'completed': bt.get('completed', False),
+                    'id':         bt.get('id'),
+                    'text':       bt.get('title', ''),
+                    'priority':   bt.get('priority', 'medium'),
+                    'category':   bt.get('category') or '',
+                    'completed':  bt.get('completed', False),
+                    'created_at': bt.get('created_at'),
+                    'completed_at': bt.get('completed_at'),
                 })
 
         if not tasks:
@@ -657,6 +659,16 @@ class TendrApp:
         else:
             messagebox.showerror("Error", "Failed to add task.")
 
+    def _format_task_date(self, task):
+        raw = task.get('completed_at') if task.get('completed') else task.get('created_at')
+        if not raw:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(raw).replace('Z', '+00:00'))
+            return dt.strftime('%-d %b')
+        except Exception:
+            return None
+
     def create_task_widget(self, parent, task, index):
         prio_colors = {
             'low':    self.C['accent3'],
@@ -696,6 +708,13 @@ class TendrApp:
                  font=(*self.FONT_MONO, 8, 'bold'),
                  fg=prio_color, bg=self.C['surface'],
                  padx=6, pady=3).pack(side='left', padx=2)
+
+        date_str = self._format_task_date(task)
+        if date_str:
+            tk.Label(row, text=date_str,
+                     font=(*self.FONT_MONO, 8),
+                     fg=self.C['muted'], bg=self.C['surface'],
+                     padx=4, pady=3).pack(side='left', padx=4)
 
         tk.Button(row, text="×",
                   font=(*self.FONT_SANS, 14),
