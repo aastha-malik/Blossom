@@ -37,6 +37,7 @@ class Pet(Base):
     hunger = Column(Integer, default=100)
     last_fed = Column(DateTime, default=datetime.utcnow)
     is_alive = Column(Boolean, default=True)
+    gender = Column(String(10), nullable=True)
     bond = Column(Float, default=0.0)
     last_focused_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(String, ForeignKey("user.id"))

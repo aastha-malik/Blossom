@@ -85,6 +85,14 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# Add gender to pets
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE pets ADD COLUMN gender VARCHAR(10) DEFAULT NULL"))
+        conn.commit()
+    except Exception:
+        pass
+
 # Add bond + last_focused_at to pets
 with engine.connect() as conn:
     try:
@@ -262,7 +270,7 @@ def create_pet_endpoint(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    pet_data = pet_crud.create_pet(db, pet.name, pet.type, current_user)
+    pet_data = pet_crud.create_pet(db, pet.name, pet.type, current_user, pet.gender)
     if not pet_data:
         raise HTTPException(status_code=400, detail="Pet creation failed")
     return pet_data

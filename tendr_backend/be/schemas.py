@@ -75,6 +75,7 @@ class PetBase(BaseModel):
 class PetCreate(BaseModel):
     name: str
     type: str
+    gender: Optional[str] = None
     age: Optional[float] = 0.0
     hunger: Optional[int] = 100
 
@@ -96,6 +97,7 @@ class PetResponse(BaseModel):
     hunger: int
     last_fed: datetime
     is_alive: bool
+    gender: Optional[str] = None
     bond: Optional[float] = 0.0
     last_focused_at: Optional[datetime] = None
     user_id: str

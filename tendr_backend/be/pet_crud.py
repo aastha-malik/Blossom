@@ -4,11 +4,12 @@ from models import Pet, User, FocusSession, PetQualifyingDay
 from fastapi import HTTPException
 
 
-def create_pet(db: Session, name: str, type: str, current_user):
+def create_pet(db: Session, name: str, type: str, current_user, gender: str = None):
     now = datetime.utcnow()
     new_pet = Pet(
         name=name,
         type=type,
+        gender=gender,
         user_id=current_user.id,
         last_fed=now,
         last_focused_at=now,

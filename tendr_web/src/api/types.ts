@@ -49,6 +49,7 @@ export interface Pet {
   id: string;
   name: string;
   type: string;
+  gender?: string | null;
   age: number;
   hunger: number;
   last_fed: string;
@@ -61,6 +62,7 @@ export interface Pet {
 export interface PetCreate {
   name: string;
   type: string;
+  gender?: string | null;
 }
 
 // Stats Types

@@ -41,6 +41,7 @@ export default function Pet() {
 
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('');
+  const [newGender, setNewGender] = useState<'male' | 'female' | ''>('');
 
   const { data: pets = [] } = useQuery({
     queryKey: ['pets'],
@@ -70,6 +71,7 @@ export default function Pet() {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
       setNewName('');
       setNewType('');
+      setNewGender('');
       showToast('A new companion has arrived.', 'success');
     },
     onError: (e: Error) => showToast(e.message, 'error'),
@@ -77,8 +79,8 @@ export default function Pet() {
 
   const handleAdopt = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() || !newType) return;
-    createMutation.mutate({ name: newName.trim(), type: newType });
+    if (!newName.trim() || !newType || !newGender) return;
+    createMutation.mutate({ name: newName.trim(), type: newType, gender: newGender });
   };
 
   const pet = pets.find(p => p.is_alive) ?? pets[0];
@@ -99,7 +101,9 @@ export default function Pet() {
       <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         <div style={{ ...monoStyle, marginBottom: 6 }}>
-          {pet?.is_alive ? `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}` : 'YOUR COMPANIONS'}
+          {pet?.is_alive
+            ? [petName.toUpperCase(), pet.gender === 'female' ? '♀' : pet.gender === 'male' ? '♂' : null, dayCounter].filter(Boolean).join(' · ')
+            : 'YOUR COMPANIONS'}
         </div>
 
         <h1 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, letterSpacing: -1.2, lineHeight: 1, color: 'var(--ink)', margin: '0 0 28px' }}>
@@ -263,9 +267,36 @@ export default function Pet() {
                   </div>
                 </div>
 
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ ...monoStyle, display: 'block', marginBottom: 8 }}>GENDER</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['female', 'male'] as const).map(g => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setNewGender(g)}
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                          fontSize: 11,
+                          letterSpacing: '1.5px',
+                          textTransform: 'uppercase',
+                          background: newGender === g ? 'var(--ink)' : 'transparent',
+                          color: newGender === g ? 'var(--paper)' : 'var(--muted)',
+                          border: `1px solid ${newGender === g ? 'var(--ink)' : 'var(--rule)'}`,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {g === 'female' ? '♀  she/her' : '♂  he/him'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  disabled={!newName.trim() || !newType || createMutation.isPending}
+                  disabled={!newName.trim() || !newType || !newGender || createMutation.isPending}
                   style={{
                     width: '100%',
                     padding: '12px',

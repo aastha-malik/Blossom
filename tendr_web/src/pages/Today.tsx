@@ -261,7 +261,9 @@ export default function Today() {
         <div>
           {/* Pet eyebrow */}
           <div style={{ ...monoStyle, marginBottom: 6 }}>
-            {!pet ? 'NO COMPANION YET' : petIsDead ? `${petName.toUpperCase()} · PASSED AWAY · ${dayCounter}` : `${petName.toUpperCase()} · FOX-MOCHI · ${dayCounter}`}
+            {!pet ? 'NO COMPANION YET'
+            : petIsDead ? `${petName.toUpperCase()} · PASSED AWAY · ${dayCounter}`
+            : [petName.toUpperCase(), pet.gender === 'female' ? '♀' : pet.gender === 'male' ? '♂' : null, dayCounter].filter(Boolean).join(' · ')}
           </div>
 
           {/* Pet card — empty / dead / alive states */}
