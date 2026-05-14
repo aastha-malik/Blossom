@@ -68,9 +68,9 @@ export default function Signup() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--paper-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={{ minHeight: '100vh', width: '100%', boxSizing: 'border-box', overflowX: 'hidden', background: 'var(--paper-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
-        <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 32 }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 'clamp(20px, 6vw, 32px)' }}>
 
           <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '3px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 12 }}>
             NEW HERE
