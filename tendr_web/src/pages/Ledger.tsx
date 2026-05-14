@@ -32,12 +32,12 @@ function buildMonthCounts(tasks: Task[], month: number, year: number): number[] 
   return counts;
 }
 
-function buildTagCounts(tasks: Task[]): Record<string, number> {
+function buildCategoryCounts(tasks: Task[]): Record<string, number> {
   const counts: Record<string, number> = {};
   tasks.forEach(t => {
     if (!t.completed) return;
-    const tag = (t.priority ?? 'LOW').toUpperCase();
-    counts[tag] = (counts[tag] ?? 0) + 1;
+    const cat = t.category ?? 'Other';
+    counts[cat] = (counts[cat] ?? 0) + 1;
   });
   return counts;
 }
@@ -84,8 +84,8 @@ export default function Ledger() {
   });
 
   const monthCounts = buildMonthCounts(tasks, viewMonth, viewYear);
-  const tagCounts = buildTagCounts(tasks);
-  const tagMax = Math.max(...Object.values(tagCounts), 1);
+  const catCounts = buildCategoryCounts(tasks);
+  const catMax = Math.max(...Object.values(catCounts), 1);
   const maxInMonth = Math.max(...monthCounts, 1);
 
   const streak = stats?.streaks ?? 0;
@@ -100,10 +100,13 @@ export default function Ledger() {
       ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
       : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
 
-  const tagColors: Record<string, string> = {
-    HIGH: 'var(--accent)',
-    MEDIUM: 'var(--accent-3)',
-    LOW: 'var(--accent-2)',
+  const catColors: Record<string, string> = {
+    Work:     'var(--accent)',
+    Personal: 'var(--accent-3)',
+    Home:     'var(--accent-2)',
+    Friends:  'var(--amber)',
+    Health:   '#9b7ec4',
+    Other:    'var(--muted)',
   };
 
   const goBack = () => {
@@ -239,24 +242,26 @@ export default function Ledger() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
-          {/* Priority breakdown */}
+          {/* Category breakdown */}
           <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
-            <div style={{ ...monoStyle, marginBottom: 6 }}>BY PRIORITY</div>
+            <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
               Where your effort went.
             </div>
-            {Object.entries(tagCounts).length === 0 ? (
+            {Object.entries(catCounts).length === 0 ? (
               <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)' }}>
                 no completed tasks yet.
               </div>
-            ) : Object.entries(tagCounts).map(([tag, count]) => (
-              <div key={tag} style={{ marginBottom: 12 }}>
+            ) : Object.entries(catCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([cat, count]) => (
+              <div key={cat} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ ...monoStyle, fontSize: 9 }}>{tag}</div>
+                  <div style={{ ...monoStyle, fontSize: 9 }}>{cat.toUpperCase()}</div>
                   <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: 'var(--ink-soft)', fontFeatureSettings: '"tnum"' }}>{count}</div>
                 </div>
                 <div style={{ height: 6, background: 'var(--paper-deep)' }}>
-                  <div style={{ width: `${(count / tagMax) * 100}%`, height: '100%', background: tagColors[tag] ?? 'var(--accent)' }} />
+                  <div style={{ width: `${(count / catMax) * 100}%`, height: '100%', background: catColors[cat] ?? 'var(--accent)' }} />
                 </div>
               </div>
             ))}
