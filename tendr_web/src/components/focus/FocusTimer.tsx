@@ -4,7 +4,11 @@ import { formatTimer } from '../../utils/formatters';
 import { useAuth } from '../../contexts/AuthContext';
 import { focusAPI } from '../../api/client';
 
-export default function FocusTimer() {
+interface FocusTimerProps {
+  petName?: string;
+}
+
+export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
   const [selectedLength, setSelectedLength] = useState<number>(SESSION_LENGTHS.MEDIUM);
   const [timeLeft, setTimeLeft] = useState<number>(SESSION_LENGTHS.MEDIUM * 60);
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -65,7 +69,7 @@ export default function FocusTimer() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
         <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase' }}>
-          SIT WITH MOCHI · {selectedLength} MIN
+          SIT WITH {petName.toUpperCase()} · {selectedLength} MIN
         </div>
         {isRunning && (
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)' }}>

@@ -254,7 +254,7 @@ export default function Today() {
           </div>
 
           {/* Focus card */}
-          <FocusTimer />
+          <FocusTimer petName={petName} />
         </div>
 
         {/* ── RIGHT COLUMN ── */}

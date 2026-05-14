@@ -60,6 +60,7 @@ export default function Pet() {
     mutationFn: (petId: string) => petsAPI.feed(petId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pets'] });
+      queryClient.invalidateQueries({ queryKey: ['userXP'] });
       showToast('Fed. She looks pleased.', 'success');
     },
     onError: () => showToast('Could not feed right now.', 'error'),
