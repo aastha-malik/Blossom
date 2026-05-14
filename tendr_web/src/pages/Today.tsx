@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { tasksAPI, petsAPI, statsAPI, userAPI, focusAPI } from '../api/client';
 import TaskList from '../components/tasks/TaskList';
 import TaskForm from '../components/tasks/TaskForm';
+import TaskItem from '../components/tasks/TaskItem';
 import FocusTimer from '../components/focus/FocusTimer';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
@@ -69,6 +70,19 @@ export default function Today() {
     },
     onError: () => showToast('Could not feed right now.', 'error'),
   });
+  const deleteTaskMutation = useMutation({
+    mutationFn: (taskId: string) => tasksAPI.delete(taskId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    onError: () => showToast('Could not delete task.', 'error'),
+  });
+
+  const XP_BY_PRIORITY: Record<string, number> = { High: 25, Medium: 15, Low: 10 };
+  const penalizedTask = (t: Task) => {
+    const base = t.xpReward ?? XP_BY_PRIORITY[t.priority ?? ''] ?? 10;
+    const daysLate = Math.floor((Date.now() - new Date(t.due_date ?? t.created_at).getTime()) / 86400000);
+    return { ...t, xpReward: Math.max(1, base - 3 * daysLate) };
+  };
+
   const [activeCategory, setActiveCategory] = useState<string>('');
   const CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
 
@@ -343,22 +357,17 @@ export default function Today() {
           {/* Late tasks card */}
           {lateTasks.length > 0 && (
             <div style={{ marginTop: 14, border: '1px solid var(--accent)', background: 'var(--card)', padding: '14px 18px' }}>
-              <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: '2px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 10 }}>
+              <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: '2px', color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 6 }}>
                 LATE · {lateTasks.length} UNFINISHED
               </div>
-              {lateTasks.map(t => {
-                const dateLabel = new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', borderBottom: '1px dashed var(--rule)' }}>
-                    <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, color: 'var(--ink)', flex: 1 }}>
-                      {t.title}
-                    </div>
-                    <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, color: 'var(--muted)', marginLeft: 12, whiteSpace: 'nowrap' }}>
-                      {dateLabel}
-                    </div>
-                  </div>
-                );
-              })}
+              {lateTasks.map(t => (
+                <TaskItem
+                  key={t.id}
+                  task={penalizedTask(t)}
+                  onDelete={() => deleteTaskMutation.mutate(t.id)}
+                  onError={e => showToast(e.message, 'error')}
+                />
+              ))}
             </div>
           )}
 
