@@ -234,7 +234,7 @@ export default function Today() {
           <div style={{ marginTop: 22, border: '1px solid var(--rule)', padding: 20, background: 'var(--card)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
               <div>
-                <div style={monoStyle}>THE LEDGER · LAST 28 DAYS</div>
+                <div style={monoStyle}>THE LEDGER · LAST 21 DAYS</div>
                 <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontStyle: 'italic', marginTop: 2, color: 'var(--ink)' }}>
                   How the season has been treating you.
                 </div>
@@ -264,8 +264,8 @@ export default function Today() {
           {/* Pet eyebrow */}
           <div style={{ ...monoStyle, marginBottom: 6 }}>
             {!pet ? 'NO COMPANION YET'
-            : petIsDead ? `${petName.toUpperCase()} · PASSED AWAY · ${dayCounter}`
-            : [petName.toUpperCase(), pet.gender === 'female' ? '♀' : pet.gender === 'male' ? '♂' : null, dayCounter].filter(Boolean).join(' · ')}
+              : petIsDead ? `${petName.toUpperCase()} · PASSED AWAY · ${dayCounter}`
+                : [petName.toUpperCase(), pet.gender === 'female' ? '♀' : pet.gender === 'male' ? '♂' : null, dayCounter].filter(Boolean).join(' · ')}
           </div>
 
           {/* Pet card — empty / dead / alive states */}
@@ -300,62 +300,62 @@ export default function Today() {
               </a>
             </div>
           ) : (
-          <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
-            </div>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--rule)', padding: 22, textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <PetSprite species={petSpecies} stage={petStage} mood={petMood} size={210} />
+              </div>
 
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 26, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 4, color: 'var(--ink)' }}>
-              {petMood === 'happy' ? '"thriving today"'
-                : petMood === 'sad' ? '"feeling a little lonely"'
-                : petMood === 'sleepy' ? '"needs more time together"'
-                : '"doing alright"'}
-            </div>
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, color: 'var(--ink-soft)', marginTop: 4 }}>
-              {belly < 40 ? 'getting hungry — feed when you can.' : 'doing well for now.'}
-            </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 26, fontStyle: 'italic', letterSpacing: -0.4, marginTop: 4, color: 'var(--ink)' }}>
+                {petMood === 'happy' ? '"thriving today"'
+                  : petMood === 'sad' ? '"feeling a little lonely"'
+                    : petMood === 'sleepy' ? '"needs more time together"'
+                      : '"doing alright"'}
+              </div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 14, color: 'var(--ink-soft)', marginTop: 4 }}>
+                {belly < 40 ? 'getting hungry — feed when you can.' : 'doing well for now.'}
+              </div>
 
-            {/* Progress bars: Mood + Belly + Bond */}
-            <div style={{ marginTop: 18, textAlign: 'left' }}>
-              {([
-                ['Mood', moodValue, 'var(--accent)'],
-                ['Belly', belly, 'var(--accent-2)'],
-                ['Bond', bond, 'var(--amber)'],
-              ] as [string, number, string][]).map(([label, value, color]) => (
-                <div key={label} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 30px', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 13, fontStyle: 'italic', color: 'var(--ink-soft)' }}>{label}</div>
-                  <div style={{ height: 6, background: 'var(--paper-deep)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, value)}%`, height: '100%', background: color }} />
+              {/* Progress bars: Mood + Belly + Bond */}
+              <div style={{ marginTop: 18, textAlign: 'left' }}>
+                {([
+                  ['Mood', moodValue, 'var(--accent)'],
+                  ['Belly', belly, 'var(--accent-2)'],
+                  ['Bond', bond, 'var(--amber)'],
+                ] as [string, number, string][]).map(([label, value, color]) => (
+                  <div key={label} style={{ display: 'grid', gridTemplateColumns: '70px 1fr 30px', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 13, fontStyle: 'italic', color: 'var(--ink-soft)' }}>{label}</div>
+                    <div style={{ height: 6, background: 'var(--paper-deep)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(100, value)}%`, height: '100%', background: color }} />
+                    </div>
+                    <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: 'var(--muted)', textAlign: 'right' }}>{value}</div>
                   </div>
-                  <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, color: 'var(--muted)', textAlign: 'right' }}>{value}</div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Feed button */}
-            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => pet && feedMutation.mutate(pet.id)}
-                disabled={!pet || !isAuthenticated || (userXP?.xp ?? 0) < 35 || feedMutation.isPending}
-                style={{
-                  flex: 1,
-                  background: 'var(--accent)',
-                  color: 'white',
-                  padding: '11px',
-                  fontFamily: '"Inter", system-ui, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  letterSpacing: 0.3,
-                  textAlign: 'center',
-                  border: 'none',
-                  cursor: (isAuthenticated && (userXP?.xp ?? 0) >= 35) ? 'pointer' : 'not-allowed',
-                  opacity: (isAuthenticated && (userXP?.xp ?? 0) < 35) ? 0.5 : 1,
-                }}
-              >
-                {feedMutation.isPending ? 'Feeding…' : 'Offer a treat · 35 xp'}
-              </button>
+              {/* Feed button */}
+              <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => pet && feedMutation.mutate(pet.id)}
+                  disabled={!pet || !isAuthenticated || (userXP?.xp ?? 0) < 35 || feedMutation.isPending}
+                  style={{
+                    flex: 1,
+                    background: 'var(--accent)',
+                    color: 'white',
+                    padding: '11px',
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    letterSpacing: 0.3,
+                    textAlign: 'center',
+                    border: 'none',
+                    cursor: (isAuthenticated && (userXP?.xp ?? 0) >= 35) ? 'pointer' : 'not-allowed',
+                    opacity: (isAuthenticated && (userXP?.xp ?? 0) < 35) ? 0.5 : 1,
+                  }}
+                >
+                  {feedMutation.isPending ? 'Feeding…' : 'Offer a treat · 35 xp'}
+                </button>
+              </div>
             </div>
-          </div>
           )}
 
           {/* Late tasks card */}
