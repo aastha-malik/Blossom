@@ -54,18 +54,19 @@ with engine.connect() as conn:
     except Exception:
         pass  # Column already exists
 
-# Create focus_sessions table
+# Fix focus_sessions table — the original raw SQL used SERIAL/INTEGER types which are
+# incompatible with the SQLAlchemy model (String UUID). Drop the table if it has wrong
+# column types so create_all can recreate it correctly.
 with engine.connect() as conn:
     try:
-        conn.execute(text('''
-            CREATE TABLE IF NOT EXISTS focus_sessions (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-                duration_seconds INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW()
-            )
-        '''))
-        conn.commit()
+        result = conn.execute(text("""
+            SELECT data_type FROM information_schema.columns
+            WHERE table_name = 'focus_sessions' AND column_name = 'id'
+        """))
+        row = result.fetchone()
+        if row and row[0] not in ('character varying', 'text', 'uuid'):
+            conn.execute(text('DROP TABLE IF EXISTS focus_sessions'))
+            conn.commit()
     except Exception:
         pass
 
