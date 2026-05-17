@@ -36,6 +36,8 @@ export default function FocusTimer({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string>('');
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
+  const [customInput, setCustomInput] = useState<string>('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { isAuthenticated } = useAuth();
@@ -112,32 +114,102 @@ export default function FocusTimer({
     if (!isRunning) { setSelectedSecs(secs); setTimeLeft(secs); }
   };
 
-  const selectedOption = DURATION_OPTIONS.find(o => o.secs === selectedSecs);
+  const isCustomSelected = !DURATION_OPTIONS.some(o => o.secs === selectedSecs);
   const progressPct = selectedSecs > 0 ? ((selectedSecs - timeLeft) / selectedSecs) * 100 : 0;
 
+  const getDisplayLabel = (secs: number) => {
+    const preset = DURATION_OPTIONS.find(o => o.secs === secs);
+    if (preset) return preset.display;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h > 0 && m > 0) return `${h} HR ${m} MIN`;
+    if (h > 0) return `${h} HR`;
+    return `${m} MIN`;
+  };
+
+  const applyCustom = () => {
+    const mins = parseFloat(customInput);
+    if (!isNaN(mins) && mins > 0) {
+      const secs = Math.max(5, Math.round(mins * 60));
+      setSelectedSecs(secs);
+      setTimeLeft(secs);
+    }
+    setIsCustomMode(false);
+    setCustomInput('');
+  };
+
+  const btnStyle = (active: boolean, fs: boolean, disabled: boolean): React.CSSProperties => ({
+    fontFamily: 'Fraunces, Georgia, serif',
+    fontSize: fs ? 16 : 14,
+    color: active ? 'var(--ink)' : 'var(--muted)',
+    fontStyle: active ? 'normal' : 'italic',
+    background: 'none',
+    border: 'none',
+    borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled && !active ? 0.4 : 1,
+    padding: '0 0 2px 0',
+  });
+
   const durationButtons = (fs: boolean) => (
-    <div style={{ display: 'flex', gap: fs ? 16 : 10 }}>
+    <div style={{ display: 'flex', gap: fs ? 16 : 10, alignItems: 'baseline' }}>
       {DURATION_OPTIONS.map(({ label, secs }) => (
         <button
           key={secs}
-          onClick={() => handleLengthChange(secs)}
+          onClick={() => { handleLengthChange(secs); setIsCustomMode(false); }}
           disabled={isRunning}
-          style={{
-            fontFamily: 'Fraunces, Georgia, serif',
-            fontSize: fs ? 16 : 14,
-            color: selectedSecs === secs ? 'var(--ink)' : 'var(--muted)',
-            fontStyle: selectedSecs === secs ? 'normal' : 'italic',
-            background: 'none',
-            border: 'none',
-            borderBottom: `2px solid ${selectedSecs === secs ? 'var(--accent)' : 'transparent'}`,
-            cursor: isRunning ? 'not-allowed' : 'pointer',
-            opacity: isRunning && selectedSecs !== secs ? 0.4 : 1,
-            padding: '0 0 2px 0',
-          }}
+          style={btnStyle(selectedSecs === secs, fs, isRunning)}
         >
           {label}
         </button>
       ))}
+
+      {/* Custom option */}
+      {isCustomMode ? (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+          <input
+            type="number"
+            autoFocus
+            value={customInput}
+            onChange={e => setCustomInput(e.target.value)}
+            onBlur={applyCustom}
+            onKeyDown={e => {
+              if (e.key === 'Enter') applyCustom();
+              if (e.key === 'Escape') { setIsCustomMode(false); setCustomInput(''); }
+            }}
+            min={1}
+            max={480}
+            placeholder="90"
+            style={{
+              width: 38,
+              fontFamily: 'Fraunces, Georgia, serif',
+              fontSize: fs ? 16 : 14,
+              color: 'var(--ink)',
+              background: 'none',
+              border: 'none',
+              borderBottom: '2px solid var(--accent)',
+              outline: 'none',
+              padding: '0 0 2px 0',
+              textAlign: 'right',
+              MozAppearance: 'textfield',
+            } as React.CSSProperties}
+          />
+          <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: fs ? 14 : 12, color: 'var(--muted)', fontStyle: 'italic' }}>min</span>
+        </div>
+      ) : (
+        <button
+          onClick={() => {
+            if (!isRunning) {
+              setCustomInput(isCustomSelected ? String(Math.round(selectedSecs / 60)) : '');
+              setIsCustomMode(true);
+            }
+          }}
+          disabled={isRunning}
+          style={btnStyle(isCustomSelected, fs, isRunning)}
+        >
+          {isCustomSelected ? getDisplayLabel(selectedSecs) : 'custom'}
+        </button>
+      )}
     </div>
   );
 
@@ -207,7 +279,7 @@ export default function FocusTimer({
         <div style={{ flex: '0 0 55%', minWidth: 0 }}>
           {/* Label */}
           <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            SIT WITH {petName.toUpperCase()} · {selectedOption?.display ?? ''}
+            SIT WITH {petName.toUpperCase()} · {getDisplayLabel(selectedSecs)}
             {isRunning && (
               <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', letterSpacing: 0, fontSize: 14, color: 'var(--ink-soft)', textTransform: 'none' }}>
                 stay with it.
@@ -287,7 +359,7 @@ export default function FocusTimer({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
         <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase' }}>
-          SIT WITH {petName.toUpperCase()} · {selectedOption?.display ?? ''}
+          SIT WITH {petName.toUpperCase()} · {getDisplayLabel(selectedSecs)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {isRunning && (
