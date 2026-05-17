@@ -694,8 +694,8 @@ def save_focus_session(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if session.duration_seconds < 30:
-        raise HTTPException(status_code=400, detail="Session too short (minimum 30 seconds)")
+    if session.duration_seconds < 5:
+        raise HTTPException(status_code=400, detail="Session too short (minimum 5 seconds)")
     new_session = FocusSession(user_id=current_user.id, duration_seconds=session.duration_seconds)
     db.add(new_session)
     db.commit()

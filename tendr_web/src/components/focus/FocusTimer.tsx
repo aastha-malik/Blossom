@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { SESSION_LENGTHS } from '../../utils/constants';
 import { formatTimer } from '../../utils/formatters';
 import { useAuth } from '../../contexts/AuthContext';
 import { focusAPI } from '../../api/client';
@@ -9,10 +8,22 @@ interface FocusTimerProps {
   petName?: string;
 }
 
+const DURATION_OPTIONS = [
+  { label: '5s',     secs: 5,       display: '5 SEC'  },
+  { label: '25 min', secs: 25 * 60, display: '25 MIN' },
+  { label: '45 min', secs: 45 * 60, display: '45 MIN' },
+  { label: '60 min', secs: 60 * 60, display: '60 MIN' },
+] as const;
+
+const DEFAULT_SECS = 45 * 60;
+const MIN_SAVE_SECS = 5;
+
 export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
-  const [selectedLength, setSelectedLength] = useState<number>(SESSION_LENGTHS.MEDIUM);
-  const [timeLeft, setTimeLeft] = useState<number>(SESSION_LENGTHS.MEDIUM * 60);
+  const [selectedSecs, setSelectedSecs] = useState<number>(DEFAULT_SECS);
+  const [timeLeft, setTimeLeft] = useState<number>(DEFAULT_SECS);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string>('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { isAuthenticated } = useAuth();
@@ -22,6 +33,13 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
     mutationFn: (duration_seconds: number) => focusAPI.saveSession(duration_seconds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['focusTotal'] });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    },
+    onError: (err: Error) => {
+      setSaveStatus('error');
+      setSaveError(err.message ?? 'Save failed');
+      setTimeout(() => setSaveStatus('idle'), 5000);
     },
   });
 
@@ -29,7 +47,7 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
     if (!isRunning && startTimeRef.current !== null) {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       startTimeRef.current = null;
-      if (elapsed >= 30 && isAuthenticated) {
+      if (elapsed >= MIN_SAVE_SECS && isAuthenticated) {
         saveSession(elapsed);
       }
     }
@@ -51,21 +69,21 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
   }, [isRunning, timeLeft]);
 
   const handleStart = () => {
-    if (timeLeft === 0) setTimeLeft(selectedLength * 60);
+    if (timeLeft === 0) setTimeLeft(selectedSecs);
     setIsRunning(true);
   };
   const handlePause = () => setIsRunning(false);
   const handleReset = () => {
     setIsRunning(false);
-    setTimeLeft(selectedLength * 60);
+    setTimeLeft(selectedSecs);
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
   };
-  const handleLengthChange = (minutes: number) => {
-    if (!isRunning) { setSelectedLength(minutes); setTimeLeft(minutes * 60); }
+  const handleLengthChange = (secs: number) => {
+    if (!isRunning) { setSelectedSecs(secs); setTimeLeft(secs); }
   };
 
-  const totalSeconds = selectedLength * 60;
-  const progressPct = totalSeconds > 0 ? ((totalSeconds - timeLeft) / totalSeconds) * 100 : 0;
+  const selectedOption = DURATION_OPTIONS.find(o => o.secs === selectedSecs);
+  const progressPct = selectedSecs > 0 ? ((selectedSecs - timeLeft) / selectedSecs) * 100 : 0;
 
   return (
     <div style={{ border: '1.5px solid var(--ink)', padding: 20, background: 'var(--card)', marginTop: 22 }}>
@@ -73,11 +91,21 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
         <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase' }}>
-          SIT WITH {petName.toUpperCase()} · {selectedLength} MIN
+          SIT WITH {petName.toUpperCase()} · {selectedOption?.display ?? ''}
         </div>
         {isRunning && (
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)' }}>
             stay with it.
+          </div>
+        )}
+        {saveStatus === 'saved' && (
+          <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'var(--accent-3)', textTransform: 'uppercase' }}>
+            saved ✓
+          </div>
+        )}
+        {saveStatus === 'error' && (
+          <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'tomato', textTransform: 'uppercase' }} title={saveError}>
+            save failed ✗
           </div>
         )}
       </div>
@@ -110,29 +138,25 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         {/* Duration selector */}
         <div style={{ display: 'flex', gap: 10 }}>
-          {Object.values(SESSION_LENGTHS).map(minutes => (
+          {DURATION_OPTIONS.map(({ label, secs }) => (
             <button
-              key={minutes}
-              onClick={() => handleLengthChange(minutes)}
+              key={secs}
+              onClick={() => handleLengthChange(secs)}
               disabled={isRunning}
               style={{
                 fontFamily: 'Fraunces, Georgia, serif',
                 fontSize: 14,
-                color: selectedLength === minutes ? 'var(--ink)' : 'var(--muted)',
-                fontStyle: selectedLength === minutes ? 'normal' : 'italic',
-                borderBottom: selectedLength === minutes ? '2px solid var(--accent)' : '2px solid transparent',
-                paddingBottom: 1,
+                color: selectedSecs === secs ? 'var(--ink)' : 'var(--muted)',
+                fontStyle: selectedSecs === secs ? 'normal' : 'italic',
                 background: 'none',
                 border: 'none',
-                borderBottomWidth: 2,
-                borderBottomStyle: 'solid',
-                borderBottomColor: selectedLength === minutes ? 'var(--accent)' : 'transparent',
+                borderBottom: `2px solid ${selectedSecs === secs ? 'var(--accent)' : 'transparent'}`,
                 cursor: isRunning ? 'not-allowed' : 'pointer',
-                opacity: isRunning && selectedLength !== minutes ? 0.4 : 1,
+                opacity: isRunning && selectedSecs !== secs ? 0.4 : 1,
                 padding: '0 0 2px 0',
               }}
             >
-              {minutes} min
+              {label}
             </button>
           ))}
         </div>
