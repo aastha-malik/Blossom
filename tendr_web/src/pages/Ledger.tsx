@@ -241,7 +241,7 @@ export default function Ledger() {
         </div>
 
         {/* Category breakdown + Streak */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, alignItems: 'start' }}>
           <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
             <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
@@ -266,7 +266,7 @@ export default function Ledger() {
             ))}
           </div>
 
-          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px', minWidth: 160 }}>
+          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
             <div style={{ ...monoStyle, marginBottom: 4 }}>CURRENT STREAK</div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 32 : 44, fontWeight: 500, color: 'var(--amber)', letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
               {stats?.streaks ?? 0} days
