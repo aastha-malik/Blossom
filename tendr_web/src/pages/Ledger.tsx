@@ -139,12 +139,13 @@ export default function Ledger() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
             ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
+            ['CURRENT STREAK', `${stats?.streaks ?? 0} days`, 'var(--amber)'],
           ] as [string, string, string][]).map(([label, value, color]) => (
-            <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
+            <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px', gridColumn: isMobile && label === 'CURRENT STREAK' ? '1 / -1' : undefined }}>
               <div style={{ ...monoStyle, marginBottom: 4 }}>{label}</div>
               <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 32 : 44, fontWeight: 500, color, letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
                 {value}

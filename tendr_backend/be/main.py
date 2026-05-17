@@ -699,7 +699,10 @@ def save_focus_session(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
-    pet_crud.add_bond_from_focus(db, current_user.id, session.duration_seconds)
+    try:
+        pet_crud.add_bond_from_focus(db, current_user.id, session.duration_seconds)
+    except Exception:
+        pass
     return new_session
 
 

@@ -14,11 +14,14 @@ import type { Species } from '../components/PetSprite';
 import { Heatmap } from '../components/ui/Heatmap';
 import type { Task } from '../api/types';
 
-function getMoodSubtitle(streak: number, completedToday: number): string {
-  if (completedToday >= 3) return 'Sun\'s out. Mochi is doing zoomies.';
-  if (completedToday >= 1) return 'A gentle drizzle. Mochi is watching the window.';
-  if (streak >= 3) return 'Overcast, but familiar. Mochi is waiting for you.';
-  return 'A light drizzle. Mochi is sleeping in.';
+function getMoodSubtitle(streak: number, completedToday: number, petName: string, petMood: string): string {
+  if (completedToday >= 3) return `Sun's out. ${petName} is doing zoomies.`;
+  if (completedToday >= 1) return `A gentle drizzle. ${petName} is watching the window.`;
+  if (streak >= 3) return `Overcast, but familiar. ${petName} is waiting for you.`;
+  if (petMood === 'happy') return `A light drizzle. ${petName} is feeling great.`;
+  if (petMood === 'sleepy') return `A light drizzle. ${petName} is drowsy today.`;
+  if (petMood === 'sad') return `A light drizzle. ${petName} is feeling lonely.`;
+  return `A light drizzle. ${petName} is sleeping in.`;
 }
 
 
@@ -189,7 +192,7 @@ export default function Today() {
 
           {/* Mood subtitle */}
           <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', marginBottom: 22 }}>
-            {getMoodSubtitle(streak, completedToday)}
+            {getMoodSubtitle(streak, completedToday, petName, petMood)}
           </div>
 
           {/* Task list section */}

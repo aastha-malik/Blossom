@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SESSION_LENGTHS } from '../../utils/constants';
 import { formatTimer } from '../../utils/formatters';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,17 +16,25 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { mutate: saveSession } = useMutation({
+    mutationFn: (duration_seconds: number) => focusAPI.saveSession(duration_seconds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['focusTotal'] });
+    },
+  });
 
   useEffect(() => {
     if (!isRunning && startTimeRef.current !== null) {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       startTimeRef.current = null;
       if (elapsed >= 30 && isAuthenticated) {
-        focusAPI.saveSession(elapsed).catch(() => {});
+        saveSession(elapsed);
       }
     }
     if (isRunning) startTimeRef.current = Date.now();
-  }, [isRunning]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isRunning, isAuthenticated, saveSession]);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
