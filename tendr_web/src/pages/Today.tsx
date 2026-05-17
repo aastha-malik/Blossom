@@ -259,7 +259,7 @@ export default function Today() {
           </div>
 
           {/* Focus card */}
-          <FocusTimer petName={petName} />
+          <FocusTimer petName={petName} petSpecies={petSpecies} petStage={petStage} petMood={petMood} />
         </div>
 
         {/* ── RIGHT COLUMN ── */}

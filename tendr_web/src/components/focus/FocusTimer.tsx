@@ -3,9 +3,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatTimer } from '../../utils/formatters';
 import { useAuth } from '../../contexts/AuthContext';
 import { focusAPI } from '../../api/client';
+import { PetSprite } from '../PetSprite';
+import type { Species, Stage, Mood } from '../PetSprite';
 
 interface FocusTimerProps {
   petName?: string;
+  petSpecies?: Species;
+  petStage?: Stage;
+  petMood?: Mood;
 }
 
 const DURATION_OPTIONS = [
@@ -19,7 +24,12 @@ const DEFAULT_SECS = 45 * 60;
 const MIN_SAVE_SECS = 5;
 const ORIGINAL_TITLE = document.title;
 
-export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
+export default function FocusTimer({
+  petName = 'your pet',
+  petSpecies = 'dog',
+  petStage = 'adult',
+  petMood = 'content',
+}: FocusTimerProps) {
   const [selectedSecs, setSelectedSecs] = useState<number>(DEFAULT_SECS);
   const [timeLeft, setTimeLeft] = useState<number>(DEFAULT_SECS);
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -105,58 +115,59 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
   const selectedOption = DURATION_OPTIONS.find(o => o.secs === selectedSecs);
   const progressPct = selectedSecs > 0 ? ((selectedSecs - timeLeft) / selectedSecs) * 100 : 0;
 
-  const controls = (fs: boolean) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-      <div style={{ display: 'flex', gap: fs ? 16 : 10 }}>
-        {DURATION_OPTIONS.map(({ label, secs }) => (
-          <button
-            key={secs}
-            onClick={() => handleLengthChange(secs)}
-            disabled={isRunning}
-            style={{
-              fontFamily: 'Fraunces, Georgia, serif',
-              fontSize: fs ? 16 : 14,
-              color: selectedSecs === secs ? 'var(--ink)' : 'var(--muted)',
-              fontStyle: selectedSecs === secs ? 'normal' : 'italic',
-              background: 'none',
-              border: 'none',
-              borderBottom: `2px solid ${selectedSecs === secs ? 'var(--accent)' : 'transparent'}`,
-              cursor: isRunning ? 'not-allowed' : 'pointer',
-              opacity: isRunning && selectedSecs !== secs ? 0.4 : 1,
-              padding: '0 0 2px 0',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+  const durationButtons = (fs: boolean) => (
+    <div style={{ display: 'flex', gap: fs ? 16 : 10 }}>
+      {DURATION_OPTIONS.map(({ label, secs }) => (
         <button
-          onClick={isRunning ? handlePause : handleStart}
+          key={secs}
+          onClick={() => handleLengthChange(secs)}
+          disabled={isRunning}
           style={{
-            background: 'var(--ink)',
-            color: 'var(--paper)',
-            padding: fs ? '10px 24px' : '6px 14px',
-            fontFamily: '"Inter", system-ui, sans-serif',
-            fontSize: fs ? 14 : 12,
-            fontWeight: 500,
+            fontFamily: 'Fraunces, Georgia, serif',
+            fontSize: fs ? 16 : 14,
+            color: selectedSecs === secs ? 'var(--ink)' : 'var(--muted)',
+            fontStyle: selectedSecs === secs ? 'normal' : 'italic',
+            background: 'none',
             border: 'none',
-            cursor: 'pointer',
+            borderBottom: `2px solid ${selectedSecs === secs ? 'var(--accent)' : 'transparent'}`,
+            cursor: isRunning ? 'not-allowed' : 'pointer',
+            opacity: isRunning && selectedSecs !== secs ? 0.4 : 1,
+            padding: '0 0 2px 0',
           }}
         >
-          {isRunning ? 'Pause' : 'Start'}
+          {label}
         </button>
-        <button
-          onClick={handleReset}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}
-        >
-          Reset
-        </button>
-      </div>
+      ))}
     </div>
   );
 
-  // Fullscreen overlay
+  const actionButtons = (fs: boolean) => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <button
+        onClick={isRunning ? handlePause : handleStart}
+        style={{
+          background: 'var(--ink)',
+          color: 'var(--paper)',
+          padding: fs ? '10px 24px' : '6px 14px',
+          fontFamily: '"Inter", system-ui, sans-serif',
+          fontSize: fs ? 14 : 12,
+          fontWeight: 500,
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        {isRunning ? 'Pause' : 'Start'}
+      </button>
+      <button
+        onClick={handleReset}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase' }}
+      >
+        Reset
+      </button>
+    </div>
+  );
+
+  // ── FULLSCREEN OVERLAY ──
   if (isFullscreen) {
     return (
       <div style={{
@@ -165,10 +176,11 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
         zIndex: 9999,
         background: 'var(--paper)',
         display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '0 10vw',
+        alignItems: 'center',
+        padding: '0 6vw',
+        gap: '6vw',
       }}>
+
         {/* Exit button */}
         <button
           onClick={() => setIsFullscreen(false)}
@@ -191,52 +203,84 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
           esc ✕
         </button>
 
-        {/* Label */}
-        <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 20 }}>
-          SIT WITH {petName.toUpperCase()} · {selectedOption?.display ?? ''}
-          {isRunning && (
-            <span style={{ marginLeft: 24, fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', letterSpacing: 0, fontSize: 14, color: 'var(--ink-soft)', textTransform: 'none' }}>
-              stay with it.
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span style={{ marginLeft: 16, color: 'var(--accent-3)', letterSpacing: 1 }}>saved ✓</span>
-          )}
-          {saveStatus === 'error' && (
-            <span style={{ marginLeft: 16, color: 'tomato', letterSpacing: 1 }} title={saveError}>save failed ✗</span>
-          )}
+        {/* ── Timer side ── */}
+        <div style={{ flex: '0 0 55%', minWidth: 0 }}>
+          {/* Label */}
+          <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            SIT WITH {petName.toUpperCase()} · {selectedOption?.display ?? ''}
+            {isRunning && (
+              <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', letterSpacing: 0, fontSize: 14, color: 'var(--ink-soft)', textTransform: 'none' }}>
+                stay with it.
+              </span>
+            )}
+            {saveStatus === 'saved' && <span style={{ color: 'var(--accent-3)' }}>saved ✓</span>}
+            {saveStatus === 'error' && <span style={{ color: 'tomato' }} title={saveError}>save failed ✗</span>}
+          </div>
+
+          {/* Big timer */}
+          <div
+            onClick={isRunning ? handlePause : handleStart}
+            style={{
+              fontFamily: 'Fraunces, Georgia, serif',
+              fontSize: 'clamp(80px, 14vw, 160px)',
+              letterSpacing: -6,
+              lineHeight: 1,
+              fontFeatureSettings: '"tnum"',
+              color: 'var(--accent)',
+              cursor: 'pointer',
+              userSelect: 'none',
+              marginBottom: 28,
+            }}
+          >
+            {formatTimer(timeLeft)}
+          </div>
+
+          {/* Progress bar */}
+          <svg width="100%" height="22" viewBox="0 0 300 22" preserveAspectRatio="none" style={{ display: 'block', marginBottom: 28 }}>
+            <line x1="0" y1="11" x2="300" y2="11" stroke="var(--rule)" strokeWidth="1" strokeDasharray="3 4" />
+            <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
+          </svg>
+
+          {/* Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            {durationButtons(true)}
+            {actionButtons(true)}
+          </div>
         </div>
 
-        {/* Big timer */}
-        <div
-          onClick={isRunning ? handlePause : handleStart}
-          style={{
+        {/* ── Pet side ── */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          minWidth: 0,
+        }}>
+          <PetSprite
+            species={petSpecies}
+            stage={petStage}
+            mood={isRunning ? 'happy' : petMood}
+            size={Math.min(window.innerWidth * 0.22, 220)}
+          />
+          <div style={{
             fontFamily: 'Fraunces, Georgia, serif',
-            fontSize: 'clamp(96px, 20vw, 180px)',
-            letterSpacing: -6,
-            lineHeight: 1,
-            fontFeatureSettings: '"tnum"',
-            color: 'var(--accent)',
-            cursor: 'pointer',
-            userSelect: 'none',
-            marginBottom: 32,
-          }}
-        >
-          {formatTimer(timeLeft)}
+            fontStyle: 'italic',
+            fontSize: 15,
+            color: 'var(--ink-soft)',
+            textAlign: 'center',
+          }}>
+            {isRunning
+              ? `${petName} is happy you're here.`
+              : `${petName} is waiting for you.`}
+          </div>
         </div>
-
-        {/* Progress bar */}
-        <svg width="100%" height="22" viewBox="0 0 300 22" preserveAspectRatio="none" style={{ display: 'block', marginBottom: 32 }}>
-          <line x1="0" y1="11" x2="300" y2="11" stroke="var(--rule)" strokeWidth="1" strokeDasharray="3 4" />
-          <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
-        </svg>
-
-        {controls(true)}
       </div>
     );
   }
 
-  // Normal card
+  // ── NORMAL CARD ──
   return (
     <div style={{ border: '1.5px solid var(--ink)', padding: 20, background: 'var(--card)', marginTop: 22 }}>
 
@@ -261,20 +305,10 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
               save failed ✗
             </div>
           )}
-          {/* Fullscreen toggle */}
           <button
             onClick={() => setIsFullscreen(true)}
             title="Fullscreen"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0 2px',
-              color: 'var(--muted)',
-              lineHeight: 1,
-              fontSize: 13,
-              opacity: 0.7,
-            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: 'var(--muted)', lineHeight: 1, fontSize: 13, opacity: 0.7 }}
           >
             ⛶
           </button>
@@ -305,7 +339,11 @@ export default function FocusTimer({ petName = 'your pet' }: FocusTimerProps) {
         <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
       </svg>
 
-      {controls(false)}
+      {/* Controls */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        {durationButtons(false)}
+        {actionButtons(false)}
+      </div>
     </div>
   );
 }
