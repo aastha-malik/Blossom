@@ -266,10 +266,17 @@ export default function Ledger() {
             ))}
           </div>
 
-          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
-            <div style={{ ...monoStyle, marginBottom: 4 }}>CURRENT STREAK</div>
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 32 : 44, fontWeight: 500, color: 'var(--amber)', letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
-              {stats?.streaks ?? 0} days
+          <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ ...monoStyle, marginBottom: 16 }}>CURRENT STREAK</div>
+            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 72 : 96, fontWeight: 500, color: 'var(--amber)', letterSpacing: -3, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
+              {stats?.streaks ?? 0}
+            </div>
+            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 22, color: 'var(--amber)', opacity: 0.7, marginTop: 6, letterSpacing: -0.5 }}>
+              days in a row
+            </div>
+            <div style={{ width: 40, height: 2, background: 'var(--amber)', opacity: 0.3, marginTop: 20 }} />
+            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginTop: 14 }}>
+              {(stats?.streaks ?? 0) === 0 ? 'Start today.' : 'Keep going.'}
             </div>
           </div>
         </div>
