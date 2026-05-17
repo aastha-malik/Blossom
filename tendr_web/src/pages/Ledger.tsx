@@ -139,13 +139,12 @@ export default function Ledger() {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 20, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
           {([
             ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
             ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
-            ['CURRENT STREAK', `${stats?.streaks ?? 0} days`, 'var(--amber)'],
           ] as [string, string, string][]).map(([label, value, color]) => (
-            <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px', gridColumn: isMobile && label === 'CURRENT STREAK' ? '1 / -1' : undefined }}>
+            <div key={label} style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: '18px 20px' }}>
               <div style={{ ...monoStyle, marginBottom: 4 }}>{label}</div>
               <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 32 : 44, fontWeight: 500, color, letterSpacing: -1.5, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
                 {value}
@@ -243,9 +242,19 @@ export default function Ledger() {
 
         {/* Category breakdown */}
         <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
-          <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
-          <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
-            Where your effort went.
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)' }}>
+                Where your effort went.
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ ...monoStyle, marginBottom: 4 }}>CURRENT STREAK</div>
+              <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: isMobile ? 26 : 32, fontWeight: 500, color: 'var(--amber)', letterSpacing: -1, fontFeatureSettings: '"tnum"', lineHeight: 1 }}>
+                {stats?.streaks ?? 0} days
+              </div>
+            </div>
           </div>
           {Object.entries(catCounts).length === 0 ? (
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)' }}>
