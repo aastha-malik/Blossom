@@ -241,7 +241,7 @@ export default function Ledger() {
         </div>
 
         {/* Category breakdown + Streak */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, alignItems: 'stretch' }}>
           <div style={{ border: '1px solid var(--rule)', background: 'var(--card)', padding: 22 }}>
             <div style={{ ...monoStyle, marginBottom: 6 }}>BY CATEGORY</div>
             <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 18, color: 'var(--ink)', marginBottom: 16 }}>
