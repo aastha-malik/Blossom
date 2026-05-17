@@ -262,7 +262,7 @@ export default function FocusTimer({
             species={petSpecies}
             stage={petStage}
             mood={isRunning ? 'happy' : petMood}
-            size={Math.min(window.innerWidth * 0.22, 220)}
+            size={Math.min(window.innerWidth * 0.32, 420)}
           />
           <div style={{
             fontFamily: 'Fraunces, Georgia, serif',
