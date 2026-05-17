@@ -36,8 +36,11 @@ export default function FocusTimer({
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string>('');
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
-  const [customInput, setCustomInput] = useState<string>('');
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editHrs, setEditHrs] = useState<string>('');
+  const [editMin, setEditMin] = useState<string>('');
+  const [editSec, setEditSec] = useState<string>('');
+  const hrsRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const { isAuthenticated } = useAuth();
@@ -57,7 +60,6 @@ export default function FocusTimer({
     },
   });
 
-  // Tab title shows live countdown while running
   useEffect(() => {
     if (isRunning) {
       document.title = `⏱ ${formatTimer(timeLeft)} — Tendr`;
@@ -67,7 +69,6 @@ export default function FocusTimer({
     return () => { document.title = ORIGINAL_TITLE; };
   }, [isRunning, timeLeft]);
 
-  // ESC key exits fullscreen
   useEffect(() => {
     if (!isFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
@@ -79,9 +80,7 @@ export default function FocusTimer({
     if (!isRunning && startTimeRef.current !== null) {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       startTimeRef.current = null;
-      if (elapsed >= MIN_SAVE_SECS && isAuthenticated) {
-        saveSession(elapsed);
-      }
+      if (elapsed >= MIN_SAVE_SECS && isAuthenticated) saveSession(elapsed);
     }
     if (isRunning) startTimeRef.current = Date.now();
   }, [isRunning, isAuthenticated, saveSession]);
@@ -101,21 +100,44 @@ export default function FocusTimer({
   }, [isRunning, timeLeft]);
 
   const handleStart = () => {
+    setIsEditing(false);
     if (timeLeft === 0) setTimeLeft(selectedSecs);
     setIsRunning(true);
   };
   const handlePause = () => setIsRunning(false);
   const handleReset = () => {
     setIsRunning(false);
+    setIsEditing(false);
     setTimeLeft(selectedSecs);
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
   };
   const handleLengthChange = (secs: number) => {
-    if (!isRunning) { setSelectedSecs(secs); setTimeLeft(secs); }
+    if (!isRunning) { setSelectedSecs(secs); setTimeLeft(secs); setIsEditing(false); }
   };
 
-  const isCustomSelected = !DURATION_OPTIONS.some(o => o.secs === selectedSecs);
-  const progressPct = selectedSecs > 0 ? ((selectedSecs - timeLeft) / selectedSecs) * 100 : 0;
+  const enterEditMode = () => {
+    if (isRunning) { handlePause(); return; }
+    const h = Math.floor(selectedSecs / 3600);
+    const m = Math.floor((selectedSecs % 3600) / 60);
+    const s = selectedSecs % 60;
+    setEditHrs(h > 0 ? String(h) : '');
+    setEditMin(String(m));
+    setEditSec(s > 0 ? String(s) : '');
+    setIsEditing(true);
+    setTimeout(() => hrsRef.current?.focus(), 0);
+  };
+
+  const applyEdit = () => {
+    const h = parseInt(editHrs || '0', 10);
+    const m = parseInt(editMin || '0', 10);
+    const s = parseInt(editSec || '0', 10);
+    const total = h * 3600 + m * 60 + s;
+    if (total >= MIN_SAVE_SECS) {
+      setSelectedSecs(total);
+      setTimeLeft(total);
+    }
+    setIsEditing(false);
+  };
 
   const getDisplayLabel = (secs: number) => {
     const preset = DURATION_OPTIONS.find(o => o.secs === secs);
@@ -127,89 +149,133 @@ export default function FocusTimer({
     return `${m} MIN`;
   };
 
-  const applyCustom = () => {
-    const mins = parseFloat(customInput);
-    if (!isNaN(mins) && mins > 0) {
-      const secs = Math.max(5, Math.round(mins * 60));
-      setSelectedSecs(secs);
-      setTimeLeft(secs);
-    }
-    setIsCustomMode(false);
-    setCustomInput('');
-  };
+  const progressPct = selectedSecs > 0 ? ((selectedSecs - timeLeft) / selectedSecs) * 100 : 0;
 
-  const btnStyle = (active: boolean, fs: boolean, disabled: boolean): React.CSSProperties => ({
+  // Shared style for edit inputs (match the big timer font)
+  const inputStyle = (fs: boolean): React.CSSProperties => ({
     fontFamily: 'Fraunces, Georgia, serif',
-    fontSize: fs ? 16 : 14,
-    color: active ? 'var(--ink)' : 'var(--muted)',
-    fontStyle: active ? 'normal' : 'italic',
+    fontSize: fs ? 'clamp(64px, 10vw, 110px)' : 'clamp(44px, 13vw, 72px)',
+    letterSpacing: -3,
+    fontFeatureSettings: '"tnum"',
+    color: 'var(--accent)',
     background: 'none',
     border: 'none',
-    borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled && !active ? 0.4 : 1,
-    padding: '0 0 2px 0',
+    borderBottom: '2px dashed var(--accent)',
+    outline: 'none',
+    width: '2.4ch',
+    padding: '0 0 4px 0',
+    textAlign: 'center',
+    MozAppearance: 'textfield',
   });
 
-  const durationButtons = (fs: boolean) => (
+  const unitStyle: React.CSSProperties = {
+    fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+    fontSize: 10,
+    color: 'var(--muted)',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    alignSelf: 'flex-end',
+    paddingBottom: 8,
+  };
+
+  const editBlock = (fs: boolean) => (
+    <div
+      style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: fs ? 28 : 16, flexWrap: 'wrap' }}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) applyEdit(); }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { e.preventDefault(); applyEdit(); }
+        if (e.key === 'Escape') setIsEditing(false);
+      }}
+    >
+      <input
+        ref={hrsRef}
+        type="number"
+        value={editHrs}
+        onChange={e => setEditHrs(e.target.value)}
+        onFocus={e => e.target.select()}
+        placeholder="00"
+        min={0} max={23}
+        style={inputStyle(fs)}
+      />
+      <span style={unitStyle}>hrs</span>
+
+      <input
+        type="number"
+        value={editMin}
+        onChange={e => setEditMin(e.target.value)}
+        onFocus={e => e.target.select()}
+        placeholder="00"
+        min={0} max={59}
+        style={{ ...inputStyle(fs), marginLeft: fs ? 12 : 8 }}
+      />
+      <span style={unitStyle}>min</span>
+
+      <input
+        type="number"
+        value={editSec}
+        onChange={e => setEditSec(e.target.value)}
+        onFocus={e => e.target.select()}
+        placeholder="00"
+        min={0} max={59}
+        style={{ ...inputStyle(fs), marginLeft: fs ? 12 : 8 }}
+      />
+      <span style={unitStyle}>sec</span>
+    </div>
+  );
+
+  const bigTimer = (fs: boolean) => (
+    isEditing ? editBlock(fs) : (
+      <div
+        onClick={isRunning ? handlePause : enterEditMode}
+        title={isRunning ? 'Click to pause' : 'Click to set duration'}
+        style={{
+          fontFamily: 'Fraunces, Georgia, serif',
+          fontSize: fs ? 'clamp(80px, 14vw, 160px)' : 'clamp(52px, 18vw, 88px)',
+          letterSpacing: -4,
+          lineHeight: 1,
+          fontFeatureSettings: '"tnum"',
+          color: 'var(--accent)',
+          cursor: isRunning ? 'pointer' : 'text',
+          userSelect: 'none',
+          marginBottom: fs ? 28 : 16,
+        }}
+      >
+        {formatTimer(timeLeft)}
+      </div>
+    )
+  );
+
+  const progressBar = (fs: boolean) => (
+    <svg width="100%" height="22" viewBox="0 0 300 22" preserveAspectRatio="none"
+      style={{ display: 'block', marginBottom: fs ? 28 : 12 }}>
+      <line x1="0" y1="11" x2="300" y2="11" stroke="var(--rule)" strokeWidth="1" strokeDasharray="3 4" />
+      <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
+    </svg>
+  );
+
+  const presetButtons = (fs: boolean) => (
     <div style={{ display: 'flex', gap: fs ? 16 : 10, alignItems: 'baseline' }}>
       {DURATION_OPTIONS.map(({ label, secs }) => (
         <button
           key={secs}
-          onClick={() => { handleLengthChange(secs); setIsCustomMode(false); }}
+          onClick={() => handleLengthChange(secs)}
           disabled={isRunning}
-          style={btnStyle(selectedSecs === secs, fs, isRunning)}
+          style={{
+            fontFamily: 'Fraunces, Georgia, serif',
+            fontSize: fs ? 16 : 14,
+            color: selectedSecs === secs && !isEditing ? 'var(--ink)' : 'var(--muted)',
+            fontStyle: selectedSecs === secs && !isEditing ? 'normal' : 'italic',
+            background: 'none',
+            border: 'none',
+            borderBottom: `2px solid ${selectedSecs === secs && !isEditing ? 'var(--accent)' : 'transparent'}`,
+            cursor: isRunning ? 'not-allowed' : 'pointer',
+            opacity: isRunning && selectedSecs !== secs ? 0.4 : 1,
+            padding: '0 0 2px 0',
+          }}
         >
           {label}
         </button>
       ))}
-
-      {/* Custom option */}
-      {isCustomMode ? (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-          <input
-            type="number"
-            autoFocus
-            value={customInput}
-            onChange={e => setCustomInput(e.target.value)}
-            onBlur={applyCustom}
-            onKeyDown={e => {
-              if (e.key === 'Enter') applyCustom();
-              if (e.key === 'Escape') { setIsCustomMode(false); setCustomInput(''); }
-            }}
-            min={1}
-            max={480}
-            placeholder="90"
-            style={{
-              width: 38,
-              fontFamily: 'Fraunces, Georgia, serif',
-              fontSize: fs ? 16 : 14,
-              color: 'var(--ink)',
-              background: 'none',
-              border: 'none',
-              borderBottom: '2px solid var(--accent)',
-              outline: 'none',
-              padding: '0 0 2px 0',
-              textAlign: 'right',
-              MozAppearance: 'textfield',
-            } as React.CSSProperties}
-          />
-          <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: fs ? 14 : 12, color: 'var(--muted)', fontStyle: 'italic' }}>min</span>
-        </div>
-      ) : (
-        <button
-          onClick={() => {
-            if (!isRunning) {
-              setCustomInput(isCustomSelected ? String(Math.round(selectedSecs / 60)) : '');
-              setIsCustomMode(true);
-            }
-          }}
-          disabled={isRunning}
-          style={btnStyle(isCustomSelected, fs, isRunning)}
-        >
-          {isCustomSelected ? getDisplayLabel(selectedSecs) : 'custom'}
-        </button>
-      )}
     </div>
   );
 
@@ -239,113 +305,51 @@ export default function FocusTimer({
     </div>
   );
 
-  // ── FULLSCREEN OVERLAY ──
+  const statusChip = (
+    <>
+      {isRunning && <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)' }}>stay with it.</span>}
+      {saveStatus === 'saved' && <span style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'var(--accent-3)', textTransform: 'uppercase' }}>saved ✓</span>}
+      {saveStatus === 'error' && <span style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'tomato', textTransform: 'uppercase' }} title={saveError}>save failed ✗</span>}
+    </>
+  );
+
+  // ── FULLSCREEN ──
   if (isFullscreen) {
     return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'var(--paper)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 6vw',
-        gap: '6vw',
-      }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--paper)', display: 'flex', alignItems: 'center', padding: '0 6vw', gap: '6vw' }}>
 
-        {/* Exit button */}
         <button
           onClick={() => setIsFullscreen(false)}
           title="Exit fullscreen (Esc)"
-          style={{
-            position: 'absolute',
-            top: 24,
-            right: 28,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-            fontSize: 11,
-            color: 'var(--muted)',
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-            padding: '4px 8px',
-          }}
+          style={{ position: 'absolute', top: 24, right: 28, background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, color: 'var(--muted)', letterSpacing: 1, textTransform: 'uppercase', padding: '4px 8px' }}
         >
           esc ✕
         </button>
 
-        {/* ── Timer side ── */}
         <div style={{ flex: '0 0 55%', minWidth: 0 }}>
-          {/* Label */}
           <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 11, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             SIT WITH {petName.toUpperCase()} · {getDisplayLabel(selectedSecs)}
-            {isRunning && (
-              <span style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', letterSpacing: 0, fontSize: 14, color: 'var(--ink-soft)', textTransform: 'none' }}>
-                stay with it.
-              </span>
-            )}
-            {saveStatus === 'saved' && <span style={{ color: 'var(--accent-3)' }}>saved ✓</span>}
-            {saveStatus === 'error' && <span style={{ color: 'tomato' }} title={saveError}>save failed ✗</span>}
+            {statusChip}
           </div>
 
-          {/* Big timer */}
-          <div
-            onClick={isRunning ? handlePause : handleStart}
-            style={{
-              fontFamily: 'Fraunces, Georgia, serif',
-              fontSize: 'clamp(80px, 14vw, 160px)',
-              letterSpacing: -6,
-              lineHeight: 1,
-              fontFeatureSettings: '"tnum"',
-              color: 'var(--accent)',
-              cursor: 'pointer',
-              userSelect: 'none',
-              marginBottom: 28,
-            }}
-          >
-            {formatTimer(timeLeft)}
-          </div>
+          {bigTimer(true)}
+          {!isEditing && progressBar(true)}
 
-          {/* Progress bar */}
-          <svg width="100%" height="22" viewBox="0 0 300 22" preserveAspectRatio="none" style={{ display: 'block', marginBottom: 28 }}>
-            <line x1="0" y1="11" x2="300" y2="11" stroke="var(--rule)" strokeWidth="1" strokeDasharray="3 4" />
-            <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
-          </svg>
-
-          {/* Controls */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-            {durationButtons(true)}
+            {presetButtons(true)}
             {actionButtons(true)}
           </div>
         </div>
 
-        {/* ── Pet side ── */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-          minWidth: 0,
-        }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minWidth: 0 }}>
           <PetSprite
             species={petSpecies}
             stage={petStage}
             mood={isRunning ? 'happy' : petMood}
             size={Math.min(window.innerWidth * 0.32, 420)}
           />
-          <div style={{
-            fontFamily: 'Fraunces, Georgia, serif',
-            fontStyle: 'italic',
-            fontSize: 15,
-            color: 'var(--ink-soft)',
-            textAlign: 'center',
-          }}>
-            {isRunning
-              ? `${petName} is happy you're here.`
-              : `${petName} is waiting for you.`}
+          <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 15, color: 'var(--ink-soft)', textAlign: 'center' }}>
+            {isRunning ? `${petName} is happy you're here.` : `${petName} is waiting for you.`}
           </div>
         </div>
       </div>
@@ -356,27 +360,12 @@ export default function FocusTimer({
   return (
     <div style={{ border: '1.5px solid var(--ink)', padding: 20, background: 'var(--card)', marginTop: 22 }}>
 
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
         <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 10, letterSpacing: '2px', color: 'var(--muted)', textTransform: 'uppercase' }}>
           SIT WITH {petName.toUpperCase()} · {getDisplayLabel(selectedSecs)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isRunning && (
-            <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)' }}>
-              stay with it.
-            </div>
-          )}
-          {saveStatus === 'saved' && (
-            <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'var(--accent-3)', textTransform: 'uppercase' }}>
-              saved ✓
-            </div>
-          )}
-          {saveStatus === 'error' && (
-            <div style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 9, letterSpacing: 1, color: 'tomato', textTransform: 'uppercase' }} title={saveError}>
-              save failed ✗
-            </div>
-          )}
+          {statusChip}
           <button
             onClick={() => setIsFullscreen(true)}
             title="Fullscreen"
@@ -387,33 +376,11 @@ export default function FocusTimer({
         </div>
       </div>
 
-      {/* Timer — click to start/pause */}
-      <div
-        onClick={isRunning ? handlePause : handleStart}
-        style={{
-          fontFamily: 'Fraunces, Georgia, serif',
-          fontSize: 'clamp(52px, 18vw, 88px)',
-          letterSpacing: -4,
-          lineHeight: 1,
-          fontFeatureSettings: '"tnum"',
-          color: 'var(--accent)',
-          cursor: 'pointer',
-          userSelect: 'none',
-          marginBottom: 16,
-        }}
-      >
-        {formatTimer(timeLeft)}
-      </div>
+      {bigTimer(false)}
+      {!isEditing && progressBar(false)}
 
-      {/* Progress bar */}
-      <svg width="100%" height="22" viewBox="0 0 300 22" preserveAspectRatio="none" style={{ display: 'block', marginBottom: 12 }}>
-        <line x1="0" y1="11" x2="300" y2="11" stroke="var(--rule)" strokeWidth="1" strokeDasharray="3 4" />
-        <line x1="0" y1="11" x2={300 * progressPct / 100} y2="11" stroke="var(--accent)" strokeWidth="2" />
-      </svg>
-
-      {/* Controls */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        {durationButtons(false)}
+        {presetButtons(false)}
         {actionButtons(false)}
       </div>
     </div>
