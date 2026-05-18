@@ -86,6 +86,27 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# Add points column to tasks and backfill from priority
+with engine.connect() as conn:
+    try:
+        conn.execute(text('ALTER TABLE tasks ADD COLUMN points INTEGER DEFAULT NULL'))
+        conn.commit()
+    except Exception:
+        pass
+with engine.connect() as conn:
+    try:
+        conn.execute(text("""
+            UPDATE tasks SET points = CASE
+                WHEN lower(priority) = 'high'   THEN 25
+                WHEN lower(priority) = 'medium' THEN 15
+                ELSE 10
+            END
+            WHERE points IS NULL
+        """))
+        conn.commit()
+    except Exception:
+        pass
+
 # Add gender to pets
 with engine.connect() as conn:
     try:
@@ -212,12 +233,17 @@ def create_task_endpoint(task: TaskCreate,current_user= Depends(get_current_user
 
 @app.get("/tasks", response_model=list[TaskResponse])
 def get_all_tasks_endpoint(current_user= Depends(get_current_user),db: Session = Depends(get_db)):
-    # Update: Return all tasks so frontend can show completed ones with strikethrough
     tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
-    # Return empty list instead of 404 when no tasks found
     if not tasks:
         return []
-    return [TaskResponse.model_validate(t) for t in tasks]
+    return [TaskResponse.model_validate({
+        "id": t.id, "title": t.title, "priority": t.priority,
+        "category": t.category, "completed": t.completed,
+        "created_at": t.created_at, "completed_at": t.completed_at,
+        "due_date": t.due_date, "user_id": t.user_id,
+        "points": t.points,
+        "xpReward": task_crud.compute_effective_points(t),
+    }) for t in tasks]
 
 
 @app.put("/tasks/{title}", response_model=TaskResponse)

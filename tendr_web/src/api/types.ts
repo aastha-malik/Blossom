@@ -29,6 +29,7 @@ export interface Task {
   completed_at?: string | null;
   due_date?: string | null;
   user_id: string;
+  points?: number | null;
   xpReward?: number | null;
   userXP?: number | null;
 }

@@ -82,11 +82,6 @@ export default function Today() {
   });
 
   const XP_BY_PRIORITY: Record<string, number> = { High: 25, Medium: 15, Low: 10 };
-  const penalizedTask = (t: Task) => {
-    const base = t.xpReward ?? XP_BY_PRIORITY[t.priority ?? ''] ?? 10;
-    const daysLate = Math.floor((Date.now() - new Date(t.due_date ?? t.created_at).getTime()) / 86400000);
-    return { ...t, xpReward: Math.max(1, base - 3 * daysLate) };
-  };
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
@@ -370,7 +365,7 @@ export default function Today() {
               {lateTasks.map(t => (
                 <TaskItem
                   key={t.id}
-                  task={penalizedTask(t)}
+                  task={t}
                   onDelete={() => deleteTaskMutation.mutate(t.id)}
                   onError={e => showToast(e.message, 'error')}
                 />

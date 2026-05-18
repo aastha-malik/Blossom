@@ -50,6 +50,7 @@ class TaskResponse(BaseModel):
     completed_at: Optional[datetime] = None
     due_date: Optional[date] = None
     user_id: str
+    points: Optional[int] = None
     xpReward: Optional[int] = None
     userXP: Optional[int] = None
 

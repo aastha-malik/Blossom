@@ -1,13 +1,34 @@
-from datetime import datetime
+from datetime import datetime, date as date_type
 from sqlalchemy.orm import Session
 from models import Task, User
 from auth_dependencies import get_current_user
 from fastapi import Depends
 
+_XP_BY_PRIORITY = {"low": 10, "medium": 15, "high": 25}
+
+def _base_points(priority: str) -> int:
+    return _XP_BY_PRIORITY.get((priority or "").lower(), 10)
+
+def compute_effective_points(task) -> int:
+    base = task.points if task.points is not None else _base_points(task.priority)
+    if task.completed:
+        return base
+    ref = task.due_date or (task.created_at.date() if task.created_at else None)
+    if ref is None:
+        return base
+    if isinstance(ref, datetime):
+        ref = ref.date()
+    today = datetime.utcnow().date()
+    if ref < today:
+        days_late = (today - ref).days
+        return max(1, base - 3 * days_late)
+    return base
+
 #adding task to db
 def create_task(db: Session, title: str, priority: str, current_user, category: str = None, due_date=None):
     priority_normalized = priority.capitalize() if priority else "Medium"
-    new_task = Task(title=title, user_id=current_user.id, completed=False, priority=priority_normalized, category=category, due_date=due_date)
+    base = _base_points(priority_normalized)
+    new_task = Task(title=title, user_id=current_user.id, completed=False, priority=priority_normalized, category=category, due_date=due_date, points=base)
     db.add(new_task)
     db.commit()
     db.refresh(new_task)     # This updates the object with data from the database (like the new id)
@@ -60,15 +81,8 @@ def update_task_completion(db: Session, task_id: str, completed: bool, current_u
 
     
 
-    # Decide XP based on priority (handle both lowercase and capitalized)
-    xp_reward = 0
-    priority_lower = (task.priority or "").lower()
-    if priority_lower == "low":
-        xp_reward = 10
-    elif priority_lower == "medium":
-        xp_reward = 15
-    elif priority_lower == "high":
-        xp_reward = 25
+    # Effective XP: base priority points penalised 3/day if late, floor 1
+    xp_reward = compute_effective_points(task)
 
     # Initialize XP if null (default is 100)
     if user.xp is None:
@@ -107,7 +121,9 @@ def update_task_completion(db: Session, task_id: str, completed: bool, current_u
         "completed": task.completed,
         "created_at": task.created_at,
         "completed_at": task.completed_at,
+        "due_date": task.due_date,
         "user_id": task.user_id,
+        "points": task.points,
         "xpReward": xp_reward,
         "userXP": user.xp,
     }
