@@ -9,19 +9,30 @@ _XP_BY_PRIORITY = {"low": 10, "medium": 15, "high": 25}
 def _base_points(priority: str) -> int:
     return _XP_BY_PRIORITY.get((priority or "").lower(), 10)
 
+def _days_late(task) -> int:
+    ref = task.due_date or (task.created_at.date() if task.created_at else None)
+    if ref is None:
+        return 0
+    if isinstance(ref, datetime):
+        ref = ref.date()
+    today = datetime.utcnow().date()
+    return max(0, (today - ref).days)
+
 def compute_effective_points(task) -> int:
     base = task.points if task.points is not None else _base_points(task.priority)
     if task.completed:
         return base
-    ref = task.due_date or (task.created_at.date() if task.created_at else None)
-    if ref is None:
-        return base
-    if isinstance(ref, datetime):
-        ref = ref.date()
-    today = datetime.utcnow().date()
-    if ref < today:
-        days_late = (today - ref).days
-        return max(1, base - 3 * days_late)
+    late = _days_late(task)
+    if late > 0:
+        return max(1, base - 3 * late)
+    return base
+
+def compute_raw_points(task) -> int:
+    """Like compute_effective_points but no floor — can go negative."""
+    base = task.points if task.points is not None else _base_points(task.priority)
+    late = _days_late(task)
+    if late > 0:
+        return base - 3 * late
     return base
 
 #adding task to db
@@ -147,9 +158,18 @@ def delete_task_by_id(db: Session, task_id: str, current_user):
     task = get_task_by_id(db, task_id, current_user)
     if task is None:
         return None
+    xp_deducted = 0
+    if not task.completed:
+        raw = compute_raw_points(task)
+        if raw < 0:
+            user = db.query(User).filter(User.id == current_user.id).first()
+            if user:
+                penalty = abs(raw)
+                user.xp = max(0, (user.xp or 0) - penalty)
+                xp_deducted = penalty
     db.delete(task)
     db.commit()
-    return {"message": "Task deleted successfully"}
+    return {"message": "Task deleted successfully", "xp_deducted": xp_deducted}
     # Note: Returning True or False is a common practice to indicate success or failure of an operation.
     # In this case, we return True if the task was successfully deleted, otherwise False
     # This can be useful for the caller to know whether the deletion was successful or not.

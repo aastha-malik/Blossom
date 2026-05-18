@@ -8,6 +8,7 @@ import TaskForm from '../components/tasks/TaskForm';
 import TaskItem from '../components/tasks/TaskItem';
 import FocusTimer from '../components/focus/FocusTimer';
 import Toast from '../components/ui/Toast';
+import ConfirmModal from '../components/ui/ConfirmModal';
 import { useToast } from '../hooks/useToast';
 import { PetSprite, getStage, deriveMood } from '../components/PetSprite';
 import type { Species } from '../components/PetSprite';
@@ -77,12 +78,25 @@ export default function Today() {
   });
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => tasksAPI.delete(taskId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['userXP'] });
+    },
     onError: () => showToast('Could not delete task.', 'error'),
   });
 
+  const XP_BY_PRIORITY: Record<string, number> = { High: 25, Medium: 15, Low: 10 };
+
+  const handleLateDelete = (t: Task) => {
+    const daysLate = Math.floor((Date.now() - new Date(t.due_date ?? t.created_at).getTime()) / 86400000);
+    const base = t.points ?? XP_BY_PRIORITY[t.priority ?? ''] ?? 10;
+    const rawPoints = base - 3 * daysLate;
+    setPendingLateDelete({ ...t, xpReward: rawPoints });
+  };
+
 
   const [activeCategory, setActiveCategory] = useState<string>('');
+  const [pendingLateDelete, setPendingLateDelete] = useState<Task | null>(null);
   const CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
 
   const { data: tasks = [] } = useQuery({
@@ -365,7 +379,7 @@ export default function Today() {
                 <TaskItem
                   key={t.id}
                   task={t}
-                  onDelete={() => deleteTaskMutation.mutate(t.id)}
+                  onDelete={() => handleLateDelete(t)}
                   onError={e => showToast(e.message, 'error')}
                 />
               ))}
@@ -378,6 +392,27 @@ export default function Today() {
       {toasts.map(t => (
         <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
       ))}
+
+      {pendingLateDelete && (() => {
+        const penalty = pendingLateDelete.xpReward ?? 0;
+        const hasXPLoss = penalty < 0;
+        return (
+          <ConfirmModal
+            title={hasXPLoss ? `This will cost you ${Math.abs(penalty)} XP.` : 'Delete this late task?'}
+            body={
+              hasXPLoss
+                ? `"${pendingLateDelete.title}" is long overdue. Deleting it will deduct ${Math.abs(penalty)} XP from your account. Are you sure?`
+                : `"${pendingLateDelete.title}" is past its due date. Delete it anyway?`
+            }
+            confirmLabel={hasXPLoss ? `Delete (−${Math.abs(penalty)} XP)` : 'Delete'}
+            onConfirm={() => {
+              deleteTaskMutation.mutate(pendingLateDelete.id);
+              setPendingLateDelete(null);
+            }}
+            onCancel={() => setPendingLateDelete(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
