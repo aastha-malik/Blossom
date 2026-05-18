@@ -350,4 +350,11 @@ export const focusAPI = {
     });
     return handleResponse<FocusTotal>(response);
   },
+
+  getToday: async (): Promise<FocusTotal> => {
+    const response = await fetch(API_ENDPOINTS.FOCUS_TODAY, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse<FocusTotal>(response);
+  },
 };

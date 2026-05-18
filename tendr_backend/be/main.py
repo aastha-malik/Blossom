@@ -740,3 +740,13 @@ def get_focus_total(current_user=Depends(get_current_user), db: Session = Depend
     ).scalar() or 0
     return {"total_seconds": int(total)}
 
+
+@app.get("/focus/today")
+def get_focus_today(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    total = db.query(func.sum(FocusSession.duration_seconds)).filter(
+        FocusSession.user_id == current_user.id,
+        FocusSession.created_at >= today_start,
+    ).scalar() or 0
+    return {"total_seconds": int(total)}
+

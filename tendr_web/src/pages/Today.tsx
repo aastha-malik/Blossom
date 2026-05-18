@@ -133,6 +133,13 @@ export default function Today() {
     refetchInterval: 30000,
   });
 
+  const { data: focusToday } = useQuery({
+    queryKey: ['focusToday'],
+    queryFn: () => focusAPI.getToday(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
   const todayMidnight = new Date();
   todayMidnight.setHours(0, 0, 0, 0);
   const isPast = (dateStr: string) => {
@@ -169,6 +176,20 @@ export default function Today() {
         : focusMins === 0
           ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
           : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
+
+  const todayFocusSecs = focusToday?.total_seconds ?? 0;
+  const todayFocusHrs = Math.floor(todayFocusSecs / 3600);
+  const todayFocusMins = Math.floor((todayFocusSecs % 3600) / 60);
+  const todayFocusRemSecs = todayFocusSecs % 60;
+  const todayFocusDisplay = todayFocusSecs === 0
+    ? '—'
+    : todayFocusHrs === 0 && todayFocusMins === 0
+      ? `${todayFocusRemSecs} sec`
+      : todayFocusHrs === 0
+        ? `${todayFocusMins} min`
+        : todayFocusMins === 0
+          ? `${todayFocusHrs} ${todayFocusHrs === 1 ? 'hr' : 'hrs'}`
+          : `${todayFocusHrs} ${todayFocusHrs === 1 ? 'hr' : 'hrs'} ${todayFocusMins} min`;
 
   const belly = pet ? computeBelly(pet.last_fed) : 50;
   const bond = pet ? computeBond(pet.bond ?? 0, pet.last_focused_at ?? pet.last_fed) : 0;
@@ -250,7 +271,7 @@ export default function Today() {
           <div style={{ marginTop: 22, border: '1px solid var(--rule)', padding: 20, background: 'var(--card)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
               <div>
-                <div style={monoStyle}>THE LEDGER · LAST 21 DAYS</div>
+                <div style={monoStyle}>THE LEDGER · TODAY</div>
                 <div style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontStyle: 'italic', marginTop: 2, color: 'var(--ink)' }}>
                   How the season has been treating you.
                 </div>
@@ -258,8 +279,8 @@ export default function Today() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 18, marginBottom: 16, paddingBottom: 14, borderBottom: '1px dashed var(--rule)' }}>
               {[
-                ['TASKS FINISHED', String(tasksCompleted), 'var(--accent)'],
-                ['TIME TOGETHER', focusDisplay, 'var(--accent-3)'],
+                ['TASKS FINISHED', String(completedToday), 'var(--accent)'],
+                ['TIME TOGETHER', todayFocusDisplay, 'var(--accent-3)'],
                 ['STREAK', `${streak} days`, 'var(--amber)'],
               ].map(([label, value, color]) => (
                 <div key={label}>

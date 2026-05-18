@@ -51,6 +51,7 @@ export default function FocusTimer({
     mutationFn: (duration_seconds: number) => focusAPI.saveSession(duration_seconds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['focusTotal'] });
+      queryClient.invalidateQueries({ queryKey: ['focusToday'] });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
     },

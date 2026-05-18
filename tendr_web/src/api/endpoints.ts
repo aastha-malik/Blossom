@@ -34,5 +34,6 @@ export const API_ENDPOINTS = {
   // Focus
   FOCUS_SESSION: `${API_URL}/focus/session`,
   FOCUS_TOTAL: `${API_URL}/focus/total`,
+  FOCUS_TODAY: `${API_URL}/focus/today`,
 } as const;
 
