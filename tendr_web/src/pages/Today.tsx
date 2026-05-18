@@ -81,7 +81,6 @@ export default function Today() {
     onError: () => showToast('Could not delete task.', 'error'),
   });
 
-  const XP_BY_PRIORITY: Record<string, number> = { High: 25, Medium: 15, Low: 10 };
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const CATEGORIES = ['Work', 'Personal', 'Home', 'Friends', 'Health'];
