@@ -126,13 +126,6 @@ export default function Today() {
     enabled: isAuthenticated && !!userId,
   });
 
-  const { data: focusTotal } = useQuery({
-    queryKey: ['focusTotal'],
-    queryFn: () => focusAPI.getTotal(),
-    enabled: isAuthenticated,
-    refetchInterval: 30000,
-  });
-
   const { data: focusToday } = useQuery({
     queryKey: ['focusToday'],
     queryFn: () => focusAPI.getToday(),
@@ -160,22 +153,7 @@ export default function Today() {
   }).length;
 
   const streak = stats?.streaks ?? 0;
-  const tasksCompleted = stats?.num_task_completed ?? completedToday;
   const heatmapData = buildHeatmapData(tasks);
-
-  const totalFocusSecs = focusTotal?.total_seconds ?? 0;
-  const focusHrs = Math.floor(totalFocusSecs / 3600);
-  const focusMins = Math.floor((totalFocusSecs % 3600) / 60);
-  const focusRemSecs = totalFocusSecs % 60;
-  const focusDisplay = totalFocusSecs === 0
-    ? '—'
-    : focusHrs === 0 && focusMins === 0
-      ? `${focusRemSecs} sec`
-      : focusHrs === 0
-        ? `${focusMins} min`
-        : focusMins === 0
-          ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
-          : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
 
   const todayFocusSecs = focusToday?.total_seconds ?? 0;
   const todayFocusHrs = Math.floor(todayFocusSecs / 3600);
