@@ -95,11 +95,16 @@ export default function Ledger() {
   const totalFocusSecs = focusTotal?.total_seconds ?? 0;
   const focusHrs = Math.floor(totalFocusSecs / 3600);
   const focusMins = Math.floor((totalFocusSecs % 3600) / 60);
-  const focusDisplay = focusHrs === 0
-    ? `${focusMins} min`
-    : focusMins === 0
-      ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
-      : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
+  const focusRemSecs = totalFocusSecs % 60;
+  const focusDisplay = totalFocusSecs === 0
+    ? '—'
+    : focusHrs === 0 && focusMins === 0
+      ? `${focusRemSecs} sec`
+      : focusHrs === 0
+        ? `${focusMins} min`
+        : focusMins === 0
+          ? `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'}`
+          : `${focusHrs} ${focusHrs === 1 ? 'hr' : 'hrs'} ${focusMins} min`;
 
   const catColors: Record<string, string> = {
     Work:     'var(--accent)',

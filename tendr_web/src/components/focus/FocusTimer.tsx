@@ -43,6 +43,7 @@ export default function FocusTimer({
   const hrsRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const isAuthRef = useRef(false);
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
@@ -76,6 +77,10 @@ export default function FocusTimer({
     return () => window.removeEventListener('keydown', onKey);
   }, [isFullscreen]);
 
+  // Keep auth ref in sync so unmount cleanup can read the current value
+  useEffect(() => { isAuthRef.current = isAuthenticated; }, [isAuthenticated]);
+
+  // Save on pause / timer completion
   useEffect(() => {
     if (!isRunning && startTimeRef.current !== null) {
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
@@ -84,6 +89,19 @@ export default function FocusTimer({
     }
     if (isRunning) startTimeRef.current = Date.now();
   }, [isRunning, isAuthenticated, saveSession]);
+
+  // Save on unmount — fires when navigating away while the timer is still running
+  useEffect(() => {
+    return () => {
+      const start = startTimeRef.current;
+      if (start !== null && isAuthRef.current) {
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        if (elapsed >= MIN_SAVE_SECS) {
+          focusAPI.saveSession(elapsed).catch(() => {});
+        }
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
